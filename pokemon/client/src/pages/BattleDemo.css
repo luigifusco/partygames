@@ -40,15 +40,15 @@
 
 .team-select-chosen {
   display: flex;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 6px 8px;
   justify-content: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .team-select-chosen-card {
-  width: 90px;
-  height: 90px;
+  width: 80px;
+  height: 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -57,11 +57,12 @@
   background: rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: background 0.2s;
+  flex-shrink: 0;
 }
 
 .team-select-chosen-card img {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   image-rendering: pixelated;
 }
 
