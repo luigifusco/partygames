@@ -155,8 +155,8 @@
 }
 
 .trade-selected-pokemon img {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   image-rendering: pixelated;
 }
 
@@ -185,8 +185,8 @@
 }
 
 .trade-confirm-card img {
-  width: 72px;
-  height: 72px;
+  width: 88px;
+  height: 88px;
   image-rendering: pixelated;
 }
 

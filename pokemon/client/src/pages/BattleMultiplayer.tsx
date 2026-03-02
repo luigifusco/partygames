@@ -257,7 +257,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         )}
         {phase === 'teamSelect' && (
           <>
-            <div className="team-select-chosen" style={{ padding: '8px 12px' }}>
+            <div className="team-select-chosen" style={{ padding: '4px 8px' }}>
               {selected.map((idx) => {
                 const p = collection[idx];
                 return (
@@ -272,13 +272,13 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
               ))}
             </div>
             {selected.length === 3 && (
-              <div style={{ textAlign: 'center', padding: '8px' }}>
+              <div style={{ textAlign: 'center', padding: '4px' }}>
                 <button className="team-select-go" onClick={submitTeam}>⚔️ Lock In!</button>
               </div>
             )}
           </>
         )}
-        <div className="team-select-grid" style={{ flex: 1, overflow: 'auto', padding: '8px' }}>
+        <div className="team-select-grid" style={{ flex: 1, overflow: 'auto', padding: '4px' }}>
           {indices.map((idx) => {
             const p = collection[idx];
             const isSelected = selected.includes(idx);
