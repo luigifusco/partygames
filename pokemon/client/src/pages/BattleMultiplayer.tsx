@@ -190,21 +190,23 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
             )}
           </>
         )}
-        <div className="team-select-grid" style={{ flex: 1, overflow: 'auto', padding: '4px' }}>
-          {indices.map((idx) => {
-            const p = collection[idx];
-            const isSelected = selected.includes(idx);
-            return (
-              <div
-                key={idx}
-                className={`team-select-card ${isSelected ? 'selected' : ''}`}
-                onClick={() => phase === 'teamSelect' && togglePokemon(idx)}
-              >
-                <img src={p.sprite} alt={p.name} />
-                <div className="team-select-card-name">{p.name}</div>
-              </div>
-            );
-          })}
+        <div className="team-select-scroll">
+          <div className="team-select-grid">
+            {indices.map((idx) => {
+              const p = collection[idx];
+              const isSelected = selected.includes(idx);
+              return (
+                <div
+                  key={idx}
+                  className={`team-select-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => phase === 'teamSelect' && togglePokemon(idx)}
+                >
+                  <img src={p.sprite} alt={p.name} />
+                  <div className="team-select-card-name">{p.name}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );

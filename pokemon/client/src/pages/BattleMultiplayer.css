@@ -148,6 +148,7 @@
   text-align: center;
   padding: 8px;
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .battle-mp-team-header h2 {

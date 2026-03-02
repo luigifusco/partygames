@@ -45,6 +45,33 @@
   font-size: 14px;
 }
 
+.collection-filters {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.collection-filter-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #aaa;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s;
+}
+
+.collection-filter-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #eee;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
 .collection-grid {
   flex: 1;
   overflow-y: auto;
@@ -53,55 +80,6 @@
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 2px;
   align-content: start;
-}
-
-.collection-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid transparent;
-}
-
-.collection-card.tier-common { border-color: #555; }
-.collection-card.tier-uncommon { border-color: #4caf50; }
-.collection-card.tier-rare { border-color: #2196f3; }
-.collection-card.tier-legendary { border-color: #9c27b0; }
-
-.collection-card img {
-  width: 100%;
-  image-rendering: pixelated;
-}
-
-.collection-card-name {
-  font-size: 11px;
-  margin-top: -14px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  position: relative;
-  z-index: 1;
-  text-shadow: 0 0 4px #000, 0 0 4px #000;
-  padding: 0 2px;
-  box-sizing: border-box;
-}
-
-.collection-card-count {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #ffd700;
-  font-size: 10px;
-  font-weight: bold;
-  padding: 1px 5px;
-  border-radius: 8px;
-  z-index: 2;
 }
 
 .collection-evolve-btn {

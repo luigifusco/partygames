@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { POKEMON } from '@shared/pokemon-data';
 import type { BoxTier } from '@shared/types';
+import PokemonCard from '../components/PokemonCard';
 import './PokedexScreen.css';
 
 const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'legendary'];
@@ -35,12 +36,7 @@ export default function PokedexScreen() {
       </div>
       <div className="pokedex-grid">
         {sorted.map((p) => (
-          <div key={p.id} className="pokedex-card">
-            <img src={p.sprite} alt={p.name} />
-            <div className="pokedex-card-name">{p.name}</div>
-            <div className="pokedex-card-id">#{String(p.id).padStart(3, '0')}</div>
-            <div className={`pokedex-card-tier tier-${p.tier}`}>{p.tier}</div>
-          </div>
+          <PokemonCard key={p.id} pokemon={p} />
         ))}
       </div>
     </div>

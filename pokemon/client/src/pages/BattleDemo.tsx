@@ -5,6 +5,7 @@ import { POKEMON } from '@shared/pokemon-data';
 import { calculateBattleEssence } from '@shared/essence';
 import type { Pokemon } from '@shared/types';
 import './BattleDemo.css';
+import './BattleMultiplayer.css';
 
 // Simple client-side battle simulation for the demo
 function randomFactor(): number {
@@ -137,8 +138,8 @@ export default function BattleDemo({ essence, onGainEssence }: BattleDemoProps) 
   const sorted = [...POKEMON].sort((a, b) => a.id - b.id);
 
   return (
-    <div className="team-select-screen">
-      <div className="team-select-header">
+    <div className="battle-mp-screen">
+      <div className="battle-mp-team-header">
         <h2>Pick Your Team ({selected.length}/3)</h2>
         {selected.length === 3 && (
           <button className="team-select-go" onClick={startBattle}>⚔️ Battle!</button>
@@ -155,20 +156,22 @@ export default function BattleDemo({ essence, onGainEssence }: BattleDemoProps) 
           <div key={`empty-${i}`} className="team-select-chosen-card empty">?</div>
         ))}
       </div>
-      <div className="team-select-grid">
-        {sorted.map((p) => {
-          const isSelected = !!selected.find((s) => s.id === p.id);
-          return (
-            <div
-              key={p.id}
-              className={`team-select-card ${isSelected ? 'selected' : ''}`}
-              onClick={() => toggle(p)}
-            >
-              <img src={p.sprite} alt={p.name} />
-              <div className="team-select-card-name">{p.name}</div>
-            </div>
-          );
-        })}
+      <div className="team-select-scroll">
+        <div className="team-select-grid">
+          {sorted.map((p) => {
+            const isSelected = !!selected.find((s) => s.id === p.id);
+            return (
+              <div
+                key={p.id}
+                className={`team-select-card ${isSelected ? 'selected' : ''}`}
+                onClick={() => toggle(p)}
+              >
+                <img src={p.sprite} alt={p.name} />
+                <div className="team-select-card-name">{p.name}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

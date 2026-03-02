@@ -44,6 +44,7 @@
   padding: 6px 8px;
   justify-content: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .team-select-chosen-card {
@@ -85,9 +86,14 @@
   background: transparent;
 }
 
-.team-select-grid {
+.team-select-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.team-select-grid {
   padding: 4px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -119,8 +125,7 @@
 }
 
 .team-select-card img {
-  width: 144px;
-  height: 144px;
+  width: 100%;
   image-rendering: pixelated;
 }
 

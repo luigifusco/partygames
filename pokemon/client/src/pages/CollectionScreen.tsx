@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Pokemon } from '@shared/types';
+import type { Pokemon, BoxTier } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
+import PokemonCard from '../components/PokemonCard';
 import './CollectionScreen.css';
+
+const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'legendary'];
 
 interface CollectionScreenProps {
   collection: Pokemon[];
@@ -12,6 +15,7 @@ interface CollectionScreenProps {
 export default function CollectionScreen({ collection, onEvolve }: CollectionScreenProps) {
   const navigate = useNavigate();
   const [evolving, setEvolving] = useState<{ from: Pokemon; to: Pokemon } | null>(null);
+  const [filter, setFilter] = useState<BoxTier | 'all'>('all');
 
   // Group by pokemon id, count duplicates, sort by id
   const grouped = new Map<number, { pokemon: Pokemon; count: number }>();
@@ -23,7 +27,9 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
       grouped.set(p.id, { pokemon: p, count: 1 });
     }
   }
-  const sorted = [...grouped.values()].sort((a, b) => a.pokemon.id - b.pokemon.id);
+  const sorted = [...grouped.values()]
+    .filter(({ pokemon }) => filter === 'all' || pokemon.tier === filter)
+    .sort((a, b) => a.pokemon.id - b.pokemon.id);
 
   const handleEvolve = (pokemon: Pokemon) => {
     if (!pokemon.evolutionTo) return;
@@ -43,6 +49,17 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
         <button className="collection-back" onClick={() => navigate('/play')}>← Back</button>
         <h2>My Pokémon ({collection.length})</h2>
       </div>
+      <div className="collection-filters">
+        {TIERS.map((tier) => (
+          <button
+            key={tier}
+            className={`collection-filter-btn ${filter === tier ? 'active' : ''}`}
+            onClick={() => setFilter(tier)}
+          >
+            {tier === 'all' ? 'All' : tier.charAt(0).toUpperCase() + tier.slice(1)}
+          </button>
+        ))}
+      </div>
       {sorted.length === 0 ? (
         <div className="collection-empty">No Pokémon yet — visit the shop!</div>
       ) : (
@@ -50,16 +67,13 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
           {sorted.map(({ pokemon, count }) => {
             const canEvolve = count >= 4 && pokemon.evolutionTo !== undefined && POKEMON_BY_ID[pokemon.evolutionTo];
             return (
-              <div key={pokemon.id} className={`collection-card tier-${pokemon.tier}`}>
-                {count > 1 && <div className="collection-card-count">×{count}</div>}
-                <img src={pokemon.sprite} alt={pokemon.name} />
-                <div className="collection-card-name">{pokemon.name}</div>
+              <PokemonCard key={pokemon.id} pokemon={pokemon} count={count}>
                 {canEvolve && (
                   <button className="collection-evolve-btn" onClick={() => handleEvolve(pokemon)}>
                     ✨ Evolve
                   </button>
                 )}
-              </div>
+              </PokemonCard>
             );
           })}
         </div>
