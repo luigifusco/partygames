@@ -70,6 +70,11 @@ function PokemonCard({
 }
 
 function formatLogEntry(entry: BattleLogEntry): React.ReactNode {
+  // Weather log entries use the message directly with weather styling
+  if (entry.weather) {
+    return <span className={`weather-${entry.weather}`}>{entry.message}</span>;
+  }
+
   const parts: React.ReactNode[] = [];
 
   parts.push(`${entry.attackerName} used ${entry.moveName}`);

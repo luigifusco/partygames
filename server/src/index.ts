@@ -127,8 +127,20 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
           moveName: '', targetInstanceId: '', targetName: '',
           damage: 0, effectiveness: null, targetFainted: false,
           message: weather === 'Rain' ? 'The rain stopped.' : 'The sunlight faded.',
+          weather: 'clear',
         });
         weather = null;
+      } else {
+        const weatherTag = weather === 'Rain' ? 'rain' as const : 'sun' as const;
+        const weatherDesc = weather === 'Rain' ? '🌧️ Rain' : '☀️ Sun';
+        log.push({
+          round,
+          attackerInstanceId: '', attackerName: '',
+          moveName: '', targetInstanceId: '', targetName: '',
+          damage: 0, effectiveness: null, targetFainted: false,
+          message: `${weatherDesc} (${weatherTurnsLeft}/5 turns remaining)`,
+          weather: weatherTag,
+        });
       }
     }
     // Sort by damage-calc computed speed stat
@@ -169,6 +181,7 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
           effectiveness: null,
           targetFainted: false,
           message: `${attacker.name} used ${moveName}! ${weatherMsg}`,
+          weather: weatherEffect === 'Rain' ? 'rain' : 'sun',
         });
         continue;
       }

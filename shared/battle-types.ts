@@ -21,6 +21,7 @@ export interface BattleLogEntry {
   effectiveness: 'super' | 'neutral' | 'not-very' | 'immune' | null;
   targetFainted: boolean;
   message: string;
+  weather?: 'rain' | 'sun' | 'clear';
 }
 
 export interface BattleSnapshot {

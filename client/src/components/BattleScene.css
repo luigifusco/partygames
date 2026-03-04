@@ -183,6 +183,10 @@
 .battle-log-entry .fainted { color: #f44336; font-weight: bold; }
 .battle-log-entry .damage { color: #ef9a9a; }
 
+.battle-log-entry .weather-rain { color: #64b5f6; font-style: italic; }
+.battle-log-entry .weather-sun { color: #ffb74d; font-style: italic; }
+.battle-log-entry .weather-clear { color: #bdbdbd; font-style: italic; }
+
 /* Winner banner */
 .battle-winner {
   text-align: center;
