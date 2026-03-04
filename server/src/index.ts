@@ -307,6 +307,16 @@ app.get('/api/leaderboard', (_req, res) => {
   return res.json({ players: result });
 });
 
+// AI / demo battle endpoint
+app.post('/api/battle/simulate', (req, res) => {
+  const { leftTeam, rightTeam } = req.body;
+  if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
+    return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
+  }
+  const snapshot = simulateBattleFromIds(leftTeam, rightTeam);
+  return res.json({ snapshot });
+});
+
 // --- Socket.IO: Battle matching ---
 
 // Track challenges: Map<challengerName, targetName>

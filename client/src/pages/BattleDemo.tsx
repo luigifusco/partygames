@@ -1,86 +1,13 @@
 import { useState } from 'react';
 import BattleScene from '../components/BattleScene';
-import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '@shared/battle-types';
+import type { BattleSnapshot } from '@shared/battle-types';
 import { POKEMON } from '@shared/pokemon-data';
 import { calculateBattleEssence } from '@shared/essence';
 import type { Pokemon } from '@shared/types';
 import './BattleDemo.css';
 import './BattleMultiplayer.css';
 
-// Simple client-side battle simulation for the demo
-function randomFactor(): number {
-  return Math.random() * 0.15 + 0.85;
-}
-
-function simulateDemoBattle(leftPicks: Pokemon[], rightPicks: Pokemon[]): BattleSnapshot {
-  const left: BattlePokemonState[] = leftPicks.map((p, i) => ({
-    instanceId: `l${i}`, name: p.name, sprite: p.sprite, types: p.types,
-    currentHp: p.stats.hp, maxHp: p.stats.hp, side: 'left',
-  }));
-  const right: BattlePokemonState[] = rightPicks.map((p, i) => ({
-    instanceId: `r${i}`, name: p.name, sprite: p.sprite, types: p.types,
-    currentHp: p.stats.hp, maxHp: p.stats.hp, side: 'right',
-  }));
-
-  const hp: Record<string, number> = {};
-  for (const p of [...left, ...right]) hp[p.instanceId] = p.maxHp;
-
-  const allPokemon = [
-    ...leftPicks.map((p, i) => ({ ...p, instanceId: `l${i}`, side: 'left' as const })),
-    ...rightPicks.map((p, i) => ({ ...p, instanceId: `r${i}`, side: 'right' as const })),
-  ];
-
-  const log: BattleLogEntry[] = [];
-  let round = 0;
-
-  while (round < 50) {
-    const alive = allPokemon.filter((p) => hp[p.instanceId] > 0);
-    const leftAlive = alive.filter((p) => p.side === 'left');
-    const rightAlive = alive.filter((p) => p.side === 'right');
-    if (leftAlive.length === 0 || rightAlive.length === 0) break;
-
-    round++;
-    const sorted = [...alive].sort((a, b) => b.stats.speed - a.stats.speed || Math.random() - 0.5);
-
-    for (const attacker of sorted) {
-      if (hp[attacker.instanceId] <= 0) continue;
-      const opponents = allPokemon.filter((p) => p.side !== attacker.side && hp[p.instanceId] > 0);
-      if (opponents.length === 0) continue;
-
-      const target = opponents[Math.floor(Math.random() * opponents.length)];
-      const isPhysical = attacker.stats.attack > attacker.stats.spAtk;
-      const atk = isPhysical ? attacker.stats.attack : attacker.stats.spAtk;
-      const def = isPhysical ? target.stats.defense : target.stats.spDef;
-      const power = 60 + Math.floor(Math.random() * 40);
-      const damage = Math.max(1, Math.floor(((22 * power * atk / def) / 50 + 2) * randomFactor()));
-
-      hp[target.instanceId] = Math.max(0, hp[target.instanceId] - damage);
-      const fainted = hp[target.instanceId] <= 0;
-
-      log.push({
-        round,
-        attackerInstanceId: attacker.instanceId,
-        attackerName: attacker.name,
-        moveName: isPhysical ? 'Attack' : 'Sp. Attack',
-        targetInstanceId: target.instanceId,
-        targetName: target.name,
-        damage,
-        effectiveness: 'neutral',
-        targetFainted: fainted,
-        message: '',
-      });
-    }
-  }
-
-  const leftHp = left.reduce((s, p) => s + hp[p.instanceId], 0);
-  const rightHp = right.reduce((s, p) => s + hp[p.instanceId], 0);
-  let winner: 'left' | 'right' | null = null;
-  if (leftHp > 0 && rightHp <= 0) winner = 'left';
-  else if (rightHp > 0 && leftHp <= 0) winner = 'right';
-  else winner = leftHp >= rightHp ? 'left' : 'right';
-
-  return { left, right, log, winner, round };
-}
+const API_BASE = '';
 
 function pickRandomTeam(exclude: number[]): Pokemon[] {
   const available = POKEMON.filter((p) => !exclude.includes(p.id));
@@ -102,6 +29,7 @@ export default function BattleDemo({ essence, onGainEssence }: BattleDemoProps) 
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [opponentTeam, setOpponentTeam] = useState<Pokemon[]>([]);
   const [rewarded, setRewarded] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (snapshot) {
     const essenceGained = calculateBattleEssence(opponentTeam);
@@ -128,11 +56,26 @@ export default function BattleDemo({ essence, onGainEssence }: BattleDemoProps) 
     }
   };
 
-  const startBattle = () => {
+  const startBattle = async () => {
     const opponent = pickRandomTeam(selected.map((p) => p.id));
     setOpponentTeam(opponent);
-    const result = simulateDemoBattle(selected, opponent);
-    setSnapshot(result);
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/battle/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leftTeam: selected.map((p) => p.id),
+          rightTeam: opponent.map((p) => p.id),
+        }),
+      });
+      const data = await res.json();
+      setSnapshot(data.snapshot);
+    } catch (err) {
+      console.error('Battle simulation failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const sorted = [...POKEMON].sort((a, b) => a.id - b.id);
@@ -142,7 +85,9 @@ export default function BattleDemo({ essence, onGainEssence }: BattleDemoProps) 
       <div className="battle-mp-team-header">
         <h2>Pick Your Team ({selected.length}/3)</h2>
         {selected.length === 3 && (
-          <button className="team-select-go" onClick={startBattle}>⚔️ Battle!</button>
+          <button className="team-select-go" onClick={startBattle} disabled={loading}>
+            {loading ? '⏳ Simulating...' : '⚔️ Battle!'}
+          </button>
         )}
       </div>
       <div className="team-select-chosen">
@@ -176,4 +121,3 @@ export default function BattleDemo({ essence, onGainEssence }: BattleDemoProps) 
     </div>
   );
 }
-
