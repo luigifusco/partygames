@@ -13,6 +13,7 @@ import {
   calculate as calcDamage,
   Pokemon as CalcPokemon,
   Move as CalcMove,
+  Field as CalcField,
   Generations,
   toID,
 } from '../../damage-calc/calc/dist/index.js';
@@ -100,6 +101,14 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
   const log: BattleLogEntry[] = [];
   let round = 0;
 
+  // Weather state
+  const WEATHER_MOVES: Record<string, 'Rain' | 'Sun'> = {
+    'Rain Dance': 'Rain',
+    'Sunny Day': 'Sun',
+  };
+  let weather: 'Rain' | 'Sun' | null = null;
+  let weatherTurnsLeft = 0;
+
   while (round < 50) {
     const alive = allPokemon.filter((p) => hp[p.instanceId] > 0);
     const leftAlive = alive.filter((p) => p.side === 'left');
@@ -107,6 +116,21 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
     if (leftAlive.length === 0 || rightAlive.length === 0) break;
 
     round++;
+
+    // Decrement weather at start of round
+    if (weather && weatherTurnsLeft > 0) {
+      weatherTurnsLeft--;
+      if (weatherTurnsLeft <= 0) {
+        log.push({
+          round,
+          attackerInstanceId: '', attackerName: '',
+          moveName: '', targetInstanceId: '', targetName: '',
+          damage: 0, effectiveness: null, targetFainted: false,
+          message: weather === 'Rain' ? 'The rain stopped.' : 'The sunlight faded.',
+        });
+        weather = null;
+      }
+    }
     // Sort by damage-calc computed speed stat
     const sorted = [...alive].sort((a, b) => {
       const spdA = calcInstances[a.instanceId].rawStats.spe;
@@ -126,12 +150,38 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
       const moveId = attacker.moves[Math.floor(Math.random() * attacker.moves.length)];
       const moveName = MOVE_NAMES[moveId] || 'Tackle';
 
+      // Handle weather-setting moves
+      const weatherEffect = WEATHER_MOVES[moveName];
+      if (weatherEffect) {
+        weather = weatherEffect;
+        weatherTurnsLeft = 5;
+        const weatherMsg = weatherEffect === 'Rain'
+          ? 'It started to rain!'
+          : 'The sunlight turned harsh!';
+        log.push({
+          round,
+          attackerInstanceId: attacker.instanceId,
+          attackerName: attacker.name,
+          moveName,
+          targetInstanceId: attacker.instanceId,
+          targetName: attacker.name,
+          damage: 0,
+          effectiveness: null,
+          targetFainted: false,
+          message: `${attacker.name} used ${moveName}! ${weatherMsg}`,
+        });
+        continue;
+      }
+
       // Create fresh calc objects with current HP
       const atkCalc = makeCalcPokemon(attacker, hp[attacker.instanceId]);
       const defCalc = makeCalcPokemon(target, hp[target.instanceId]);
       const moveCalc = new CalcMove(GEN, moveName);
 
-      const result = calcDamage(GEN, atkCalc, defCalc, moveCalc);
+      // Build field with current weather
+      const field = weather ? new CalcField({ weather }) : undefined;
+
+      const result = calcDamage(GEN, atkCalc, defCalc, moveCalc, field);
       const [minDmg, maxDmg] = result.range();
 
       // Pick a random roll between min and max

@@ -74,6 +74,13 @@ export const POKEMON: Pokemon[] = [
   pokemon(143, 'Snorlax', ['normal'], 160, 110, 65, 65, 110, 30, [59, 60], 'legendary'),
   pokemon(131, 'Lapras', ['water', 'ice'], 130, 85, 80, 85, 95, 60, [28, 61], 'legendary'),
   pokemon(130, 'Gyarados', ['water', 'flying'], 95, 125, 79, 60, 100, 81, [29, 62], 'legendary'),
+
+  // Weather Pokémon
+  pokemon(270, 'Lotad', ['water', 'grass'], 40, 30, 30, 40, 50, 30, [63, 64], 'uncommon', undefined, 271),
+  pokemon(271, 'Lombre', ['water', 'grass'], 60, 50, 50, 60, 70, 50, [63, 65], 'uncommon', 270, 272),
+  pokemon(272, 'Ludicolo', ['water', 'grass'], 80, 70, 70, 90, 100, 70, [66, 67], 'uncommon', 271),
+  pokemon(102, 'Exeggcute', ['grass', 'psychic'], 60, 40, 80, 60, 45, 40, [68, 69], 'uncommon', undefined, 103),
+  pokemon(103, 'Exeggutor', ['grass', 'psychic'], 95, 95, 85, 125, 65, 55, [70, 71], 'uncommon', 102),
 ];
 
 export const POKEMON_BY_ID: Record<number, Pokemon> = Object.fromEntries(

@@ -93,4 +93,17 @@ export const MOVE_NAMES: Record<number, string> = {
   60: 'Earthquake',       // Snorlax
   61: 'Ice Beam',         // Lapras
   62: 'Earthquake',       // Gyarados
+
+  // Weather: Lotad/Lombre/Ludicolo (Rain Dance)
+  63: 'Rain Dance',       // Lotad, Lombre
+  64: 'Absorb',           // Lotad
+  65: 'Surf',             // Lombre
+  66: 'Surf',             // Ludicolo
+  67: 'Energy Ball',      // Ludicolo
+
+  // Weather: Exeggcute/Exeggutor (Sunny Day)
+  68: 'Sunny Day',        // Exeggcute
+  69: 'Confusion',        // Exeggcute
+  70: 'Solar Beam',       // Exeggutor
+  71: 'Psychic',          // Exeggutor
 };
