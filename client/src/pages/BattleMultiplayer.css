@@ -145,15 +145,18 @@
 
 /* Team select phase */
 .battle-mp-team-header {
-  text-align: center;
+  display: flex;
+  align-items: center;
   padding: 8px;
+  gap: 8px;
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
 .battle-mp-team-header h2 {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 16px;
+  flex: 1;
 }
 
 .battle-mp-team-header .opponent-name {
