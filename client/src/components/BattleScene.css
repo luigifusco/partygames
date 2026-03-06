@@ -192,6 +192,32 @@
 .battle-log-entry .weather-sun { color: #ffb74d; font-style: italic; }
 .battle-log-entry .weather-clear { color: #bdbdbd; font-style: italic; }
 
+/* Live action banner */
+.battle-action-banner {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  color: #ffd54f;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.battle-action-banner span {
+  animation: actionFadeIn 0.25s ease-out;
+}
+
+@keyframes actionFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Winner banner */
 .battle-winner {
   text-align: center;

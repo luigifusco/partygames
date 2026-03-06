@@ -17,6 +17,7 @@ interface AnimationState {
   currentLogIndex: number;
   pokemonHp: Record<string, number>;
   attackingId: string | null;
+  actionText: string | null;
   finished: boolean;
 }
 
@@ -141,6 +142,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     currentLogIndex: -1,
     pokemonHp: initialHp,
     attackingId: null,
+    actionText: null,
     finished: false,
   });
 
@@ -189,7 +191,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
     const nextIdx = anim.currentLogIndex + 1;
     if (nextIdx >= snapshot.log.length) {
-      setAnim((prev) => ({ ...prev, finished: true, attackingId: null }));
+      setAnim((prev) => ({ ...prev, finished: true, attackingId: null, actionText: null }));
       return;
     }
 
@@ -197,8 +199,11 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       const entry = snapshot.log[nextIdx];
       animatingRef.current = true;
 
-      // Highlight attacker
-      setAnim((prev) => ({ ...prev, attackingId: entry.attackerInstanceId }));
+      // Build action text for the live banner
+      let actionText = `${entry.attackerName} used ${entry.moveName} on ${entry.targetName}!`;
+
+      // Highlight attacker and show action
+      setAnim((prev) => ({ ...prev, attackingId: entry.attackerInstanceId, actionText }));
 
       // Play move SFX
       if (entry.damage === 0 && entry.effectiveness !== null) {
@@ -214,6 +219,27 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
       if (arenaRef.current) {
         await runMoveAnimation(animConfig, arenaRef.current, attackerEl, defenderEl);
+      }
+
+      // Update action text with result (only if changed)
+      const oldText = actionText;
+      if (entry.weather) {
+        actionText = entry.message;
+      } else if (entry.damage > 0) {
+        actionText = `${entry.attackerName} used ${entry.moveName} on ${entry.targetName}!`;
+        if (entry.effectiveness === 'super') actionText += ' Super effective!';
+        else if (entry.effectiveness === 'not-very') actionText += ' Not very effective...';
+        if (entry.targetFainted) actionText += ` ${entry.targetName} fainted!`;
+      } else if (entry.effectiveness === 'immune') {
+        actionText = `${entry.attackerName} used ${entry.moveName} — No effect on ${entry.targetName}!`;
+      } else if (entry.effectiveness === null) {
+        // Same as initial text — no update needed
+        actionText = oldText;
+      } else {
+        actionText = `${entry.attackerName}'s ${entry.moveName} missed ${entry.targetName}!`;
+      }
+      if (actionText !== oldText) {
+        setAnim((prev) => ({ ...prev, actionText }));
       }
 
       // Apply damage and advance log
@@ -280,6 +306,10 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
             />
           ))}
         </div>
+      </div>
+
+      <div className="battle-action-banner">
+        {anim.actionText && <span key={anim.currentLogIndex + (anim.attackingId ?? '')}>{anim.actionText}</span>}
       </div>
 
       {anim.finished && snapshot.winner && (
