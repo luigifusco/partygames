@@ -42,10 +42,25 @@
   padding: 4px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
-  transition: opacity 0.5s, transform 0.3s;
+  transition: opacity 0.5s, transform 0.4s ease-out;
   width: min(120px, 100%);
   aspect-ratio: 1;
   overflow: hidden;
+}
+
+.pokemon-card.hidden-entry {
+  opacity: 0;
+  transform: scale(0.3);
+}
+
+.pokemon-card.entered {
+  animation: pokemonEnter 0.4s ease-out;
+}
+
+@keyframes pokemonEnter {
+  0% { opacity: 0; transform: scale(0.3); }
+  60% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .pokemon-card.right {

@@ -12,6 +12,8 @@ interface BattleSceneProps {
 }
 
 interface AnimationState {
+  introIndex: number;       // -1 = not started, 0..N = revealing pokemon, N+1 = intro done
+  introTotal: number;
   currentLogIndex: number;
   pokemonHp: Record<string, number>;
   attackingId: string | null;
@@ -29,11 +31,13 @@ const PokemonCard = ({
   poke,
   currentHp,
   isAttacking,
+  visible,
   cardRef,
 }: {
   poke: BattlePokemonState;
   currentHp: number;
   isAttacking: boolean;
+  visible: boolean;
   cardRef: (el: HTMLDivElement | null) => void;
 }) => {
   const fainted = currentHp <= 0;
@@ -43,6 +47,7 @@ const PokemonCard = ({
     poke.side,
     fainted ? 'fainted' : '',
     isAttacking ? 'attacking' : '',
+    visible ? 'entered' : 'hidden-entry',
   ]
     .filter(Boolean)
     .join(' ');
@@ -114,6 +119,16 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const animatingRef = useRef(false);
 
+  // Build ordered entry list: alternate left[0], right[0], left[1], right[1], ...
+  const entryOrder = useRef<{ instanceId: string; name: string }[]>([]);
+  if (entryOrder.current.length === 0) {
+    const maxLen = Math.max(snapshot.left.length, snapshot.right.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (i < snapshot.left.length) entryOrder.current.push({ instanceId: snapshot.left[i].instanceId, name: snapshot.left[i].name });
+      if (i < snapshot.right.length) entryOrder.current.push({ instanceId: snapshot.right[i].instanceId, name: snapshot.right[i].name });
+    }
+  }
+
   // Initialize HP from snapshot starting values
   const initialHp: Record<string, number> = {};
   for (const p of [...snapshot.left, ...snapshot.right]) {
@@ -121,6 +136,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   }
 
   const [anim, setAnim] = useState<AnimationState>({
+    introIndex: -1,
+    introTotal: entryOrder.current.length,
     currentLogIndex: -1,
     pokemonHp: initialHp,
     attackingId: null,
@@ -142,8 +159,33 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     if (anim.finished) stopBattleBgm();
   }, [anim.finished]);
 
+  // Intro animation: reveal pokemon one by one
   useEffect(() => {
-    if (anim.finished || animatingRef.current) return;
+    if (anim.introIndex >= anim.introTotal) return;
+
+    const timer = setTimeout(() => {
+      const nextIntro = anim.introIndex + 1;
+      if (nextIntro < anim.introTotal) {
+        const entry = entryOrder.current[nextIntro];
+        playCry(entry.name, 0.3);
+      }
+      setAnim((prev) => ({ ...prev, introIndex: nextIntro }));
+    }, anim.introIndex === -1 ? 400 : 600);
+
+    return () => clearTimeout(timer);
+  }, [anim.introIndex, anim.introTotal]);
+
+  // Check which pokemon are visible during intro
+  const visibleSet = useRef(new Set<string>());
+  if (anim.introIndex >= 0) {
+    for (let i = 0; i <= Math.min(anim.introIndex, entryOrder.current.length - 1); i++) {
+      visibleSet.current.add(entryOrder.current[i].instanceId);
+    }
+  }
+  const introDone = anim.introIndex >= anim.introTotal;
+
+  useEffect(() => {
+    if (!introDone || anim.finished || animatingRef.current) return;
 
     const nextIdx = anim.currentLogIndex + 1;
     if (nextIdx >= snapshot.log.length) {
@@ -189,6 +231,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           playCry(entry.targetName, 0.2);
         }
         return {
+          ...prev,
           currentLogIndex: nextIdx,
           pokemonHp: newHp,
           attackingId: null,
@@ -200,7 +243,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     }, turnDelayMs);
 
     return () => clearTimeout(timer);
-  }, [anim.currentLogIndex, anim.finished, snapshot.log, turnDelayMs]);
+  }, [anim.currentLogIndex, anim.finished, introDone, snapshot.log, turnDelayMs]);
 
   // Auto-scroll log
   useEffect(() => {
@@ -219,6 +262,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
               poke={p}
               currentHp={anim.pokemonHp[p.instanceId] ?? p.maxHp}
               isAttacking={anim.attackingId === p.instanceId}
+              visible={visibleSet.current.has(p.instanceId)}
               cardRef={setCardRef(p.instanceId)}
             />
           ))}
@@ -231,6 +275,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
               poke={p}
               currentHp={anim.pokemonHp[p.instanceId] ?? p.maxHp}
               isAttacking={anim.attackingId === p.instanceId}
+              visible={visibleSet.current.has(p.instanceId)}
               cardRef={setCardRef(p.instanceId)}
             />
           ))}
