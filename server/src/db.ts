@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { STARTING_ELO } from '../../shared/elo.js';
+import { NATURES } from '../../shared/natures.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +28,13 @@ export function initDb() {
       id TEXT PRIMARY KEY,
       player_id TEXT NOT NULL REFERENCES players(id),
       pokemon_id INTEGER NOT NULL,
+      nature TEXT NOT NULL DEFAULT 'Serious',
+      iv_hp INTEGER NOT NULL DEFAULT 0,
+      iv_atk INTEGER NOT NULL DEFAULT 0,
+      iv_def INTEGER NOT NULL DEFAULT 0,
+      iv_spa INTEGER NOT NULL DEFAULT 0,
+      iv_spd INTEGER NOT NULL DEFAULT 0,
+      iv_spe INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -66,6 +74,29 @@ export function initDb() {
   if (!battleCols.find((c: any) => c.name === 'winner_elo_delta')) {
     db.exec(`ALTER TABLE battles ADD COLUMN winner_elo_delta INTEGER NOT NULL DEFAULT 0`);
     db.exec(`ALTER TABLE battles ADD COLUMN loser_elo_delta INTEGER NOT NULL DEFAULT 0`);
+  }
+
+  // Add IV and nature columns if they don't exist (migration for existing DBs)
+  const pokemonCols = db.prepare("PRAGMA table_info(owned_pokemon)").all() as any[];
+  if (!pokemonCols.find((c: any) => c.name === 'nature')) {
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN nature TEXT NOT NULL DEFAULT 'Serious'`);
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN iv_hp INTEGER NOT NULL DEFAULT 0`);
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN iv_atk INTEGER NOT NULL DEFAULT 0`);
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN iv_def INTEGER NOT NULL DEFAULT 0`);
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN iv_spa INTEGER NOT NULL DEFAULT 0`);
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN iv_spd INTEGER NOT NULL DEFAULT 0`);
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN iv_spe INTEGER NOT NULL DEFAULT 0`);
+
+    // Backfill existing rows with random IVs and natures
+    const allOwned = db.prepare('SELECT id FROM owned_pokemon').all() as any[];
+    const update = db.prepare(
+      'UPDATE owned_pokemon SET nature = ?, iv_hp = ?, iv_atk = ?, iv_def = ?, iv_spa = ?, iv_spd = ?, iv_spe = ? WHERE id = ?'
+    );
+    const rand = () => Math.floor(Math.random() * 32);
+    for (const row of allOwned) {
+      const nature = NATURES[Math.floor(Math.random() * NATURES.length)].name;
+      update.run(nature, rand(), rand(), rand(), rand(), rand(), rand(), row.id);
+    }
   }
 
   return db;

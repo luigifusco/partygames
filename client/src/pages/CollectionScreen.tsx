@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Pokemon, BoxTier } from '@shared/types';
+import type { PokemonInstance, BoxTier } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import PokemonCard from '../components/PokemonCard';
 import './CollectionScreen.css';
@@ -8,37 +8,41 @@ import './CollectionScreen.css';
 const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'legendary'];
 
 interface CollectionScreenProps {
-  collection: Pokemon[];
+  collection: PokemonInstance[];
   onEvolve: (pokemonId: number) => void;
 }
 
 export default function CollectionScreen({ collection, onEvolve }: CollectionScreenProps) {
   const navigate = useNavigate();
-  const [evolving, setEvolving] = useState<{ from: Pokemon; to: Pokemon } | null>(null);
+  const [evolving, setEvolving] = useState<{ from: PokemonInstance; to: any } | null>(null);
   const [filter, setFilter] = useState<BoxTier | 'all'>('all');
 
   // Count duplicates for evolution, but show each pokemon individually
   const counts = new Map<number, number>();
-  for (const p of collection) {
-    counts.set(p.id, (counts.get(p.id) ?? 0) + 1);
+  for (const inst of collection) {
+    counts.set(inst.pokemon.id, (counts.get(inst.pokemon.id) ?? 0) + 1);
   }
   const filtered = collection
-    .filter((p) => filter === 'all' || p.tier === filter)
-    .sort((a, b) => a.id - b.id);
+    .filter((inst) => filter === 'all' || inst.pokemon.tier === filter)
+    .sort((a, b) => a.pokemon.id - b.pokemon.id);
   // Track which pokemon ids have already shown the evolve button
   const evolveShown = new Set<number>();
 
-  const handleEvolve = (pokemon: Pokemon) => {
-    if (!pokemon.evolutionTo) return;
-    const evolved = POKEMON_BY_ID[pokemon.evolutionTo];
+  const handleEvolve = (inst: PokemonInstance) => {
+    if (!inst.pokemon.evolutionTo) return;
+    const evolved = POKEMON_BY_ID[inst.pokemon.evolutionTo];
     if (!evolved) return;
 
-    setEvolving({ from: pokemon, to: evolved });
+    setEvolving({ from: inst, to: evolved });
     setTimeout(() => {
-      onEvolve(pokemon.id);
+      onEvolve(inst.pokemon.id);
       setTimeout(() => setEvolving(null), 1200);
     }, 1500);
   };
+
+  // Find the index in the original collection for navigation
+  const getCollectionIndex = (inst: PokemonInstance) =>
+    collection.findIndex((c) => c.instanceId === inst.instanceId);
 
   return (
     <div className="collection-screen">
@@ -61,14 +65,18 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
         <div className="collection-empty">No Pokémon yet — visit the shop!</div>
       ) : (
         <div className="collection-grid">
-          {filtered.map((pokemon, idx) => {
-            const count = counts.get(pokemon.id) ?? 1;
-            const showEvolve = count >= 4 && pokemon.evolutionTo !== undefined && POKEMON_BY_ID[pokemon.evolutionTo] && !evolveShown.has(pokemon.id);
-            if (showEvolve) evolveShown.add(pokemon.id);
+          {filtered.map((inst) => {
+            const count = counts.get(inst.pokemon.id) ?? 1;
+            const showEvolve = count >= 4 && inst.pokemon.evolutionTo !== undefined && POKEMON_BY_ID[inst.pokemon.evolutionTo] && !evolveShown.has(inst.pokemon.id);
+            if (showEvolve) evolveShown.add(inst.pokemon.id);
             return (
-              <PokemonCard key={`${pokemon.id}-${idx}`} pokemon={pokemon}>
+              <PokemonCard
+                key={inst.instanceId}
+                pokemon={inst.pokemon}
+                onClick={() => navigate(`/pokemon/${getCollectionIndex(inst)}`)}
+              >
                 {showEvolve && (
-                  <button className="collection-evolve-btn" onClick={() => handleEvolve(pokemon)}>
+                  <button className="collection-evolve-btn" onClick={(e) => { e.stopPropagation(); handleEvolve(inst); }}>
                     ✨ Evolve
                   </button>
                 )}
@@ -82,8 +90,8 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
         <div className="evolve-overlay">
           <div className="evolve-animation">
             <div className="evolve-from">
-              <img src={evolving.from.sprite} alt={evolving.from.name} />
-              <div>{evolving.from.name}</div>
+              <img src={evolving.from.pokemon.sprite} alt={evolving.from.pokemon.name} />
+              <div>{evolving.from.pokemon.name}</div>
             </div>
             <div className="evolve-arrow">→</div>
             <div className="evolve-to">

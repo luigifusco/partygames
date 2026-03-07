@@ -5,7 +5,7 @@ import BattleScene from '../components/BattleScene';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { calculateBattleEssence } from '@shared/essence';
 import { getRecentTrainers, addRecentTrainer } from '../recentTrainers';
-import type { Pokemon } from '@shared/types';
+import type { PokemonInstance } from '@shared/types';
 import type { BattleSnapshot, EloUpdate } from '@shared/battle-types';
 import './BattleMultiplayer.css';
 import '../pages/BattleDemo.css';
@@ -14,7 +14,7 @@ type Phase = 'challenge' | 'waiting' | 'teamSelect' | 'waitingTeam' | 'battle';
 
 interface BattleMultiplayerProps {
   playerName: string;
-  collection: Pokemon[];
+  collection: PokemonInstance[];
   essence: number;
   onGainEssence: (amount: number) => void;
   onEloUpdate: (newElo: number) => void;
@@ -121,7 +121,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   const submitTeam = () => {
     socket.emit('battle:selectTeam', {
       battleId,
-      team: selected.map((idx) => collection[idx].id),
+      team: selected.map((idx) => collection[idx].pokemon.id),
     });
     setPhase('waitingTeam');
   };
@@ -156,7 +156,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   // Team selection phase
   if (phase === 'teamSelect' || phase === 'waitingTeam') {
     // Build sorted indices
-    const indices = collection.map((_, i) => i).sort((a, b) => collection[a].id - collection[b].id);
+    const indices = collection.map((_, i) => i).sort((a, b) => collection[a].pokemon.id - collection[b].pokemon.id);
 
     return (
       <div className="battle-mp-screen">
@@ -172,7 +172,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
           <>
             <div className="team-select-chosen" style={{ padding: '4px 8px' }}>
               {selected.map((idx) => {
-                const p = collection[idx];
+                const p = collection[idx].pokemon;
                 return (
                   <div key={idx} className="team-select-chosen-card" onClick={() => togglePokemon(idx)}>
                     <img src={p.sprite} alt={p.name} />
@@ -194,7 +194,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         <div className="team-select-scroll">
           <div className="team-select-grid">
             {indices.map((idx) => {
-              const p = collection[idx];
+              const p = collection[idx].pokemon;
               const isSelected = selected.includes(idx);
               return (
                 <div

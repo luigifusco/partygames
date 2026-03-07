@@ -21,6 +21,29 @@ export interface Stats {
   speed: number;
 }
 
+export interface IVs {
+  hp: number;
+  attack: number;
+  defense: number;
+  spAtk: number;
+  spDef: number;
+  speed: number;
+}
+
+export type NatureName =
+  | 'Hardy' | 'Lonely' | 'Brave' | 'Adamant' | 'Naughty'
+  | 'Bold' | 'Docile' | 'Relaxed' | 'Impish' | 'Lax'
+  | 'Timid' | 'Hasty' | 'Serious' | 'Jolly' | 'Naive'
+  | 'Modest' | 'Mild' | 'Quiet' | 'Bashful' | 'Rash'
+  | 'Calm' | 'Gentle' | 'Sassy' | 'Careful' | 'Quirky';
+
+export interface PokemonInstance {
+  instanceId: string;
+  pokemon: Pokemon;
+  ivs: IVs;
+  nature: NatureName;
+}
+
 export interface Move {
   id: number;
   name: string;

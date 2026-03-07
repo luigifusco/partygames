@@ -15,7 +15,7 @@ const TIERS: { tier: BoxTier; icon: string; desc: string }[] = [
 interface StoreScreenProps {
   essence: number;
   onSpendEssence: (amount: number) => void;
-  onAddPokemon: (pokemon: Pokemon[]) => void;
+  onAddPokemon: (pokemonIds: number[]) => void;
 }
 
 export default function StoreScreen({ essence, onSpendEssence, onAddPokemon }: StoreScreenProps) {
@@ -28,7 +28,7 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon }: S
 
     const result = openBox(tier);
     onSpendEssence(cost);
-    onAddPokemon(result);
+    onAddPokemon(result.map((p) => p.id));
     setOpened(result);
   };
 

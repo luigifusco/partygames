@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { getRecentTrainers, addRecentTrainer } from '../recentTrainers';
-import type { Pokemon } from '@shared/types';
+import type { PokemonInstance } from '@shared/types';
+import { randomNature, randomIVs } from '@shared/natures';
 import './TradeScreen.css';
 import '../pages/BattleDemo.css';
 
@@ -11,8 +12,8 @@ type Phase = 'request' | 'waiting' | 'selectPokemon' | 'waitingPartner' | 'confi
 
 interface TradeScreenProps {
   playerName: string;
-  collection: Pokemon[];
-  onTrade: (give: Pokemon, receive: Pokemon) => void;
+  collection: PokemonInstance[];
+  onTrade: (give: PokemonInstance, receive: PokemonInstance) => void;
 }
 
 export default function TradeScreen({ playerName, collection, onTrade }: TradeScreenProps) {
@@ -75,9 +76,17 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
       setPhase('animation');
 
       setTimeout(() => {
-        const give = POKEMON_BY_ID[givePokemonId];
-        const receive = POKEMON_BY_ID[receivePokemonId];
-        if (give && receive) onTrade(give, receive);
+        const giveInst = collection.find((inst) => inst.pokemon.id === givePokemonId);
+        const receivePokemon = POKEMON_BY_ID[receivePokemonId];
+        if (giveInst && receivePokemon) {
+          const receiveInst: PokemonInstance = {
+            instanceId: crypto.randomUUID(),
+            pokemon: receivePokemon,
+            ivs: randomIVs(),
+            nature: randomNature(),
+          };
+          onTrade(giveInst, receiveInst);
+        }
       }, 2000);
     };
 
@@ -113,9 +122,9 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
 
   const handleSelectPokemon = () => {
     if (selectedIdx === null) return;
-    const pokemon = collection[selectedIdx];
-    setMyPokemonId(pokemon.id);
-    socket.emit('trade:selectPokemon', { tradeId, pokemonId: pokemon.id });
+    const inst = collection[selectedIdx];
+    setMyPokemonId(inst.pokemon.id);
+    socket.emit('trade:selectPokemon', { tradeId, pokemonId: inst.pokemon.id });
   };
 
   const handleConfirm = () => {
@@ -191,7 +200,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
 
   // Select pokemon phase
   if (phase === 'selectPokemon' || phase === 'waitingPartner') {
-    const indices = collection.map((_, i) => i).sort((a, b) => collection[a].id - collection[b].id);
+    const indices = collection.map((_, i) => i).sort((a, b) => collection[a].pokemon.id - collection[b].pokemon.id);
 
     return (
       <div className="trade-screen">
@@ -208,8 +217,8 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
         {selectedIdx !== null && phase === 'selectPokemon' && (
           <div style={{ textAlign: 'center', padding: '8px' }}>
             <div className="trade-selected-pokemon" style={{ display: 'inline-flex' }}>
-              <img src={collection[selectedIdx].sprite} alt={collection[selectedIdx].name} />
-              <div className="name">{collection[selectedIdx].name}</div>
+              <img src={collection[selectedIdx].pokemon.sprite} alt={collection[selectedIdx].pokemon.name} />
+              <div className="name">{collection[selectedIdx].pokemon.name}</div>
             </div>
             <div style={{ marginTop: '8px' }}>
               <button className="trade-btn" onClick={handleSelectPokemon} style={{ maxWidth: '200px' }}>
@@ -220,7 +229,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
         )}
         <div className="team-select-grid" style={{ flex: 1, overflow: 'auto', padding: '8px' }}>
           {indices.map((idx) => {
-            const p = collection[idx];
+            const p = collection[idx].pokemon;
             const isSelected = selectedIdx === idx;
             return (
               <div

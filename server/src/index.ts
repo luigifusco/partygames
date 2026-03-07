@@ -6,6 +6,7 @@ import { initDb } from './db.js';
 import { STARTING_ESSENCE, BOX_COSTS } from '../../shared/essence.js';
 import { STARTING_ELO, calculateEloChanges } from '../../shared/elo.js';
 import { POKEMON_BY_ID } from '../../shared/pokemon-data.js';
+import { randomNature, randomIVs } from '../../shared/natures.js';
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
 import {
@@ -300,7 +301,7 @@ app.post('/api/login', (req, res) => {
   }
 
   // Also fetch their pokemon collection
-  const pokemon = db.prepare('SELECT id, pokemon_id FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe FROM owned_pokemon WHERE player_id = ?').all(player.id);
   return res.json({ player, pokemon });
 });
 
@@ -311,7 +312,7 @@ app.get('/api/player/:id', (req, res) => {
     return res.status(404).json({ error: 'Player not found' });
   }
 
-  const pokemon = db.prepare('SELECT id, pokemon_id FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe FROM owned_pokemon WHERE player_id = ?').all(player.id);
   return res.json({ player, pokemon });
 });
 
@@ -328,11 +329,18 @@ app.post('/api/player/:id/pokemon', (req, res) => {
   const { pokemonIds } = req.body;
   if (!Array.isArray(pokemonIds)) return res.status(400).json({ error: 'Invalid pokemonIds' });
 
-  const insert = db.prepare('INSERT INTO owned_pokemon (id, player_id, pokemon_id) VALUES (?, ?, ?)');
+  const insert = db.prepare(
+    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  );
+  const created: any[] = [];
   for (const pid of pokemonIds) {
-    insert.run(uuidv4(), req.params.id, pid);
+    const id = uuidv4();
+    const nature = randomNature();
+    const ivs = randomIVs();
+    insert.run(id, req.params.id, pid, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed);
+    created.push({ id, pokemon_id: pid, nature, iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense, iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed });
   }
-  return res.json({ ok: true });
+  return res.json({ ok: true, pokemon: created });
 });
 
 // Remove pokemon from player collection (by pokemon_id, removes N copies)

@@ -10,7 +10,7 @@ interface PlayerData {
 }
 
 interface LoginScreenProps {
-  onLogin: (player: PlayerData, pokemonIds: number[]) => void;
+  onLogin: (player: PlayerData, pokemonRows: any[]) => void;
 }
 
 const API_BASE = '';
@@ -62,8 +62,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         setError(data.error || 'Login failed');
         return;
       }
-      const pokemonIds = data.pokemon.map((p: any) => p.pokemon_id);
-      onLogin(data.player, pokemonIds);
+      const pokemonRows = data.pokemon;
+      onLogin(data.player, pokemonRows);
       navigate('/play');
     } catch {
       setError('Cannot connect to server');
