@@ -1,9 +1,9 @@
 // Elo rating system
 
 export const STARTING_ELO = 1000;
-export const K_FACTOR = 32;
+const K_FACTOR = 32;
 
-export function calculateExpectedScore(playerElo: number, opponentElo: number): number {
+function calculateExpectedScore(playerElo: number, opponentElo: number): number {
   return 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
 }
 

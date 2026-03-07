@@ -90,13 +90,6 @@
   transform: scaleX(-1);
 }
 
-.pokemon-info {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  text-align: center;
-}
-
 .pokemon-name {
   position: relative;
   z-index: 1;

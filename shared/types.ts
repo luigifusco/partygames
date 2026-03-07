@@ -50,24 +50,6 @@ export function getEffectiveMoves(inst: PokemonInstance): [MoveId, MoveId] {
   return inst.learnedMoves ?? inst.pokemon.moves;
 }
 
-export interface Move {
-  id: number;
-  name: string;
-  type: PokemonType;
-  category: 'physical' | 'special' | 'status';
-  power: number | null;
-  accuracy: number;
-  effect?: MoveEffect;
-}
-
-export interface MoveEffect {
-  type: 'stat_boost' | 'heal' | 'status_condition';
-  target: 'self' | 'ally' | 'enemy';
-  stat?: keyof Stats;
-  stages?: number;
-  healPercent?: number;
-}
-
 export type MoveId = string;
 
 export type BoxTier = 'common' | 'uncommon' | 'rare' | 'legendary';
@@ -76,25 +58,6 @@ export type PokemonType =
   | 'normal' | 'fire' | 'water' | 'electric' | 'grass' | 'ice'
   | 'fighting' | 'poison' | 'ground' | 'flying' | 'psychic' | 'bug'
   | 'rock' | 'ghost' | 'dragon' | 'dark' | 'steel' | 'fairy';
-
-export interface Player {
-  id: string;
-  name: string;
-  essence: number;
-  elo: number;
-}
-
-export interface OwnedPokemon {
-  id: string;
-  playerId: string;
-  pokemonId: number;
-}
-
-export interface BoxDefinition {
-  tier: BoxTier;
-  cost: number;
-  pokemonPool: number[];
-}
 
 // Items
 
