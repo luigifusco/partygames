@@ -7,7 +7,7 @@ const API_BASE = '';
 export function buildInstance(row: any): PokemonInstance | null {
   const pokemon = POKEMON_BY_ID[row.pokemon_id];
   if (!pokemon) return null;
-  return {
+  const inst: PokemonInstance = {
     instanceId: row.id,
     pokemon,
     nature: row.nature as NatureName,
@@ -20,6 +20,10 @@ export function buildInstance(row: any): PokemonInstance | null {
       speed: row.iv_spe,
     },
   };
+  if (row.move_1 != null && row.move_2 != null) {
+    inst.learnedMoves = [row.move_1, row.move_2];
+  }
+  return inst;
 }
 
 // Build an OwnedItem from a server-returned owned_items row
@@ -80,5 +84,13 @@ export async function evolvePokemonOnServer(playerId: string, instanceId: string
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instanceId, newPokemonId }),
+  });
+}
+
+export async function teachTMOnServer(playerId: string, instanceId: string, moveName: string, moveSlot: 0 | 1) {
+  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/teach-tm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ instanceId, moveName, moveSlot }),
   });
 }

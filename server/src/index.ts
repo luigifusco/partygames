@@ -301,7 +301,7 @@ app.post('/api/login', (req, res) => {
   }
 
   // Also fetch their pokemon collection
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2 FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   return res.json({ player, pokemon, items });
 });
@@ -313,7 +313,7 @@ app.get('/api/player/:id', (req, res) => {
     return res.status(404).json({ error: 'Player not found' });
   }
 
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2 FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   return res.json({ player, pokemon, items });
 });
@@ -413,6 +413,42 @@ app.post('/api/player/:id/pokemon/evolve', (req, res) => {
   }
 
   db.prepare('UPDATE owned_pokemon SET pokemon_id = ? WHERE id = ?').run(newPokemonId, instanceId);
+  return res.json({ ok: true });
+});
+
+// Teach a TM to a pokemon (replace one of its moves, consume the TM)
+app.post('/api/player/:id/pokemon/teach-tm', (req, res) => {
+  const { instanceId, moveName, moveSlot } = req.body;
+  if (typeof instanceId !== 'string' || typeof moveName !== 'string' || (moveSlot !== 0 && moveSlot !== 1)) {
+    return res.status(400).json({ error: 'Invalid params' });
+  }
+
+  const pokemon = db.prepare(
+    'SELECT id, pokemon_id, move_1, move_2 FROM owned_pokemon WHERE id = ? AND player_id = ?'
+  ).get(instanceId, req.params.id) as any;
+  if (!pokemon) {
+    return res.status(404).json({ error: 'Pokemon not found' });
+  }
+
+  // Get current effective moves (learned or species defaults)
+  const species = POKEMON_BY_ID[pokemon.pokemon_id];
+  if (!species) return res.status(404).json({ error: 'Unknown pokemon species' });
+  const currentMove1 = pokemon.move_1 ?? species.moves[0];
+  const currentMove2 = pokemon.move_2 ?? species.moves[1];
+
+  const newMove1 = moveSlot === 0 ? moveName : currentMove1;
+  const newMove2 = moveSlot === 1 ? moveName : currentMove2;
+
+  db.prepare('UPDATE owned_pokemon SET move_1 = ?, move_2 = ? WHERE id = ?').run(newMove1, newMove2, instanceId);
+
+  // Remove one TM from inventory
+  const tmRow = db.prepare(
+    'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT 1'
+  ).get(req.params.id, 'tm', moveName) as any;
+  if (tmRow) {
+    db.prepare('DELETE FROM owned_items WHERE id = ?').run(tmRow.id);
+  }
+
   return res.json({ ok: true });
 });
 

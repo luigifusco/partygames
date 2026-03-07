@@ -84,6 +84,13 @@ export function initDb() {
     db.exec(`ALTER TABLE battles ADD COLUMN loser_elo_delta INTEGER NOT NULL DEFAULT 0`);
   }
 
+  // Add move override columns if they don't exist (migration for TM teaching)
+  const pokemonCols2 = db.prepare("PRAGMA table_info(owned_pokemon)").all() as any[];
+  if (!pokemonCols2.find((c: any) => c.name === 'move_1')) {
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN move_1 TEXT DEFAULT NULL`);
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN move_2 TEXT DEFAULT NULL`);
+  }
+
   // Add IV and nature columns if they don't exist (migration for existing DBs)
   const pokemonCols = db.prepare("PRAGMA table_info(owned_pokemon)").all() as any[];
   if (!pokemonCols.find((c: any) => c.name === 'nature')) {

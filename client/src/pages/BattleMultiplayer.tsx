@@ -6,6 +6,7 @@ import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { calculateBattleEssence } from '@shared/essence';
 import { getRecentTrainers, addRecentTrainer } from '../recentTrainers';
 import type { PokemonInstance } from '@shared/types';
+import { getEffectiveMoves } from '@shared/types';
 import type { BattleSnapshot, EloUpdate } from '@shared/battle-types';
 import './BattleMultiplayer.css';
 import '../pages/BattleDemo.css';
@@ -194,7 +195,9 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         <div className="team-select-scroll">
           <div className="team-select-grid">
             {indices.map((idx) => {
-              const p = collection[idx].pokemon;
+              const inst = collection[idx];
+              const p = inst.pokemon;
+              const moves = getEffectiveMoves(inst);
               const isSelected = selected.includes(idx);
               return (
                 <div
@@ -204,6 +207,14 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
                 >
                   <img src={p.sprite} alt={p.name} />
                   <div className="team-select-card-name">{p.name}</div>
+                  <div className="team-select-card-info">
+                    <div className="team-select-card-nature">{inst.nature}</div>
+                    <div className="team-select-card-moves">
+                      {moves.map((m, i) => (
+                        <span key={i} className="team-select-card-move">{m}</span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               );
             })}

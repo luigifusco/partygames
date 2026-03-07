@@ -42,6 +42,12 @@ export interface PokemonInstance {
   pokemon: Pokemon;
   ivs: IVs;
   nature: NatureName;
+  learnedMoves?: [MoveId, MoveId];
+}
+
+// Returns the effective moves for a pokemon instance (learned overrides species defaults)
+export function getEffectiveMoves(inst: PokemonInstance): [MoveId, MoveId] {
+  return inst.learnedMoves ?? inst.pokemon.moves;
 }
 
 export interface Move {

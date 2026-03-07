@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import type { PokemonInstance, Stats } from '@shared/types';
+import { getEffectiveMoves } from '@shared/types';
 import { NATURE_BY_NAME, calcStat, STAT_LABELS } from '@shared/natures';
 import './PokemonDetailScreen.css';
 
@@ -109,7 +110,7 @@ export default function PokemonDetailScreen({ collection }: PokemonDetailScreenP
 
         <div className="detail-section-title">Moves</div>
         <div className="detail-moves">
-          {pokemon.moves.map((moveName, i) => (
+          {getEffectiveMoves(inst).map((moveName, i) => (
             <div key={i} className="detail-move-card">
               <span className="detail-move-name">{moveName}</span>
             </div>

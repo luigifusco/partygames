@@ -12,11 +12,12 @@ import BattleMultiplayer from './pages/BattleMultiplayer';
 import TradeScreen from './pages/TradeScreen';
 import TVView from './pages/TVView';
 import { socket } from './socket';
-import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, buildInstance, buildItem } from './api';
+import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, teachTMOnServer, buildInstance, buildItem } from './api';
 import { STARTING_ESSENCE } from '@shared/essence';
 import { STARTING_ELO } from '@shared/elo';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
-import type { PokemonInstance, OwnedItem } from '@shared/types';
+import type { PokemonInstance, OwnedItem, MoveId } from '@shared/types';
+import { getEffectiveMoves } from '@shared/types';
 
 interface PlayerState {
   id: string;
@@ -92,6 +93,31 @@ export default function App() {
     }
   };
 
+  const teachTM = async (instance: PokemonInstance, moveName: string, moveSlot: 0 | 1) => {
+    const currentMoves = getEffectiveMoves(instance);
+    const newMoves: [MoveId, MoveId] = [...currentMoves];
+    newMoves[moveSlot] = moveName;
+
+    // Update pokemon's moves locally
+    setCollection((c) =>
+      c.map((inst) =>
+        inst.instanceId === instance.instanceId
+          ? { ...inst, learnedMoves: newMoves }
+          : inst
+      )
+    );
+
+    // Remove TM locally (just one copy)
+    const tmToRemove = items.find((i) => i.itemType === 'tm' && i.itemData === moveName);
+    if (tmToRemove) {
+      setItems((prev) => prev.filter((i) => i.id !== tmToRemove.id));
+    }
+
+    if (player) {
+      teachTMOnServer(player.id, instance.instanceId, moveName, moveSlot);
+    }
+  };
+
   const handleTrade = (give: PokemonInstance, receive: PokemonInstance) => {
     setCollection((c) => {
       const newCol = [...c];
@@ -135,7 +161,7 @@ export default function App() {
       <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} />} />
       <Route path="/pokedex" element={<PokedexScreen />} />
       <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
-      <Route path="/items" element={<ItemsScreen items={items} />} />
+      <Route path="/items" element={<ItemsScreen items={items} collection={collection} onTeachTM={teachTM} />} />
       <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
       <Route path="/battle" element={<BattleMultiplayer playerName={player.name} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} />} />
       <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} />} />
