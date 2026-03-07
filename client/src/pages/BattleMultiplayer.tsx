@@ -32,7 +32,6 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [opponentTeamIds, setOpponentTeamIds] = useState<number[]>([]);
   const [rewarded, setRewarded] = useState(false);
-  const [eloUpdate, setEloUpdate] = useState<EloUpdate | null>(null);
 
   useEffect(() => {
     if (!socket.connected) {
@@ -78,7 +77,6 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     };
 
     const handleEloUpdate = (update: EloUpdate) => {
-      setEloUpdate(update);
       const myNewElo = update.winnerName === playerName ? update.winnerNewElo : update.loserNewElo;
       onEloUpdate(myNewElo);
     };
@@ -140,13 +138,6 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     return (
       <div className="battle-demo-wrapper">
         <BattleScene snapshot={snapshot} turnDelayMs={2000} essenceGained={essenceGained} />
-        {eloUpdate && (
-          <div className="battle-elo-update">
-            {eloUpdate.winnerName === playerName
-              ? `📈 Elo: +${eloUpdate.winnerDelta} → ${eloUpdate.winnerNewElo}`
-              : `📉 Elo: ${eloUpdate.loserDelta} → ${eloUpdate.loserNewElo}`}
-          </div>
-        )}
         <button className="battle-demo-back" onClick={() => navigate('/play')}>
           ← Back to Menu
         </button>

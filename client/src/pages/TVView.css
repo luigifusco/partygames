@@ -1,0 +1,116 @@
+.tv-view {
+  padding: 3rem 4rem;
+  font-family: 'Courier New', monospace;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.tv-title {
+  text-align: center;
+  font-size: 3.5rem;
+  margin: 0 0 2rem;
+}
+
+.tv-columns {
+  display: flex;
+  gap: 3rem;
+  justify-content: center;
+}
+
+.tv-table {
+  flex: 1;
+  border-collapse: collapse;
+  font-size: 2rem;
+}
+
+.tv-table thead tr {
+  border-bottom: 3px solid #444;
+}
+
+.tv-table th {
+  padding: 16px 20px;
+  text-align: left;
+}
+
+.tv-table th.center {
+  text-align: center;
+}
+
+.tv-table th.right {
+  text-align: right;
+}
+
+.tv-table tbody tr {
+  border-bottom: 2px solid #333;
+}
+
+.tv-table td {
+  padding: 16px 20px;
+  vertical-align: middle;
+}
+
+.tv-table td.center {
+  text-align: center;
+}
+
+.tv-table td.right {
+  text-align: right;
+}
+
+.tv-rank {
+  font-weight: bold;
+  color: #aaa;
+  width: 60px;
+}
+
+.tv-rank-1 {
+  color: #ffd700;
+  font-size: 2.4rem;
+}
+
+.tv-rank-2 {
+  color: #c0c0c0;
+  font-size: 2.2rem;
+}
+
+.tv-rank-3 {
+  color: #cd7f32;
+  font-size: 2.1rem;
+}
+
+.tv-trainer {
+  font-weight: bold;
+  font-size: 2.2rem;
+}
+
+.tv-pokemon-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tv-pokemon-sprite {
+  width: 96px;
+  height: 96px;
+  image-rendering: pixelated;
+  object-fit: scale-down;
+}
+
+.tv-no-pokemon {
+  color: #555;
+  font-size: 1.5rem;
+}
+
+.tv-elo {
+  font-weight: bold;
+  font-size: 2.2rem;
+}
+
+.tv-empty {
+  padding: 4rem;
+  text-align: center;
+  color: #555;
+  font-size: 2rem;
+}
