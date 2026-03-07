@@ -17,19 +17,16 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
   const [evolving, setEvolving] = useState<{ from: Pokemon; to: Pokemon } | null>(null);
   const [filter, setFilter] = useState<BoxTier | 'all'>('all');
 
-  // Group by pokemon id, count duplicates, sort by id
-  const grouped = new Map<number, { pokemon: Pokemon; count: number }>();
+  // Count duplicates for evolution, but show each pokemon individually
+  const counts = new Map<number, number>();
   for (const p of collection) {
-    const existing = grouped.get(p.id);
-    if (existing) {
-      existing.count++;
-    } else {
-      grouped.set(p.id, { pokemon: p, count: 1 });
-    }
+    counts.set(p.id, (counts.get(p.id) ?? 0) + 1);
   }
-  const sorted = [...grouped.values()]
-    .filter(({ pokemon }) => filter === 'all' || pokemon.tier === filter)
-    .sort((a, b) => a.pokemon.id - b.pokemon.id);
+  const filtered = collection
+    .filter((p) => filter === 'all' || p.tier === filter)
+    .sort((a, b) => a.id - b.id);
+  // Track which pokemon ids have already shown the evolve button
+  const evolveShown = new Set<number>();
 
   const handleEvolve = (pokemon: Pokemon) => {
     if (!pokemon.evolutionTo) return;
@@ -60,15 +57,17 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
           </button>
         ))}
       </div>
-      {sorted.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="collection-empty">No Pokémon yet — visit the shop!</div>
       ) : (
         <div className="collection-grid">
-          {sorted.map(({ pokemon, count }) => {
-            const canEvolve = count >= 4 && pokemon.evolutionTo !== undefined && POKEMON_BY_ID[pokemon.evolutionTo];
+          {filtered.map((pokemon, idx) => {
+            const count = counts.get(pokemon.id) ?? 1;
+            const showEvolve = count >= 4 && pokemon.evolutionTo !== undefined && POKEMON_BY_ID[pokemon.evolutionTo] && !evolveShown.has(pokemon.id);
+            if (showEvolve) evolveShown.add(pokemon.id);
             return (
-              <PokemonCard key={pokemon.id} pokemon={pokemon} count={count}>
-                {canEvolve && (
+              <PokemonCard key={`${pokemon.id}-${idx}`} pokemon={pokemon}>
+                {showEvolve && (
                   <button className="collection-evolve-btn" onClick={() => handleEvolve(pokemon)}>
                     ✨ Evolve
                   </button>
