@@ -204,3 +204,105 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Shard button */
+.collection-shard-btn {
+  position: relative;
+  z-index: 2;
+  margin-top: 2px;
+  margin-bottom: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  border: 1px solid #a040a0;
+  border-radius: 6px;
+  background: rgba(160, 64, 160, 0.15);
+  color: #c878c8;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.collection-shard-btn:hover {
+  background: rgba(160, 64, 160, 0.3);
+}
+
+/* Shard confirmation overlay */
+.shard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.3s;
+}
+
+.shard-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  max-width: 280px;
+  text-align: center;
+}
+
+.shard-sprite {
+  width: 96px;
+  height: 96px;
+  object-fit: scale-down;
+  image-rendering: pixelated;
+}
+
+.shard-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.shard-desc {
+  font-size: 13px;
+  color: #aaa;
+  line-height: 1.4;
+}
+
+.shard-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.shard-confirm {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  border: 2px solid #a040a0;
+  border-radius: 8px;
+  background: rgba(160, 64, 160, 0.3);
+  color: #c878c8;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.shard-confirm:hover {
+  background: rgba(160, 64, 160, 0.5);
+}
+
+.shard-cancel {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #aaa;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.shard-cancel:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #eee;
+}

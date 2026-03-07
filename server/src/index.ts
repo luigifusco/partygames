@@ -302,7 +302,8 @@ app.post('/api/login', (req, res) => {
 
   // Also fetch their pokemon collection
   const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe FROM owned_pokemon WHERE player_id = ?').all(player.id);
-  return res.json({ player, pokemon });
+  const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
+  return res.json({ player, pokemon, items });
 });
 
 // Get player data
@@ -313,7 +314,8 @@ app.get('/api/player/:id', (req, res) => {
   }
 
   const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe FROM owned_pokemon WHERE player_id = ?').all(player.id);
-  return res.json({ player, pokemon });
+  const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
+  return res.json({ player, pokemon, items });
 });
 
 // Update player essence
@@ -359,6 +361,59 @@ app.post('/api/player/:id/pokemon/remove', (req, res) => {
     del.run(row.id);
   }
   return res.json({ ok: true, removed: rows.length });
+});
+
+// Add items to player inventory
+app.post('/api/player/:id/items', (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items)) return res.status(400).json({ error: 'Invalid items' });
+
+  const insert = db.prepare(
+    'INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)'
+  );
+  const created: any[] = [];
+  for (const item of items) {
+    const id = uuidv4();
+    insert.run(id, req.params.id, item.itemType, item.itemData);
+    created.push({ id, item_type: item.itemType, item_data: item.itemData });
+  }
+  return res.json({ ok: true, items: created });
+});
+
+// Remove items from player inventory
+app.post('/api/player/:id/items/remove', (req, res) => {
+  const { itemType, itemData, count } = req.body;
+  if (typeof itemType !== 'string' || typeof itemData !== 'string' || typeof count !== 'number') {
+    return res.status(400).json({ error: 'Invalid params' });
+  }
+
+  const rows = db.prepare(
+    'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT ?'
+  ).all(req.params.id, itemType, itemData, count) as any[];
+
+  const del = db.prepare('DELETE FROM owned_items WHERE id = ?');
+  for (const row of rows) {
+    del.run(row.id);
+  }
+  return res.json({ ok: true, removed: rows.length });
+});
+
+// Evolve a pokemon instance in-place (keeps IVs/nature, changes pokemon_id)
+app.post('/api/player/:id/pokemon/evolve', (req, res) => {
+  const { instanceId, newPokemonId } = req.body;
+  if (typeof instanceId !== 'string' || typeof newPokemonId !== 'number') {
+    return res.status(400).json({ error: 'Invalid params' });
+  }
+
+  const row = db.prepare(
+    'SELECT id FROM owned_pokemon WHERE id = ? AND player_id = ?'
+  ).get(instanceId, req.params.id) as any;
+  if (!row) {
+    return res.status(404).json({ error: 'Pokemon not found' });
+  }
+
+  db.prepare('UPDATE owned_pokemon SET pokemon_id = ? WHERE id = ?').run(newPokemonId, instanceId);
+  return res.json({ ok: true });
 });
 
 // Get leaderboard (ranked by Elo)

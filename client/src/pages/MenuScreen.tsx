@@ -6,9 +6,10 @@ interface MenuScreenProps {
   essence: number;
   elo: number;
   collectionSize: number;
+  itemCount: number;
 }
 
-export default function MenuScreen({ playerName, essence, elo, collectionSize }: MenuScreenProps) {
+export default function MenuScreen({ playerName, essence, elo, collectionSize, itemCount }: MenuScreenProps) {
   const navigate = useNavigate();
 
   return (
@@ -24,6 +25,9 @@ export default function MenuScreen({ playerName, essence, elo, collectionSize }:
         </button>
         <button className="menu-btn" onClick={() => navigate('/store')}>
           🎁 Expansion Shop
+        </button>
+        <button className="menu-btn" onClick={() => navigate('/items')}>
+          💿 Items ({itemCount})
         </button>
         <button className="menu-btn" onClick={() => navigate('/pokedex')}>
           📖 All Pokémon

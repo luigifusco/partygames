@@ -6,17 +6,17 @@ import PokedexScreen from './pages/PokedexScreen';
 import CollectionScreen from './pages/CollectionScreen';
 import PokemonDetailScreen from './pages/PokemonDetailScreen';
 import StoreScreen from './pages/StoreScreen';
+import ItemsScreen from './pages/ItemsScreen';
 import BattleDemo from './pages/BattleDemo';
 import BattleMultiplayer from './pages/BattleMultiplayer';
 import TradeScreen from './pages/TradeScreen';
 import TVView from './pages/TVView';
 import { socket } from './socket';
-import { syncEssence, addPokemonToServer, removePokemonFromServer, buildInstance } from './api';
+import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, buildInstance, buildItem } from './api';
 import { STARTING_ESSENCE } from '@shared/essence';
 import { STARTING_ELO } from '@shared/elo';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
-import type { PokemonInstance } from '@shared/types';
-import { randomNature, randomIVs } from '@shared/natures';
+import type { PokemonInstance, OwnedItem } from '@shared/types';
 
 interface PlayerState {
   id: string;
@@ -28,6 +28,7 @@ export default function App() {
   const [essence, setEssence] = useState(0);
   const [elo, setElo] = useState(STARTING_ELO);
   const [collection, setCollection] = useState<PokemonInstance[]>([]);
+  const [items, setItems] = useState<OwnedItem[]>([]);
 
   const spendEssence = (amount: number) => {
     const newEssence = essence - amount;
@@ -46,35 +47,48 @@ export default function App() {
     }
   };
 
-  const evolvePokemon = (pokemonId: number) => {
-    const pokemon = POKEMON_BY_ID[pokemonId];
-    if (!pokemon || !pokemon.evolutionTo) return;
+  const addItems = async (newItems: { itemType: string; itemData: string }[]) => {
+    if (player) {
+      const created = await addItemsToServer(player.id, newItems);
+      setItems((i) => [...i, ...created]);
+    }
+  };
+
+  const evolvePokemon = async (instance: PokemonInstance) => {
+    const pokemon = instance.pokemon;
+    if (!pokemon.evolutionTo) return;
     const evolved = POKEMON_BY_ID[pokemon.evolutionTo];
     if (!evolved) return;
 
-    setCollection((c) => {
-      const newCol = [...c];
-      let removed = 0;
-      const filtered = newCol.filter((inst) => {
-        if (inst.pokemon.id === pokemonId && removed < 4) {
-          removed++;
-          return false;
-        }
-        return true;
-      });
-      // Evolved form gets new random IVs/nature (server will also create it)
-      const newInstance: PokemonInstance = {
-        instanceId: crypto.randomUUID(),
-        pokemon: evolved,
-        ivs: randomIVs(),
-        nature: randomNature(),
-      };
-      return [...filtered, newInstance];
-    });
+    // Consume 3 tokens of the same pokemon
+    const tokenId = String(pokemon.id);
+    const tokensToRemove = items.filter((i) => i.itemType === 'token' && i.itemData === tokenId).slice(0, 3);
+    if (tokensToRemove.length < 3) return;
+
+    // Remove tokens from local state
+    const removedIds = new Set(tokensToRemove.map((t) => t.id));
+    setItems((prev) => prev.filter((i) => !removedIds.has(i.id)));
+
+    // Evolve the pokemon in-place (keep IVs, nature)
+    setCollection((c) =>
+      c.map((inst) =>
+        inst.instanceId === instance.instanceId
+          ? { ...inst, pokemon: evolved }
+          : inst
+      )
+    );
 
     if (player) {
-      removePokemonFromServer(player.id, pokemonId, 4);
-      addPokemonToServer(player.id, [evolved.id]);
+      removeItemsFromServer(player.id, 'token', tokenId, 3);
+      evolvePokemonOnServer(player.id, instance.instanceId, evolved.id);
+    }
+  };
+
+  const shardPokemon = async (instance: PokemonInstance) => {
+    setCollection((c) => c.filter((inst) => inst.instanceId !== instance.instanceId));
+    if (player) {
+      removePokemonFromServer(player.id, instance.pokemon.id, 1);
+      await addItems([{ itemType: 'token', itemData: String(instance.pokemon.id) }]);
     }
   };
 
@@ -92,11 +106,12 @@ export default function App() {
     }
   };
 
-  const handleLogin = (playerData: { id: string; name: string; essence: number; elo: number }, pokemonRows: any[]) => {
+  const handleLogin = (playerData: { id: string; name: string; essence: number; elo: number }, pokemonRows: any[], itemRows: any[]) => {
     setPlayer({ id: playerData.id, name: playerData.name });
     setEssence(playerData.essence);
     setElo(playerData.elo ?? STARTING_ELO);
     setCollection(pokemonRows.map(buildInstance).filter(Boolean) as PokemonInstance[]);
+    setItems((itemRows ?? []).map(buildItem));
     // Connect socket and identify
     socket.connect();
     socket.emit('player:identify', playerData.name);
@@ -115,11 +130,12 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/play" element={<MenuScreen playerName={player.name} essence={essence} elo={elo} collectionSize={collection.length} />} />
-      <Route path="/collection" element={<CollectionScreen collection={collection} onEvolve={evolvePokemon} />} />
+      <Route path="/play" element={<MenuScreen playerName={player.name} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} />} />
+      <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} />} />
       <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} />} />
       <Route path="/pokedex" element={<PokedexScreen />} />
-      <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} />} />
+      <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
+      <Route path="/items" element={<ItemsScreen items={items} />} />
       <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
       <Route path="/battle" element={<BattleMultiplayer playerName={player.name} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} />} />
       <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} />} />

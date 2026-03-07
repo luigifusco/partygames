@@ -2,6 +2,7 @@
 
 import type { Pokemon, BoxTier } from './types';
 import { POKEMON } from './pokemon-data';
+import { ALL_MOVE_NAMES } from './move-data';
 
 function getBaseFormsForTier(tier: BoxTier): Pokemon[] {
   return POKEMON.filter((p) => p.tier === tier && p.evolutionFrom === undefined);
@@ -16,6 +17,10 @@ export function openBox(tier: BoxTier): Pokemon[] {
     result.push(pool[Math.floor(Math.random() * pool.length)]);
   }
   return result;
+}
+
+export function rollTM(): string {
+  return ALL_MOVE_NAMES[Math.floor(Math.random() * ALL_MOVE_NAMES.length)];
 }
 
 export function getPoolSize(tier: BoxTier): number {

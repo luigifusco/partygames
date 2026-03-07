@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BOX_COSTS } from '@shared/essence';
-import { openBox, getPoolSize } from '@shared/boxes';
+import { openBox, getPoolSize, rollTM } from '@shared/boxes';
+import { getTMSprite, getMoveType } from '@shared/move-data';
 import type { BoxTier, Pokemon } from '@shared/types';
 import './StoreScreen.css';
 
@@ -16,20 +17,23 @@ interface StoreScreenProps {
   essence: number;
   onSpendEssence: (amount: number) => void;
   onAddPokemon: (pokemonIds: number[]) => void;
+  onAddItems: (items: { itemType: string; itemData: string }[]) => void;
 }
 
-export default function StoreScreen({ essence, onSpendEssence, onAddPokemon }: StoreScreenProps) {
+export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onAddItems }: StoreScreenProps) {
   const navigate = useNavigate();
-  const [opened, setOpened] = useState<Pokemon[] | null>(null);
+  const [opened, setOpened] = useState<{ pokemon: Pokemon[]; tm: string } | null>(null);
 
   const handleBuy = (tier: BoxTier) => {
     const cost = BOX_COSTS[tier];
     if (essence < cost) return;
 
     const result = openBox(tier);
+    const tm = rollTM();
     onSpendEssence(cost);
     onAddPokemon(result.map((p) => p.id));
-    setOpened(result);
+    onAddItems([{ itemType: 'tm', itemData: tm }]);
+    setOpened({ pokemon: result, tm });
   };
 
   return (
@@ -65,13 +69,18 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon }: S
         <div className="pack-overlay" onClick={(e) => e.target === e.currentTarget && setOpened(null)}>
           <div className="pack-title">You got:</div>
           <div className="pack-results">
-            {opened.map((p, i) => (
+            {opened.pokemon.map((p, i) => (
               <div key={i} className="pack-card">
                 <img src={p.sprite} alt={p.name} />
                 <div className="pack-card-name">{p.name}</div>
                 <div className={`pack-card-tier tier-${p.tier}`}>{p.tier}</div>
               </div>
             ))}
+            <div className="pack-card pack-card-tm">
+              <img src={getTMSprite(opened.tm)} alt={`TM ${opened.tm}`} />
+              <div className="pack-card-name">{opened.tm}</div>
+              <div className={`pack-card-tier tier-tm type-${getMoveType(opened.tm)}`}>TM</div>
+            </div>
           </div>
           <button className="pack-close" onClick={() => setOpened(null)}>OK</button>
         </div>

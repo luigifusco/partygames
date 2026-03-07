@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { PokemonInstance, BoxTier } from '@shared/types';
+import type { PokemonInstance, BoxTier, OwnedItem } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import PokemonCard from '../components/PokemonCard';
 import './CollectionScreen.css';
@@ -9,24 +9,29 @@ const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'legend
 
 interface CollectionScreenProps {
   collection: PokemonInstance[];
-  onEvolve: (pokemonId: number) => void;
+  items: OwnedItem[];
+  onEvolve: (instance: PokemonInstance) => void;
+  onShard: (instance: PokemonInstance) => void;
 }
 
-export default function CollectionScreen({ collection, onEvolve }: CollectionScreenProps) {
+export default function CollectionScreen({ collection, items, onEvolve, onShard }: CollectionScreenProps) {
   const navigate = useNavigate();
   const [evolving, setEvolving] = useState<{ from: PokemonInstance; to: any } | null>(null);
+  const [sharding, setSharding] = useState<PokemonInstance | null>(null);
   const [filter, setFilter] = useState<BoxTier | 'all'>('all');
 
-  // Count duplicates for evolution, but show each pokemon individually
-  const counts = new Map<number, number>();
-  for (const inst of collection) {
-    counts.set(inst.pokemon.id, (counts.get(inst.pokemon.id) ?? 0) + 1);
+  // Count tokens per pokemon id
+  const tokenCounts = new Map<number, number>();
+  for (const item of items) {
+    if (item.itemType === 'token') {
+      const pid = Number(item.itemData);
+      tokenCounts.set(pid, (tokenCounts.get(pid) ?? 0) + 1);
+    }
   }
+
   const filtered = collection
     .filter((inst) => filter === 'all' || inst.pokemon.tier === filter)
     .sort((a, b) => a.pokemon.id - b.pokemon.id);
-  // Track which pokemon ids have already shown the evolve button
-  const evolveShown = new Set<number>();
 
   const handleEvolve = (inst: PokemonInstance) => {
     if (!inst.pokemon.evolutionTo) return;
@@ -35,9 +40,19 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
 
     setEvolving({ from: inst, to: evolved });
     setTimeout(() => {
-      onEvolve(inst.pokemon.id);
+      onEvolve(inst);
       setTimeout(() => setEvolving(null), 1200);
     }, 1500);
+  };
+
+  const handleShard = (inst: PokemonInstance) => {
+    setSharding(inst);
+  };
+
+  const confirmShard = () => {
+    if (!sharding) return;
+    onShard(sharding);
+    setSharding(null);
   };
 
   // Find the index in the original collection for navigation
@@ -66,20 +81,22 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
       ) : (
         <div className="collection-grid">
           {filtered.map((inst) => {
-            const count = counts.get(inst.pokemon.id) ?? 1;
-            const showEvolve = count >= 4 && inst.pokemon.evolutionTo !== undefined && POKEMON_BY_ID[inst.pokemon.evolutionTo] && !evolveShown.has(inst.pokemon.id);
-            if (showEvolve) evolveShown.add(inst.pokemon.id);
+            const tokens = tokenCounts.get(inst.pokemon.id) ?? 0;
+            const canEvolve = tokens >= 3 && inst.pokemon.evolutionTo !== undefined && !!POKEMON_BY_ID[inst.pokemon.evolutionTo!];
             return (
               <PokemonCard
                 key={inst.instanceId}
                 pokemon={inst.pokemon}
                 onClick={() => navigate(`/pokemon/${getCollectionIndex(inst)}`)}
               >
-                {showEvolve && (
+                {canEvolve && (
                   <button className="collection-evolve-btn" onClick={(e) => { e.stopPropagation(); handleEvolve(inst); }}>
-                    ✨ Evolve
+                    ✨ Evolve ({tokens}/3)
                   </button>
                 )}
+                <button className="collection-shard-btn" onClick={(e) => { e.stopPropagation(); handleShard(inst); }}>
+                  🔮 Shard
+                </button>
               </PokemonCard>
             );
           })}
@@ -100,6 +117,22 @@ export default function CollectionScreen({ collection, onEvolve }: CollectionScr
             </div>
           </div>
           <div className="evolve-text">Evolving!</div>
+        </div>
+      )}
+
+      {sharding && (
+        <div className="shard-overlay" onClick={(e) => e.target === e.currentTarget && setSharding(null)}>
+          <div className="shard-content">
+            <img className="shard-sprite" src={sharding.pokemon.sprite} alt={sharding.pokemon.name} />
+            <div className="shard-title">Shard {sharding.pokemon.name}?</div>
+            <div className="shard-desc">
+              This will destroy the Pokémon and give you a <strong>{sharding.pokemon.name} Token</strong>.
+            </div>
+            <div className="shard-buttons">
+              <button className="shard-confirm" onClick={confirmShard}>🔮 Shard</button>
+              <button className="shard-cancel" onClick={() => setSharding(null)}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

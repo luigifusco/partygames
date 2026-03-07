@@ -1,4 +1,4 @@
-import type { PokemonInstance, NatureName } from '@shared/types';
+import type { PokemonInstance, NatureName, OwnedItem } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 
 const API_BASE = '';
@@ -19,6 +19,15 @@ export function buildInstance(row: any): PokemonInstance | null {
       spDef: row.iv_spd,
       speed: row.iv_spe,
     },
+  };
+}
+
+// Build an OwnedItem from a server-returned owned_items row
+export function buildItem(row: any): OwnedItem {
+  return {
+    id: row.id,
+    itemType: row.item_type,
+    itemData: row.item_data,
   };
 }
 
@@ -45,5 +54,31 @@ export async function removePokemonFromServer(playerId: string, pokemonId: numbe
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pokemonId, count }),
+  });
+}
+
+export async function addItemsToServer(playerId: string, items: { itemType: string; itemData: string }[]): Promise<OwnedItem[]> {
+  const res = await fetch(`${API_BASE}/api/player/${playerId}/items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items }),
+  });
+  const data = await res.json();
+  return (data.items ?? []).map(buildItem);
+}
+
+export async function removeItemsFromServer(playerId: string, itemType: string, itemData: string, count: number) {
+  await fetch(`${API_BASE}/api/player/${playerId}/items/remove`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itemType, itemData, count }),
+  });
+}
+
+export async function evolvePokemonOnServer(playerId: string, instanceId: string, newPokemonId: number) {
+  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/evolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ instanceId, newPokemonId }),
   });
 }

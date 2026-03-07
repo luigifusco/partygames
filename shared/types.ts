@@ -89,3 +89,13 @@ export interface BoxDefinition {
   cost: number;
   pokemonPool: number[];
 }
+
+// Items
+
+export type ItemType = 'tm' | 'token';
+
+export interface OwnedItem {
+  id: string;
+  itemType: ItemType;
+  itemData: string; // move name for TMs, pokemon ID (as string) for tokens
+}

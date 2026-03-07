@@ -63,6 +63,14 @@ export function initDb() {
       times_used INTEGER NOT NULL DEFAULT 1,
       PRIMARY KEY (player_id, pokemon_id)
     );
+
+    CREATE TABLE IF NOT EXISTS owned_items (
+      id TEXT PRIMARY KEY,
+      player_id TEXT NOT NULL REFERENCES players(id),
+      item_type TEXT NOT NULL,
+      item_data TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Add elo column if it doesn't exist (migration for existing DBs)
