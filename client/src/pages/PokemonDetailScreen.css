@@ -92,6 +92,7 @@
 .detail-tier.tier-uncommon { background: #2e7d32; color: #c8e6c9; }
 .detail-tier.tier-rare { background: #1565c0; color: #bbdefb; }
 .detail-tier.tier-epic { background: #7b1fa2; color: #e1bee7; }
+.detail-tier.tier-legendary { background: #e65100; color: #ffe0b2; }
 
 .detail-nature {
   text-align: center;

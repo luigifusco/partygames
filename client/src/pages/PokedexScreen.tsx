@@ -5,7 +5,7 @@ import type { BoxTier } from '@shared/types';
 import PokemonCard from '../components/PokemonCard';
 import './PokedexScreen.css';
 
-const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'epic'];
+const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary'];
 
 export default function PokedexScreen() {
   const navigate = useNavigate();

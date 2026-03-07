@@ -45,6 +45,7 @@
 .pkmn-card-tier.tier-uncommon { background: #2e7d32; color: #c8e6c9; }
 .pkmn-card-tier.tier-rare { background: #1565c0; color: #bbdefb; }
 .pkmn-card-tier.tier-epic { background: #7b1fa2; color: #e1bee7; }
+.pkmn-card-tier.tier-legendary { background: #e65100; color: #ffe0b2; }
 
 .pkmn-card-count {
   position: absolute;

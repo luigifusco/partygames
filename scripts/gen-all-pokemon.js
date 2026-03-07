@@ -356,8 +356,8 @@ const tierCache = {};
 function assignTier(pokemon) {
   const num = pokemon.num;
 
-  // Legendaries/mythicals are always epic
-  if (LEGENDARIES.has(num)) return 'epic';
+  // Legendaries/mythicals get 'legendary' tier
+  if (LEGENDARIES.has(num)) return 'legendary';
 
   // Find the root of the evolution line
   const root = getLineRoot(pokemon);
@@ -415,8 +415,8 @@ for (const pokemon of allPokemon) {
 
 // ─── Stats ──────────────────────────────────────────────────────────────
 
-const tierCounts = { common: 0, uncommon: 0, rare: 0, epic: 0 };
-const baseForms = { common: 0, uncommon: 0, rare: 0, epic: 0 };
+const tierCounts = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
+const baseForms = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
 for (const e of entries) {
   tierCounts[e.tier]++;
   if (!e.evolutionFrom) baseForms[e.tier]++;
@@ -534,7 +534,7 @@ dataOut += "}\n\n";
 dataOut += "const ENTRIES: PokemonEntry[] = [\n";
 
 // Group by tier for readability
-for (const tier of ['common', 'uncommon', 'rare', 'epic']) {
+for (const tier of ['common', 'uncommon', 'rare', 'epic', 'legendary']) {
   const tierEntries = entries.filter(e => e.tier === tier);
   dataOut += `  // ${tier.charAt(0).toUpperCase() + tier.slice(1)} tier\n`;
   for (const e of tierEntries) {

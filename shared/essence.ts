@@ -7,6 +7,7 @@ const TIER_STRENGTH: Record<BoxTier, number> = {
   uncommon: 25,
   rare: 50,
   epic: 100,
+  legendary: 200,
 };
 
 const BATTLE_BASE_ESSENCE = 20;
@@ -23,6 +24,7 @@ const RELEASE_BASE: Record<BoxTier, number> = {
   uncommon: 15,
   rare: 35,
   epic: 75,
+  legendary: 150,
 };
 
 export function calculateReleaseEssence(tier: BoxTier, evolutionStage: number): number {
@@ -34,6 +36,7 @@ export const BOX_COSTS: Record<BoxTier, number> = {
   uncommon: 75,
   rare: 150,
   epic: 300,
+  legendary: 600,
 };
 
 export const STARTING_ESSENCE = BOX_COSTS.common;

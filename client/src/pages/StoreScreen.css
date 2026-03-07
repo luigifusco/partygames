@@ -75,6 +75,7 @@
 .store-box.tier-uncommon { border-color: #4caf50; }
 .store-box.tier-rare { border-color: #2196f3; }
 .store-box.tier-epic { border-color: #9c27b0; }
+.store-box.tier-legendary { border-color: #ff9800; }
 
 .store-box-icon {
   font-size: 36px;

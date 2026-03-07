@@ -5,7 +5,7 @@ import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import PokemonCard from '../components/PokemonCard';
 import './CollectionScreen.css';
 
-const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'epic'];
+const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary'];
 
 interface CollectionScreenProps {
   collection: PokemonInstance[];

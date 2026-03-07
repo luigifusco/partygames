@@ -10,7 +10,8 @@ const TIERS: { tier: BoxTier; icon: string; desc: string }[] = [
   { tier: 'common', icon: '📦', desc: 'Weak evolution lines' },
   { tier: 'uncommon', icon: '🎁', desc: 'Moderate evolution lines' },
   { tier: 'rare', icon: '💎', desc: 'Strong evolution lines' },
-  { tier: 'epic', icon: '🌟', desc: 'Epic & pseudo-legendary' },
+  { tier: 'epic', icon: '🌟', desc: 'Pseudo-legendary lines' },
+  { tier: 'legendary', icon: '⚡', desc: 'Legendary & mythical' },
 ];
 
 interface StoreScreenProps {
