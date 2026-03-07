@@ -205,6 +205,71 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Evolution picker (for split evolutions) */
+.evo-picker {
+  background: #1a1a2e;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  max-width: 340px;
+  width: 90%;
+}
+
+.evo-picker-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 16px;
+}
+
+.evo-picker-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.evo-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #2a2a4a;
+  border: 2px solid #444;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 14px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.evo-picker-option:hover {
+  border-color: #ffd700;
+  background: #3a3a5a;
+}
+
+.evo-picker-option img {
+  width: 72px;
+  height: 72px;
+  image-rendering: pixelated;
+}
+
+.evo-picker-cancel {
+  background: #555;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.evo-picker-cancel:hover {
+  background: #777;
+}
+
 /* Shard button */
 .collection-shard-btn {
   position: relative;

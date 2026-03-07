@@ -7,7 +7,7 @@ export interface Pokemon {
   stats: Stats;
   moves: [MoveId, MoveId];
   evolutionFrom?: number;
-  evolutionTo?: number;
+  evolutionTo?: number[];
   tier: BoxTier;
   sprite: string;
 }

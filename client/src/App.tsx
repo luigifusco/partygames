@@ -55,10 +55,10 @@ export default function App() {
     }
   };
 
-  const evolvePokemon = async (instance: PokemonInstance) => {
+  const evolvePokemon = async (instance: PokemonInstance, targetId: number) => {
     const pokemon = instance.pokemon;
-    if (!pokemon.evolutionTo) return;
-    const evolved = POKEMON_BY_ID[pokemon.evolutionTo];
+    if (!pokemon.evolutionTo || !pokemon.evolutionTo.includes(targetId)) return;
+    const evolved = POKEMON_BY_ID[targetId];
     if (!evolved) return;
 
     // Consume 3 tokens of the same pokemon

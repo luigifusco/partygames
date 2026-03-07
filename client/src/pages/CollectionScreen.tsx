@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { PokemonInstance, BoxTier, OwnedItem } from '@shared/types';
+import type { PokemonInstance, Pokemon, BoxTier, OwnedItem } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import PokemonCard from '../components/PokemonCard';
 import './CollectionScreen.css';
@@ -10,13 +10,21 @@ const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'epic']
 interface CollectionScreenProps {
   collection: PokemonInstance[];
   items: OwnedItem[];
-  onEvolve: (instance: PokemonInstance) => void;
+  onEvolve: (instance: PokemonInstance, targetId: number) => void;
   onShard: (instance: PokemonInstance) => void;
+}
+
+function getEvoTargets(pokemon: Pokemon): Pokemon[] {
+  if (!pokemon.evolutionTo) return [];
+  return pokemon.evolutionTo
+    .map((id) => POKEMON_BY_ID[id])
+    .filter(Boolean);
 }
 
 export default function CollectionScreen({ collection, items, onEvolve, onShard }: CollectionScreenProps) {
   const navigate = useNavigate();
-  const [evolving, setEvolving] = useState<{ from: PokemonInstance; to: any } | null>(null);
+  const [evolving, setEvolving] = useState<{ from: PokemonInstance; to: Pokemon } | null>(null);
+  const [evoPicker, setEvoPicker] = useState<{ inst: PokemonInstance; targets: Pokemon[] } | null>(null);
   const [sharding, setSharding] = useState<PokemonInstance | null>(null);
   const [filter, setFilter] = useState<BoxTier | 'all'>('all');
 
@@ -33,14 +41,21 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
     .filter((inst) => filter === 'all' || inst.pokemon.tier === filter)
     .sort((a, b) => a.pokemon.id - b.pokemon.id);
 
-  const handleEvolve = (inst: PokemonInstance) => {
-    if (!inst.pokemon.evolutionTo) return;
-    const evolved = POKEMON_BY_ID[inst.pokemon.evolutionTo];
-    if (!evolved) return;
+  const startEvolve = (inst: PokemonInstance) => {
+    const targets = getEvoTargets(inst.pokemon);
+    if (targets.length === 0) return;
+    if (targets.length === 1) {
+      doEvolve(inst, targets[0]);
+    } else {
+      setEvoPicker({ inst, targets });
+    }
+  };
 
-    setEvolving({ from: inst, to: evolved });
+  const doEvolve = (inst: PokemonInstance, target: Pokemon) => {
+    setEvoPicker(null);
+    setEvolving({ from: inst, to: target });
     setTimeout(() => {
-      onEvolve(inst);
+      onEvolve(inst, target.id);
       setTimeout(() => setEvolving(null), 1200);
     }, 1500);
   };
@@ -82,7 +97,8 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
         <div className="collection-grid">
           {filtered.map((inst) => {
             const tokens = tokenCounts.get(inst.pokemon.id) ?? 0;
-            const canEvolve = tokens >= 3 && inst.pokemon.evolutionTo !== undefined && !!POKEMON_BY_ID[inst.pokemon.evolutionTo!];
+            const targets = getEvoTargets(inst.pokemon);
+            const canEvolve = tokens >= 3 && targets.length > 0;
             return (
               <PokemonCard
                 key={inst.instanceId}
@@ -90,7 +106,7 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
                 onClick={() => navigate(`/pokemon/${getCollectionIndex(inst)}`)}
               >
                 {canEvolve && (
-                  <button className="collection-evolve-btn" onClick={(e) => { e.stopPropagation(); handleEvolve(inst); }}>
+                  <button className="collection-evolve-btn" onClick={(e) => { e.stopPropagation(); startEvolve(inst); }}>
                     ✨ Evolve ({tokens}/3)
                   </button>
                 )}
@@ -100,6 +116,23 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
               </PokemonCard>
             );
           })}
+        </div>
+      )}
+
+      {evoPicker && (
+        <div className="evolve-overlay" onClick={(e) => e.target === e.currentTarget && setEvoPicker(null)}>
+          <div className="evo-picker">
+            <div className="evo-picker-title">Evolve {evoPicker.inst.pokemon.name} into...</div>
+            <div className="evo-picker-options">
+              {evoPicker.targets.map((target) => (
+                <button key={target.id} className="evo-picker-option" onClick={() => doEvolve(evoPicker.inst, target)}>
+                  <img src={target.sprite} alt={target.name} />
+                  <span>{target.name}</span>
+                </button>
+              ))}
+            </div>
+            <button className="evo-picker-cancel" onClick={() => setEvoPicker(null)}>Cancel</button>
+          </div>
         </div>
       )}
 
