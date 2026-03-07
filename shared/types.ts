@@ -52,7 +52,7 @@ export function getEffectiveMoves(inst: PokemonInstance): [MoveId, MoveId] {
 
 export type MoveId = string;
 
-export type BoxTier = 'common' | 'uncommon' | 'rare' | 'legendary';
+export type BoxTier = 'common' | 'uncommon' | 'rare' | 'epic';
 
 export type PokemonType =
   | 'normal' | 'fire' | 'water' | 'electric' | 'grass' | 'ice'
