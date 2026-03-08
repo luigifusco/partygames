@@ -152,10 +152,105 @@ export const STAT_MOVES: Record<string, StatMoveEffect> = {
   'String Shot':   { target: 'opponent', boosts: { spe: -1 } },
 };
 
+// Move accuracy (percentage). Moves not listed default to 100.
+// Values from Generation IV game data.
+export const MOVE_ACCURACY: Record<string, number> = {
+  // 100% (explicitly listed for clarity on commonly-assumed moves)
+  'Thunderbolt': 100,
+  'Surf': 100,
+  'Psychic': 100,
+  'Earthquake': 100,
+  'Energy Ball': 100,
+  'Shadow Ball': 100,
+  'Flash Cannon': 100,
+  'Dark Pulse': 100,
+  'Bug Buzz': 100,
+  'Brick Break': 100,
+  'X-Scissor': 100,
+  'Crunch': 100,
+  'Extreme Speed': 100,
+  'Sludge Bomb': 100,
+  'Earth Power': 100,
+  'Signal Beam': 100,
+  'Drill Peck': 100,
+  'Body Slam': 100,
+  'Facade': 100,
+  'Brave Bird': 100,
+  'Close Combat': 100,
+  'Bug Bite': 100,
+  'Wood Hammer': 100,
+  'Volt Tackle': 100,
+  'Double-Edge': 100,
+  'Strength': 100,
+  'Outrage': 100,
+  'Petal Dance': 100,
+  'Attack Order': 100,
+  'Brine': 100,
+  // 95%
+  'Air Slash': 95,
+  'Iron Head': 95,
+  'Air Cutter': 95,
+  'Aqua Tail': 95,
+  'Dig': 95,  // (80 in some gens, 95 in Gen IV)
+  'Zen Headbutt': 90,
+  'Rock Slide': 90,
+  'Poison Sting': 100,
+  // 90%
+  'Iron Tail': 75,
+  'Megahorn': 85,
+  'Stone Edge': 80,
+  'Power Whip': 85,
+  'Mud-Slap': 100,
+  'Bounce': 85,
+  'Fly': 95,  // (90 in some gens, 95 in Gen IV)
+  'Dream Eater': 100,
+  'Solar Beam': 100,
+  'Slam': 75,
+  'Tackle': 100,  // (95 in older gens, 100 from Gen V)
+  'Take Down': 85,
+  'Rollout': 90,
+  // 85%
+  'Muddy Water': 85,
+  'Meteor Mash': 90,
+  // 80%
+  'Hydro Pump': 80,
+  'Fire Blast': 85,
+  'Blizzard': 70,
+  'Thunder': 70,
+  'Cross Chop': 80,
+  'Gunk Shot': 80,
+  'Shadow Force': 100,
+  // 70%
+  'Focus Blast': 70,
+  // 50%
+  'Dynamic Punch': 50,
+  'Zap Cannon': 50,
+  // Special
+  'Future Sight': 100,
+  'Hidden Power': 100,
+  'Struggle': 100,
+  'Aerial Ace': Infinity, // Never misses
+  // Stat moves — opponent-targeting ones have accuracy
+  'Screech': 85,
+  'Scary Face': 90,  // (was 90 in Gen IV)
+  'Metal Sound': 85,
+  'String Shot': 95,
+  'Growl': 100,
+  'Leer': 100,
+  'Tail Whip': 100,
+  'Charm': 100,
+  'Fake Tears': 100,
+  'Feather Dance': 100,
+};
+
 export const ALL_MOVE_NAMES = Object.keys(MOVE_TYPES);
 
 export function getMoveType(moveName: string): PokemonType {
   return MOVE_TYPES[moveName] ?? 'normal';
+}
+
+export function getMoveAccuracy(moveName: string): number {
+  return MOVE_ACCURACY[moveName] ?? 100;
 }
 
 export function getTMSprite(moveName: string): string {

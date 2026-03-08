@@ -7,7 +7,7 @@ import { STARTING_ESSENCE, BOX_COSTS } from '../../shared/essence.js';
 import { STARTING_ELO, calculateEloChanges } from '../../shared/elo.js';
 import { POKEMON_BY_ID } from '../../shared/pokemon-data.js';
 import { randomNature, randomIVs } from '../../shared/natures.js';
-import { STAT_MOVES } from '../../shared/move-data.js';
+import { STAT_MOVES, getMoveAccuracy } from '../../shared/move-data.js';
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
 import {
@@ -212,6 +212,26 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
       // Handle stat-change moves
       const statEffect = STAT_MOVES[moveName];
       if (statEffect) {
+        // Opponent-targeting stat moves can miss based on accuracy
+        if (statEffect.target === 'opponent') {
+          const acc = getMoveAccuracy(moveName);
+          if (acc < Infinity && Math.random() * 100 >= acc) {
+            log.push({
+              round,
+              attackerInstanceId: attacker.instanceId,
+              attackerName: attacker.name,
+              moveName,
+              targetInstanceId: target.instanceId,
+              targetName: target.name,
+              damage: 0,
+              effectiveness: 'neutral' as const,
+              targetFainted: false,
+              message: `${attacker.name} used ${moveName} on ${target.name}! It missed!`,
+            });
+            continue;
+          }
+        }
+
         const affectedId = statEffect.target === 'self' ? attacker.instanceId : target.instanceId;
         const affectedName = statEffect.target === 'self' ? attacker.name : target.name;
         const pokemonBoosts = boosts[affectedId];
@@ -248,6 +268,24 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
           targetFainted: false,
           message: msg,
           boostChanges: { instanceId: affectedId, changes: actualChanges },
+        });
+        continue;
+      }
+
+      // Accuracy check for damage moves
+      const acc = getMoveAccuracy(moveName);
+      if (acc < Infinity && Math.random() * 100 >= acc) {
+        log.push({
+          round,
+          attackerInstanceId: attacker.instanceId,
+          attackerName: attacker.name,
+          moveName,
+          targetInstanceId: target.instanceId,
+          targetName: target.name,
+          damage: 0,
+          effectiveness: 'neutral',
+          targetFainted: false,
+          message: `${attacker.name} used ${moveName} on ${target.name}! It missed!`,
         });
         continue;
       }
