@@ -94,3 +94,11 @@ export async function teachTMOnServer(playerId: string, instanceId: string, move
     body: JSON.stringify({ instanceId, moveName, moveSlot }),
   });
 }
+
+export async function useBoostOnServer(playerId: string, instanceId: string, stat: string) {
+  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/use-boost`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ instanceId, stat }),
+  });
+}

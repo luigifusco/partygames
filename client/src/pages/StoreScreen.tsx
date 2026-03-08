@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { BOX_COSTS } from '@shared/essence';
 import { openBox, getPoolSize, rollTM } from '@shared/boxes';
 import { getTMSprite, getMoveType } from '@shared/move-data';
+import { rollBoost, getBoostSprite, getBoostName } from '@shared/boost-data';
+import type { StatKey } from '@shared/boost-data';
 import type { BoxTier, Pokemon } from '@shared/types';
 import './StoreScreen.css';
 
@@ -23,7 +25,7 @@ interface StoreScreenProps {
 
 export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onAddItems }: StoreScreenProps) {
   const navigate = useNavigate();
-  const [opened, setOpened] = useState<{ pokemon: Pokemon[]; tm: string } | null>(null);
+  const [opened, setOpened] = useState<{ pokemon: Pokemon[]; tm: string; boost: StatKey } | null>(null);
 
   const handleBuy = (tier: BoxTier) => {
     const cost = BOX_COSTS[tier];
@@ -31,10 +33,14 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
 
     const result = openBox(tier);
     const tm = rollTM();
+    const boost = rollBoost();
     onSpendEssence(cost);
     onAddPokemon(result.map((p) => p.id));
-    onAddItems([{ itemType: 'tm', itemData: tm }]);
-    setOpened({ pokemon: result, tm });
+    onAddItems([
+      { itemType: 'tm', itemData: tm },
+      { itemType: 'boost', itemData: boost },
+    ]);
+    setOpened({ pokemon: result, tm, boost });
   };
 
   return (
@@ -81,6 +87,11 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
               <img src={getTMSprite(opened.tm)} alt={`TM ${opened.tm}`} />
               <div className="pack-card-name">{opened.tm}</div>
               <div className={`pack-card-tier tier-tm type-${getMoveType(opened.tm)}`}>TM</div>
+            </div>
+            <div className="pack-card pack-card-boost">
+              <img src={getBoostSprite(opened.boost)} alt={getBoostName(opened.boost)} />
+              <div className="pack-card-name">{getBoostName(opened.boost)}</div>
+              <div className="pack-card-tier tier-boost">Boost</div>
             </div>
           </div>
           <button className="pack-close" onClick={() => setOpened(null)}>OK</button>

@@ -61,10 +61,10 @@ export type PokemonType =
 
 // Items
 
-export type ItemType = 'tm' | 'token';
+export type ItemType = 'tm' | 'token' | 'boost';
 
 export interface OwnedItem {
   id: string;
   itemType: ItemType;
-  itemData: string; // move name for TMs, pokemon ID (as string) for tokens
+  itemData: string; // move name for TMs, pokemon ID (as string) for tokens, stat key for boosts
 }

@@ -202,6 +202,70 @@
   color: #fff;
 }
 
+/* Boost cards */
+.boost-card {
+  border-color: #30d050;
+}
+
+.boost-sprite {
+  image-rendering: auto;
+}
+
+.boost-badge {
+  background: #30d050;
+  color: #fff;
+  font-weight: bold;
+}
+
+.boost-usable {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.boost-usable:active {
+  transform: scale(0.95);
+}
+
+/* Boost picker extras */
+.boost-hint {
+  text-align: center;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #30d050;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.boost-iv-label {
+  font-size: 9px;
+  color: #aaa;
+  margin-top: 1px;
+}
+
+.boost-maxed {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.boost-maxed .boost-iv-label {
+  color: #30d050;
+}
+
+/* Pack result boost card */
+.pack-card-boost {
+  border: 2px solid rgba(48, 208, 80, 0.4);
+}
+
+.pack-card-boost img {
+  width: 60%;
+  image-rendering: auto;
+}
+
+.tier-boost {
+  background: #30d050;
+  color: #fff;
+  font-weight: bold;
+}
+
 /* TM usable cards */
 .tm-usable {
   cursor: pointer;

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTMSprite, getMoveType } from '@shared/move-data';
+import { getBoostSprite, getBoostName, BOOST_ITEMS, MAX_IV } from '@shared/boost-data';
+import type { StatKey } from '@shared/boost-data';
+import { STAT_LABELS } from '@shared/natures';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import type { OwnedItem, PokemonInstance } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
@@ -11,6 +14,7 @@ interface ItemsScreenProps {
   items: OwnedItem[];
   collection: PokemonInstance[];
   onTeachTM: (instance: PokemonInstance, moveName: string, moveSlot: 0 | 1) => void;
+  onUseBoost: (instance: PokemonInstance, stat: StatKey) => void;
 }
 
 interface TMGroup {
@@ -24,13 +28,23 @@ interface TokenGroup {
   count: number;
 }
 
+interface BoostGroup {
+  stat: StatKey;
+  name: string;
+  count: number;
+}
+
 type TeachPhase =
   | { step: 'pickPokemon'; moveName: string }
   | { step: 'pickMove'; moveName: string; instance: PokemonInstance };
 
-export default function ItemsScreen({ items, collection, onTeachTM }: ItemsScreenProps) {
+type BoostPhase =
+  | { step: 'pickPokemon'; stat: StatKey };
+
+export default function ItemsScreen({ items, collection, onTeachTM, onUseBoost }: ItemsScreenProps) {
   const navigate = useNavigate();
   const [teachPhase, setTeachPhase] = useState<TeachPhase | null>(null);
+  const [boostPhase, setBoostPhase] = useState<BoostPhase | null>(null);
 
   // Group TMs by move name
   const tmGroups: TMGroup[] = [];
@@ -58,10 +72,37 @@ export default function ItemsScreen({ items, collection, onTeachTM }: ItemsScree
     tokenGroups.push({ pokemonId, pokemonName: pokemon?.name ?? `#${pokemonId}`, count });
   }
 
-  const hasItems = tmGroups.length > 0 || tokenGroups.length > 0;
+  // Group Boosts by stat
+  const boostGroups: BoostGroup[] = [];
+  const boostCounts = new Map<StatKey, number>();
+  for (const item of items) {
+    if (item.itemType === 'boost') {
+      const stat = item.itemData as StatKey;
+      boostCounts.set(stat, (boostCounts.get(stat) ?? 0) + 1);
+    }
+  }
+  for (const boost of BOOST_ITEMS) {
+    const count = boostCounts.get(boost.stat);
+    if (count) {
+      boostGroups.push({ stat: boost.stat, name: boost.name, count });
+    }
+  }
+
+  const hasItems = tmGroups.length > 0 || tokenGroups.length > 0 || boostGroups.length > 0;
 
   const handleUseTM = (moveName: string) => {
     setTeachPhase({ step: 'pickPokemon', moveName });
+  };
+
+  const handleUseBoost = (stat: StatKey) => {
+    setBoostPhase({ step: 'pickPokemon', stat });
+  };
+
+  const handleBoostPickPokemon = (inst: PokemonInstance) => {
+    if (!boostPhase) return;
+    if (inst.ivs[boostPhase.stat] >= MAX_IV) return; // already maxed
+    onUseBoost(inst, boostPhase.stat);
+    setBoostPhase(null);
   };
 
   const handlePickPokemon = (inst: PokemonInstance) => {
@@ -130,6 +171,26 @@ export default function ItemsScreen({ items, collection, onTeachTM }: ItemsScree
               </div>
             </>
           )}
+
+          {boostGroups.length > 0 && (
+            <>
+              <div className="items-section-title">Boosts</div>
+              <div className="items-grid">
+                {boostGroups.map(({ stat, name, count }) => (
+                  <div key={`boost-${stat}`} className="item-card boost-card boost-usable" onClick={() => handleUseBoost(stat)}>
+                    <img
+                      className="item-sprite boost-sprite"
+                      src={getBoostSprite(stat)}
+                      alt={name}
+                    />
+                    {count > 1 && <div className="item-count">×{count}</div>}
+                    <div className="item-name">{name}</div>
+                    <div className="item-type boost-badge">{STAT_LABELS[stat]}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -190,6 +251,41 @@ export default function ItemsScreen({ items, collection, onTeachTM }: ItemsScree
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Boost: Pick a pokemon to boost */}
+      {boostPhase?.step === 'pickPokemon' && (
+        <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setBoostPhase(null)}>
+          <div className="teach-content">
+            <div className="teach-header">
+              <span>Use <strong>{getBoostName(boostPhase.stat)}</strong> on...</span>
+              <button className="teach-close" onClick={() => setBoostPhase(null)}>✕</button>
+            </div>
+            <div className="boost-hint">Max {STAT_LABELS[boostPhase.stat]} IV → {MAX_IV}</div>
+            {sortedCollection.length === 0 ? (
+              <div className="teach-empty">No Pokémon in your collection</div>
+            ) : (
+              <div className="teach-pokemon-grid">
+                {sortedCollection.map((inst) => {
+                  const isMaxed = inst.ivs[boostPhase.stat] >= MAX_IV;
+                  return (
+                    <div
+                      key={inst.instanceId}
+                      className={`teach-pokemon-card ${isMaxed ? 'boost-maxed' : ''}`}
+                      onClick={() => !isMaxed && handleBoostPickPokemon(inst)}
+                    >
+                      <img src={inst.pokemon.sprite} alt={inst.pokemon.name} />
+                      <div className="teach-pokemon-name">{inst.pokemon.name}</div>
+                      <div className="boost-iv-label">
+                        {STAT_LABELS[boostPhase.stat]}: {inst.ivs[boostPhase.stat]}{isMaxed ? ' ✓' : ''}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

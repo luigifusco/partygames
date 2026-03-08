@@ -452,6 +452,39 @@ app.post('/api/player/:id/pokemon/teach-tm', (req, res) => {
   return res.json({ ok: true });
 });
 
+// Use a boost item on a pokemon (max out one IV, consume the item)
+app.post('/api/player/:id/pokemon/use-boost', (req, res) => {
+  const { instanceId, stat } = req.body;
+  const validStats = ['hp', 'attack', 'defense', 'spAtk', 'spDef', 'speed'];
+  if (typeof instanceId !== 'string' || typeof stat !== 'string' || !validStats.includes(stat)) {
+    return res.status(400).json({ error: 'Invalid params' });
+  }
+
+  const pokemon = db.prepare(
+    'SELECT id FROM owned_pokemon WHERE id = ? AND player_id = ?'
+  ).get(instanceId, req.params.id) as any;
+  if (!pokemon) {
+    return res.status(404).json({ error: 'Pokemon not found' });
+  }
+
+  const colMap: Record<string, string> = {
+    hp: 'iv_hp', attack: 'iv_atk', defense: 'iv_def',
+    spAtk: 'iv_spa', spDef: 'iv_spd', speed: 'iv_spe',
+  };
+  const col = colMap[stat];
+  db.prepare(`UPDATE owned_pokemon SET ${col} = 31 WHERE id = ?`).run(instanceId);
+
+  // Remove one boost item from inventory
+  const boostRow = db.prepare(
+    'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT 1'
+  ).get(req.params.id, 'boost', stat) as any;
+  if (boostRow) {
+    db.prepare('DELETE FROM owned_items WHERE id = ?').run(boostRow.id);
+  }
+
+  return res.json({ ok: true });
+});
+
 // Get leaderboard (ranked by Elo)
 app.get('/api/leaderboard', (_req, res) => {
   const players = db.prepare('SELECT id, name, elo, essence FROM players ORDER BY elo DESC').all() as any[];
