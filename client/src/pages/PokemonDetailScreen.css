@@ -90,24 +90,54 @@
   right: 0;
 }
 
+.detail-top-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 1;
+  margin-bottom: -20px;
+}
+
 .detail-sprite {
-  width: 128px;
-  height: 128px;
+  width: 224px;
+  height: 224px;
   image-rendering: pixelated;
   object-fit: scale-down;
+  transform: scale(1.8);
+}
+
+.detail-bottom-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 1;
+  margin-top: -20px;
 }
 
 .detail-name {
   font-size: 22px;
   font-weight: bold;
-  margin-top: -8px;
-  text-shadow: 0 0 6px #000;
+  text-shadow: 0 0 6px #000, 0 0 6px #000;
 }
 
-.detail-types {
+.detail-meta-row {
   display: flex;
   gap: 6px;
-  margin-top: 6px;
+  align-items: center;
+}
+
+.detail-nature {
+  font-size: 13px;
+  text-shadow: 0 0 4px #000, 0 0 4px #000;
+}
+
+.detail-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
 .detail-type-badge {
@@ -124,7 +154,7 @@
   font-size: 10px;
   padding: 2px 8px;
   border-radius: 6px;
-  margin-top: 4px;
+  text-shadow: 0 0 4px #000, 0 0 4px #000;
 }
 
 .detail-tier.tier-common { background: #555; color: #ccc; }
@@ -134,8 +164,6 @@
 .detail-tier.tier-legendary { background: #e65100; color: #ffe0b2; }
 
 .detail-nature {
-  text-align: center;
-  margin-bottom: 16px;
   font-size: 14px;
 }
 
@@ -208,49 +236,32 @@
 .detail-stat-bar.plus { background: #f44336; }
 .detail-stat-bar.minus { background: #42a5f5; }
 
-/* IVs */
-.detail-ivs {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px;
+/* Inline IV in stat row */
+.detail-stat-iv {
+  width: 24px;
+  font-size: 11px;
+  text-align: right;
+  flex-shrink: 0;
+  color: #777;
 }
 
-.detail-iv-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  background: rgba(255,255,255,0.05);
-  border-radius: 6px;
-  padding: 6px 0;
-}
-
-.detail-iv-label {
-  font-size: 10px;
-  color: #888;
-}
-
-.detail-iv-value {
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.detail-iv-value.great { color: #ffd700; }
-.detail-iv-value.low { color: #f44336; }
+.detail-stat-iv.great { color: #ffd700; }
+.detail-stat-iv.low { color: #f44336; }
 
 /* Moves */
 .detail-moves {
   display: flex;
-  flex-direction: column;
   gap: 6px;
 }
 
 .detail-move-card {
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 8px 12px;
   background: rgba(255,255,255,0.06);
   border-radius: 8px;
+  flex: 1;
 }
 
 .detail-move-name {

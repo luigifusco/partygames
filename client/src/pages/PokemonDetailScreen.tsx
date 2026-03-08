@@ -54,26 +54,29 @@ export default function PokemonDetailScreen({ collection }: PokemonDetailScreenP
           {index < collection.length - 1 && (
             <button className="detail-nav detail-nav-next" onClick={() => navigate(`/pokemon/${index + 1}`, { replace: true })}>›</button>
           )}
-          <img className="detail-sprite" src={pokemon.sprite} alt={pokemon.name} />
-          <div className="detail-name">{pokemon.name}</div>
-          <div className="detail-types">
-            {pokemon.types.map((t) => (
-              <span key={t} className="detail-type-badge" style={{ background: TYPE_COLORS[t] ?? '#888' }}>
-                {t}
-              </span>
-            ))}
+          <div className="detail-top-row">
+            <div className="detail-name">{pokemon.name}</div>
+            <div className={`detail-tier tier-${pokemon.tier}`}>{pokemon.tier}</div>
           </div>
-          <div className={`detail-tier tier-${pokemon.tier}`}>{pokemon.tier}</div>
-        </div>
-
-        <div className="detail-nature">
-          <span className="detail-nature-name">{nature}</span>
-          {natureData.plus && natureData.minus && (
-            <span className="detail-nature-effect">
-              +{STAT_LABELS[natureData.plus]} / −{STAT_LABELS[natureData.minus]}
-            </span>
-          )}
-          {!natureData.plus && <span className="detail-nature-effect">Neutral</span>}
+          <img className="detail-sprite" src={pokemon.sprite} alt={pokemon.name} />
+          <div className="detail-bottom-row">
+            <div className="detail-meta-row">
+              {pokemon.types.map((t) => (
+                <span key={t} className="detail-type-badge" style={{ background: TYPE_COLORS[t] ?? '#888' }}>
+                  {t}
+                </span>
+              ))}
+            </div>
+            <div className="detail-nature">
+              <span className="detail-nature-name">{nature}</span>
+              {natureData.plus && natureData.minus && (
+                <span className="detail-nature-effect">
+                  +{STAT_LABELS[natureData.plus]} / −{STAT_LABELS[natureData.minus]}
+                </span>
+              )}
+              {!natureData.plus && <span className="detail-nature-effect">Neutral</span>}
+            </div>
+          </div>
         </div>
 
         <div className="detail-section-title">Stats</div>
@@ -97,21 +100,12 @@ export default function PokemonDetailScreen({ collection }: PokemonDetailScreenP
                     style={{ width: `${Math.min(100, (computed / maxStat) * 100)}%` }}
                   />
                 </div>
+                <span className={`detail-stat-iv ${iv >= 28 ? 'great' : iv <= 5 ? 'low' : ''}`}>
+                  {iv}
+                </span>
               </div>
             );
           })}
-        </div>
-
-        <div className="detail-section-title">IVs</div>
-        <div className="detail-ivs">
-          {STAT_KEYS.map((key) => (
-            <div key={key} className="detail-iv-cell">
-              <span className="detail-iv-label">{STAT_LABELS[key]}</span>
-              <span className={`detail-iv-value ${ivs[key] >= 28 ? 'great' : ivs[key] <= 5 ? 'low' : ''}`}>
-                {ivs[key]}
-              </span>
-            </div>
-          ))}
         </div>
 
         <div className="detail-section-title">Moves</div>
