@@ -48,6 +48,12 @@ export default function PokemonDetailScreen({ collection }: PokemonDetailScreenP
 
       <div className="detail-scroll">
         <div className="detail-sprite-section">
+          {index > 0 && (
+            <button className="detail-nav detail-nav-prev" onClick={() => navigate(`/pokemon/${index - 1}`, { replace: true })}>‹</button>
+          )}
+          {index < collection.length - 1 && (
+            <button className="detail-nav detail-nav-next" onClick={() => navigate(`/pokemon/${index + 1}`, { replace: true })}>›</button>
+          )}
           <img className="detail-sprite" src={pokemon.sprite} alt={pokemon.name} />
           <div className="detail-name">{pokemon.name}</div>
           <div className="detail-types">
