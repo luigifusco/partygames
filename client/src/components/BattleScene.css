@@ -102,7 +102,25 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
+
+.status-badge {
+  font-size: 8px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+  text-shadow: none;
+  flex-shrink: 0;
+}
+
+.status-brn { background: #f44336; color: #fff; }
+.status-par { background: #f8d030; color: #333; }
+.status-psn { background: #a040a0; color: #fff; }
+.status-frz { background: #98d8d8; color: #333; }
+.status-slp { background: #888; color: #fff; }
 
 .pokemon-hp {
   width: 100%;

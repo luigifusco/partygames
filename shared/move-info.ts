@@ -100,6 +100,16 @@ export const MOVE_INFO: Record<string, MoveInfo> = {
   'X-Scissor':      { bp: 80,  category: 'Physical', description: 'The user slashes at the target by crossing its scythes or claws as if they were scissors.' },
   'Zap Cannon':     { bp: 120, category: 'Special',  description: 'The user fires an electric blast like a cannon. Always causes paralysis if it hits.' },
   'Zen Headbutt':   { bp: 80,  category: 'Physical', description: 'The user focuses its willpower to its head and attacks. May cause flinching.' },
+  // Status-inflicting moves
+  'Thunder Wave':   { bp: 0,   category: 'Status',   description: 'A weak electric charge is launched at the target. It causes paralysis.' },
+  'Will-O-Wisp':    { bp: 0,   category: 'Status',   description: 'The user shoots a sinister flame at the target to inflict a burn.' },
+  'Toxic':          { bp: 0,   category: 'Status',   description: 'A move that badly poisons the target. Its damage worsens every turn.' },
+  'Hypnosis':       { bp: 0,   category: 'Status',   description: 'The user employs hypnotic suggestion to make the target fall asleep.' },
+  'Sleep Powder':   { bp: 0,   category: 'Status',   description: 'The user scatters a cloud of sleep-inducing dust around the target.' },
+  'Stun Spore':     { bp: 0,   category: 'Status',   description: 'The user scatters a cloud of numbing powder that paralyzes the target.' },
+  'Sing':           { bp: 0,   category: 'Status',   description: 'A soothing lullaby is sung in a calming voice that puts the target to sleep.' },
+  'Glare':          { bp: 0,   category: 'Status',   description: 'The user intimidates the target with the pattern on its belly to cause paralysis.' },
+  'Poison Powder':  { bp: 0,   category: 'Status',   description: 'The user scatters a cloud of poisonous dust that poisons the target.' },
 };
 
 export function getMoveInfo(moveName: string): MoveInfo {

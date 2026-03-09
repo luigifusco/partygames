@@ -7,7 +7,8 @@ import { STARTING_ESSENCE, BOX_COSTS } from '../../shared/essence.js';
 import { STARTING_ELO, calculateEloChanges } from '../../shared/elo.js';
 import { POKEMON_BY_ID } from '../../shared/pokemon-data.js';
 import { randomNature, randomIVs } from '../../shared/natures.js';
-import { STAT_MOVES, getMoveAccuracy } from '../../shared/move-data.js';
+import { STAT_MOVES, STATUS_MOVES, MOVE_SECONDARY_EFFECTS, getMoveAccuracy } from '../../shared/move-data.js';
+import type { StatusCondition } from '../../shared/move-data.js';
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
 import {
@@ -119,6 +120,21 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
   const log: BattleLogEntry[] = [];
   let round = 0;
 
+  // Status condition tracking
+  const status: Record<string, StatusCondition | null> = {};
+  const sleepTurns: Record<string, number> = {};
+  const toxicCounter: Record<string, number> = {};
+  for (const p of allPokemon) {
+    status[p.instanceId] = null;
+    sleepTurns[p.instanceId] = 0;
+    toxicCounter[p.instanceId] = 0;
+  }
+
+  const STATUS_NAMES: Record<string, string> = {
+    burn: 'burned', paralysis: 'paralyzed', poison: 'poisoned',
+    toxic: 'badly poisoned', freeze: 'frozen', sleep: 'fell asleep',
+  };
+
   // Weather state
   const WEATHER_MOVES: Record<string, 'Rain' | 'Sun'> = {
     'Rain Dance': 'Rain',
@@ -161,7 +177,7 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
         });
       }
     }
-    // Sort by speed stat, accounting for boosts
+    // Sort by speed stat, accounting for boosts and paralysis
     const sorted = [...alive].sort((a, b) => {
       const baseSpeA = calcInstances[a.instanceId].rawStats.spe;
       const baseSpeB = calcInstances[b.instanceId].rawStats.spe;
@@ -169,8 +185,10 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
       const boostB = boosts[b.instanceId].spe;
       const multA = boostA >= 0 ? (2 + boostA) / 2 : 2 / (2 - boostA);
       const multB = boostB >= 0 ? (2 + boostB) / 2 : 2 / (2 - boostB);
-      const spdA = Math.floor(baseSpeA * multA);
-      const spdB = Math.floor(baseSpeB * multB);
+      let spdA = Math.floor(baseSpeA * multA);
+      let spdB = Math.floor(baseSpeB * multB);
+      if (status[a.instanceId] === 'paralysis') spdA = Math.floor(spdA * 0.25);
+      if (status[b.instanceId] === 'paralysis') spdB = Math.floor(spdB * 0.25);
       if (spdB !== spdA) return spdB - spdA;
       return Math.random() - 0.5;
     });
@@ -181,6 +199,65 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
       if (opponents.length === 0) continue;
 
       const target = opponents[Math.floor(Math.random() * opponents.length)];
+
+      // --- Status condition checks before acting ---
+      const curStatus = status[attacker.instanceId];
+
+      // Frozen: 20% chance to thaw each turn
+      if (curStatus === 'freeze') {
+        if (Math.random() < 0.2) {
+          status[attacker.instanceId] = null;
+          log.push({
+            round, attackerInstanceId: attacker.instanceId, attackerName: attacker.name,
+            moveName: '', targetInstanceId: attacker.instanceId, targetName: attacker.name,
+            damage: 0, effectiveness: null, targetFainted: false,
+            message: `${attacker.name} thawed out!`,
+            statusChange: { instanceId: attacker.instanceId, status: '' },
+          });
+        } else {
+          log.push({
+            round, attackerInstanceId: attacker.instanceId, attackerName: attacker.name,
+            moveName: '', targetInstanceId: attacker.instanceId, targetName: attacker.name,
+            damage: 0, effectiveness: null, targetFainted: false,
+            message: `${attacker.name} is frozen solid and can't move!`,
+          });
+          continue;
+        }
+      }
+
+      // Sleep: decrement counter, wake up at 0
+      if (curStatus === 'sleep') {
+        sleepTurns[attacker.instanceId]--;
+        if (sleepTurns[attacker.instanceId] <= 0) {
+          status[attacker.instanceId] = null;
+          log.push({
+            round, attackerInstanceId: attacker.instanceId, attackerName: attacker.name,
+            moveName: '', targetInstanceId: attacker.instanceId, targetName: attacker.name,
+            damage: 0, effectiveness: null, targetFainted: false,
+            message: `${attacker.name} woke up!`,
+            statusChange: { instanceId: attacker.instanceId, status: '' },
+          });
+        } else {
+          log.push({
+            round, attackerInstanceId: attacker.instanceId, attackerName: attacker.name,
+            moveName: '', targetInstanceId: attacker.instanceId, targetName: attacker.name,
+            damage: 0, effectiveness: null, targetFainted: false,
+            message: `${attacker.name} is fast asleep!`,
+          });
+          continue;
+        }
+      }
+
+      // Paralysis: 25% chance of full paralysis
+      if (curStatus === 'paralysis' && Math.random() < 0.25) {
+        log.push({
+          round, attackerInstanceId: attacker.instanceId, attackerName: attacker.name,
+          moveName: '', targetInstanceId: attacker.instanceId, targetName: attacker.name,
+          damage: 0, effectiveness: null, targetFainted: false,
+          message: `${attacker.name} is paralyzed! It can't move!`,
+        });
+        continue;
+      }
 
       // Pick a random move from the Pokémon's two moves
       const moveName = attacker.moves[Math.floor(Math.random() * attacker.moves.length)];
@@ -272,6 +349,47 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
         continue;
       }
 
+      // Handle pure status-inflicting moves
+      const statusEffect = STATUS_MOVES[moveName];
+      if (statusEffect) {
+        // Accuracy check
+        const sAcc = getMoveAccuracy(moveName);
+        if (sAcc < Infinity && Math.random() * 100 >= sAcc) {
+          log.push({
+            round, attackerInstanceId: attacker.instanceId, attackerName: attacker.name,
+            moveName, targetInstanceId: target.instanceId, targetName: target.name,
+            damage: 0, effectiveness: 'neutral' as const, targetFainted: false,
+            message: `${attacker.name} used ${moveName} on ${target.name}! It missed!`,
+          });
+          continue;
+        }
+        // Can't apply status if target already has one
+        if (status[target.instanceId]) {
+          log.push({
+            round, attackerInstanceId: attacker.instanceId, attackerName: attacker.name,
+            moveName, targetInstanceId: target.instanceId, targetName: target.name,
+            damage: 0, effectiveness: null, targetFainted: false,
+            message: `${attacker.name} used ${moveName} on ${target.name}! But it failed!`,
+          });
+          continue;
+        }
+        status[target.instanceId] = statusEffect.status;
+        if (statusEffect.status === 'sleep') {
+          sleepTurns[target.instanceId] = 1 + Math.floor(Math.random() * 3); // 1-3 turns
+        }
+        if (statusEffect.status === 'toxic') {
+          toxicCounter[target.instanceId] = 1;
+        }
+        log.push({
+          round, attackerInstanceId: attacker.instanceId, attackerName: attacker.name,
+          moveName, targetInstanceId: target.instanceId, targetName: target.name,
+          damage: 0, effectiveness: null, targetFainted: false,
+          message: `${attacker.name} used ${moveName}! ${target.name} ${STATUS_NAMES[statusEffect.status]}!`,
+          statusChange: { instanceId: target.instanceId, status: statusEffect.status },
+        });
+        continue;
+      }
+
       // Accuracy check for damage moves
       const acc = getMoveAccuracy(moveName);
       if (acc < Infinity && Math.random() * 100 >= acc) {
@@ -304,11 +422,15 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
       // Pick a random roll between min and max
       let damage: number;
       if (Array.isArray(result.damage) && (result.damage as number[]).length === 16) {
-        // Standard 16 damage rolls — pick one at random
         const rolls = result.damage as number[];
         damage = rolls[Math.floor(Math.random() * rolls.length)];
       } else {
         damage = minDmg + Math.floor(Math.random() * (maxDmg - minDmg + 1));
+      }
+
+      // Burn halves physical move damage
+      if (status[attacker.instanceId] === 'burn' && moveCalc.category === 'Physical') {
+        damage = Math.floor(damage / 2);
       }
 
       const moveType = moveCalc.type;
@@ -331,6 +453,20 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
       }
       if (fainted) message += ` ${target.name} fainted!`;
 
+      // Check for secondary status effect
+      let statusApplied: StatusCondition | null = null;
+      const secondary = MOVE_SECONDARY_EFFECTS[moveName];
+      if (secondary && !fainted && !status[target.instanceId] && damage > 0) {
+        if (Math.random() * 100 < secondary.chance) {
+          status[target.instanceId] = secondary.status;
+          statusApplied = secondary.status;
+          if (secondary.status === 'sleep') {
+            sleepTurns[target.instanceId] = 1 + Math.floor(Math.random() * 3);
+          }
+          message += ` ${target.name} ${STATUS_NAMES[secondary.status]}!`;
+        }
+      }
+
       log.push({
         round,
         attackerInstanceId: attacker.instanceId,
@@ -342,7 +478,44 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
         effectiveness: effectivenessLabel(effectiveness),
         targetFainted: fainted,
         message,
+        ...(statusApplied ? { statusChange: { instanceId: target.instanceId, status: statusApplied } } : {}),
       });
+    }
+
+    // End-of-turn status damage (burn, poison, toxic)
+    for (const p of alive) {
+      if (hp[p.instanceId] <= 0) continue;
+      const s = status[p.instanceId];
+      if (!s) continue;
+
+      let statusDmg = 0;
+      let statusMsg = '';
+      const maxHpVal = [...left, ...right].find((x) => x.instanceId === p.instanceId)?.maxHp ?? 1;
+
+      if (s === 'burn') {
+        statusDmg = Math.max(1, Math.floor(maxHpVal / 8));
+        statusMsg = `${p.name} is hurt by its burn!`;
+      } else if (s === 'poison') {
+        statusDmg = Math.max(1, Math.floor(maxHpVal / 8));
+        statusMsg = `${p.name} is hurt by poison!`;
+      } else if (s === 'toxic') {
+        statusDmg = Math.max(1, Math.floor(maxHpVal * toxicCounter[p.instanceId] / 16));
+        toxicCounter[p.instanceId]++;
+        statusMsg = `${p.name} is hurt by toxic poison!`;
+      }
+
+      if (statusDmg > 0) {
+        hp[p.instanceId] = Math.max(0, hp[p.instanceId] - statusDmg);
+        const fainted = hp[p.instanceId] <= 0;
+        if (fainted) statusMsg += ` ${p.name} fainted!`;
+        log.push({
+          round, attackerInstanceId: p.instanceId, attackerName: p.name,
+          moveName: '', targetInstanceId: p.instanceId, targetName: p.name,
+          damage: 0, effectiveness: null, targetFainted: fainted,
+          message: statusMsg,
+          statusDamage: { instanceId: p.instanceId, damage: statusDmg },
+        });
+      }
     }
   }
 

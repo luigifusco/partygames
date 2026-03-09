@@ -113,6 +113,16 @@ export const MOVE_TYPES: Record<string, PokemonType> = {
   'Growl': 'normal',
   'Tail Whip': 'normal',
   'String Shot': 'bug',
+  // Pure status-inflicting moves
+  'Thunder Wave': 'electric',
+  'Will-O-Wisp': 'fire',
+  'Toxic': 'poison',
+  'Hypnosis': 'psychic',
+  'Sleep Powder': 'grass',
+  'Stun Spore': 'grass',
+  'Sing': 'normal',
+  'Glare': 'normal',
+  'Poison Powder': 'poison',
 };
 
 // Stat-change move definitions
@@ -150,6 +160,50 @@ export const STAT_MOVES: Record<string, StatMoveEffect> = {
   'Growl':         { target: 'opponent', boosts: { atk: -1 } },
   'Tail Whip':     { target: 'opponent', boosts: { def: -1 } },
   'String Shot':   { target: 'opponent', boosts: { spe: -1 } },
+};
+
+// Status condition types
+export type StatusCondition = 'burn' | 'paralysis' | 'poison' | 'toxic' | 'freeze' | 'sleep';
+
+// Pure status-inflicting moves (100% chance to apply status if they hit)
+export interface StatusMoveEffect {
+  status: StatusCondition;
+}
+
+export const STATUS_MOVES: Record<string, StatusMoveEffect> = {
+  'Thunder Wave':  { status: 'paralysis' },
+  'Will-O-Wisp':   { status: 'burn' },
+  'Toxic':         { status: 'toxic' },
+  'Hypnosis':      { status: 'sleep' },
+  'Sleep Powder':  { status: 'sleep' },
+  'Stun Spore':    { status: 'paralysis' },
+  'Sing':          { status: 'sleep' },
+  'Glare':         { status: 'paralysis' },
+  'Poison Powder': { status: 'poison' },
+};
+
+// Secondary status effects on damage-dealing moves (chance in %)
+export interface SecondaryEffect {
+  status: StatusCondition;
+  chance: number; // percentage
+}
+
+export const MOVE_SECONDARY_EFFECTS: Record<string, SecondaryEffect> = {
+  // Paralysis
+  'Thunderbolt':   { status: 'paralysis', chance: 10 },
+  'Thunder':       { status: 'paralysis', chance: 30 },
+  'Volt Tackle':   { status: 'paralysis', chance: 10 },
+  'Zap Cannon':    { status: 'paralysis', chance: 100 },
+  'Body Slam':     { status: 'paralysis', chance: 30 },
+  'Bounce':        { status: 'paralysis', chance: 30 },
+  // Burn
+  'Fire Blast':    { status: 'burn', chance: 10 },
+  // Poison
+  'Sludge Bomb':   { status: 'poison', chance: 30 },
+  'Gunk Shot':     { status: 'poison', chance: 30 },
+  'Poison Sting':  { status: 'poison', chance: 30 },
+  // Freeze
+  'Blizzard':      { status: 'freeze', chance: 10 },
 };
 
 // Move accuracy (percentage). Moves not listed default to 100.
@@ -241,6 +295,16 @@ export const MOVE_ACCURACY: Record<string, number> = {
   'Charm': 100,
   'Fake Tears': 100,
   'Feather Dance': 100,
+  // Status-inflicting moves
+  'Thunder Wave': 100,
+  'Will-O-Wisp': 75,
+  'Toxic': 85,
+  'Hypnosis': 60,
+  'Sleep Powder': 75,
+  'Stun Spore': 75,
+  'Sing': 55,
+  'Glare': 75,
+  'Poison Powder': 75,
 };
 
 export const ALL_MOVE_NAMES = Object.keys(MOVE_TYPES);

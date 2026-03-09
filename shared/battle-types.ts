@@ -23,6 +23,8 @@ export interface BattleLogEntry {
   message: string;
   weather?: 'rain' | 'sun' | 'clear';
   boostChanges?: { instanceId: string; changes: Partial<Record<'atk' | 'def' | 'spa' | 'spd' | 'spe', number>> };
+  statusChange?: { instanceId: string; status: string };
+  statusDamage?: { instanceId: string; damage: number };
 }
 
 export interface BattleSnapshot {

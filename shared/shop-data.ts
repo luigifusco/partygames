@@ -103,6 +103,17 @@ export const TM_PRICES: Record<string, number> = {
   'Growl': 30,
   'Tail Whip': 30,
   'String Shot': 30,
+
+  // === Status-inflicting moves ===
+  'Thunder Wave': 150,
+  'Will-O-Wisp': 150,
+  'Toxic': 180,
+  'Hypnosis': 120,
+  'Sleep Powder': 150,
+  'Stun Spore': 120,
+  'Sing': 80,
+  'Glare': 120,
+  'Poison Powder': 80,
 };
 
 export function getTMPrice(moveName: string): number {

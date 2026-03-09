@@ -24,6 +24,7 @@ interface AnimationState {
   currentLogIndex: number;
   pokemonHp: Record<string, number>;
   pokemonBoosts: Record<string, Record<string, number>>;
+  pokemonStatus: Record<string, string>;
   attackingId: string | null;
   actionText: string | null;
   finished: boolean;
@@ -38,6 +39,15 @@ function getHpClass(current: number, max: number): string {
 
 const STAT_LABELS: Record<string, string> = { atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' };
 
+const STATUS_DISPLAY: Record<string, { label: string; cls: string }> = {
+  burn: { label: 'BRN', cls: 'status-brn' },
+  paralysis: { label: 'PAR', cls: 'status-par' },
+  poison: { label: 'PSN', cls: 'status-psn' },
+  toxic: { label: 'TOX', cls: 'status-psn' },
+  freeze: { label: 'FRZ', cls: 'status-frz' },
+  sleep: { label: 'SLP', cls: 'status-slp' },
+};
+
 const PokemonCard = ({
   poke,
   currentHp,
@@ -45,6 +55,7 @@ const PokemonCard = ({
   visible,
   cardRef,
   boosts,
+  statusCondition,
 }: {
   poke: BattlePokemonState;
   currentHp: number;
@@ -52,6 +63,7 @@ const PokemonCard = ({
   visible: boolean;
   cardRef: (el: HTMLDivElement | null) => void;
   boosts: Record<string, number>;
+  statusCondition: string;
 }) => {
   const fainted = currentHp <= 0;
   const hpPct = Math.max(0, (currentHp / poke.maxHp) * 100);
@@ -87,7 +99,14 @@ const PokemonCard = ({
   return (
     <div className={classes} ref={cardRef} data-instance-id={poke.instanceId}
          data-base-transform={poke.side === 'left' ? '' : ''}>
-      <div className="pokemon-name">{poke.name}</div>
+      <div className="pokemon-name">
+        {poke.name}
+        {statusCondition && STATUS_DISPLAY[statusCondition] && (
+          <span className={`status-badge ${STATUS_DISPLAY[statusCondition].cls}`}>
+            {STATUS_DISPLAY[statusCondition].label}
+          </span>
+        )}
+      </div>
       <img
         ref={imgRef}
         className={`pokemon-sprite ${poke.side}`}
@@ -188,9 +207,11 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   // Initialize HP from snapshot starting values
   const initialHp: Record<string, number> = {};
   const initialBoosts: Record<string, Record<string, number>> = {};
+  const initialStatus: Record<string, string> = {};
   for (const p of [...snapshot.left, ...snapshot.right]) {
     initialHp[p.instanceId] = p.maxHp;
     initialBoosts[p.instanceId] = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+    initialStatus[p.instanceId] = '';
   }
 
   const [anim, setAnim] = useState<AnimationState>({
@@ -199,6 +220,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     currentLogIndex: -1,
     pokemonHp: initialHp,
     pokemonBoosts: initialBoosts,
+    pokemonStatus: initialStatus,
     attackingId: null,
     actionText: null,
     finished: false,
@@ -322,6 +344,19 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           }
           newBoosts[instanceId] = current;
         }
+        // Apply status changes
+        let newStatus = prev.pokemonStatus;
+        if (entry.statusChange) {
+          newStatus = { ...prev.pokemonStatus };
+          newStatus[entry.statusChange.instanceId] = entry.statusChange.status;
+        }
+        // Apply status damage (burn/poison/toxic)
+        if (entry.statusDamage) {
+          newHp[entry.statusDamage.instanceId] = Math.max(
+            0,
+            (newHp[entry.statusDamage.instanceId] ?? 0) - entry.statusDamage.damage
+          );
+        }
         // Play faint SFX + cry if target fainted
         if (entry.targetFainted) {
           playSfx('faint');
@@ -332,6 +367,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           currentLogIndex: nextIdx,
           pokemonHp: newHp,
           pokemonBoosts: newBoosts,
+          pokemonStatus: newStatus,
           attackingId: null,
           finished: false,
         };
@@ -363,6 +399,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
               visible={visibleSet.current.has(p.instanceId)}
               cardRef={setCardRef(p.instanceId)}
               boosts={anim.pokemonBoosts[p.instanceId] ?? {}}
+              statusCondition={anim.pokemonStatus[p.instanceId] ?? ''}
             />
           ))}
         </div>
@@ -377,6 +414,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
               visible={visibleSet.current.has(p.instanceId)}
               cardRef={setCardRef(p.instanceId)}
               boosts={anim.pokemonBoosts[p.instanceId] ?? {}}
+              statusCondition={anim.pokemonStatus[p.instanceId] ?? ''}
             />
           ))}
         </div>
