@@ -9,8 +9,6 @@ import StoreScreen from './pages/StoreScreen';
 import ItemsScreen from './pages/ItemsScreen';
 import BattleDemo from './pages/BattleDemo';
 import BattleMultiplayer from './pages/BattleMultiplayer';
-import DraftBattle from './pages/DraftBattle';
-import DraftMultiplayer from './pages/DraftMultiplayer';
 import ShopScreen from './pages/ShopScreen';
 import TradeScreen from './pages/TradeScreen';
 import NotificationsScreen from './pages/NotificationsScreen';
@@ -177,18 +175,13 @@ export default function App() {
     const onTradeIncoming = ({ from }: { from: string }) => {
       addNotification('trade', from);
     };
-    const onDraftChallenged = ({ challenger }: { challenger: string }) => {
-      addNotification('draft', challenger);
-    };
 
     socket.on('battle:challenged', onBattleChallenged);
     socket.on('trade:incoming', onTradeIncoming);
-    socket.on('draft:challenged', onDraftChallenged);
 
     return () => {
       socket.off('battle:challenged', onBattleChallenged);
       socket.off('trade:incoming', onTradeIncoming);
-      socket.off('draft:challenged', onDraftChallenged);
     };
   }, []);
 
@@ -202,7 +195,6 @@ export default function App() {
     const routes: Record<Notification['type'], string> = {
       battle: '/battle',
       trade: '/trade',
-      draft: '/draft',
     };
     navigate(routes[notification.type], { state: { autoChallenge: notification.from } });
   }, [navigate]);
@@ -242,8 +234,6 @@ export default function App() {
       <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
       <Route path="/battle" element={<BattleMultiplayer playerName={player.name} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} />} />
       <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} />} />
-      <Route path="/draft" element={<DraftMultiplayer playerName={player.name} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} />} />
-      <Route path="/draft-demo" element={<DraftBattle essence={essence} onGainEssence={gainEssence} />} />
       <Route path="/tv" element={<TVView />} />
       <Route path="*" element={<Navigate to="/play" replace />} />
     </Routes>

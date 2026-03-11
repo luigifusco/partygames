@@ -3,7 +3,7 @@ import './NotificationsScreen.css';
 
 export interface Notification {
   id: string;
-  type: 'battle' | 'trade' | 'draft';
+  type: 'battle' | 'trade';
   from: string;
   timestamp: number;
 }
@@ -17,7 +17,6 @@ interface NotificationsScreenProps {
 const TYPE_LABELS: Record<Notification['type'], { icon: string; label: string }> = {
   battle: { icon: '⚔️', label: 'Battle challenge' },
   trade: { icon: '🔄', label: 'Trade request' },
-  draft: { icon: '⚡', label: 'Draft challenge' },
 };
 
 function timeAgo(timestamp: number): string {

@@ -1,5 +1,17 @@
 // Shared battle types used by both client and server
 
+export interface BattleConfig {
+  fieldSize: 2 | 3;
+  totalPokemon: number;  // must be a multiple of fieldSize: 2,3,4,6
+  selectionMode: 'blind' | 'draft';
+}
+
+export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
+  fieldSize: 3,
+  totalPokemon: 3,
+  selectionMode: 'blind',
+};
+
 export interface BattlePokemonState {
   instanceId: string;
   name: string;
@@ -25,6 +37,7 @@ export interface BattleLogEntry {
   boostChanges?: { instanceId: string; changes: Partial<Record<'atk' | 'def' | 'spa' | 'spd' | 'spe', number>> };
   statusChange?: { instanceId: string; status: string };
   statusDamage?: { instanceId: string; damage: number };
+  replacement?: { instanceId: string; name: string; sprite: string; side: 'left' | 'right' };
 }
 
 export interface BattleSnapshot {
@@ -33,6 +46,7 @@ export interface BattleSnapshot {
   log: BattleLogEntry[];
   winner: 'left' | 'right' | null;
   round: number;
+  fieldSize: number;
 }
 
 export interface EloUpdate {

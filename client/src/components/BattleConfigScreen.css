@@ -1,0 +1,115 @@
+.bconfig-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: #1a1a2e;
+  color: #eee;
+  font-family: 'Courier New', monospace;
+}
+
+.bconfig-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  flex-shrink: 0;
+}
+
+.bconfig-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.bconfig-back {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 16px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.bconfig-back:hover {
+  color: #fff;
+}
+
+.bconfig-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 16px;
+  max-width: 360px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.bconfig-group {
+  width: 100%;
+}
+
+.bconfig-label {
+  font-size: 13px;
+  color: #aaa;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.bconfig-options {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.bconfig-option {
+  padding: 10px 20px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: bold;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 64px;
+  text-align: center;
+}
+
+.bconfig-option:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #eee;
+}
+
+.bconfig-option.active {
+  border-color: #6fdb73;
+  background: rgba(76, 175, 80, 0.15);
+  color: #6fdb73;
+}
+
+.bconfig-hint {
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+  margin-top: 6px;
+}
+
+.bconfig-start {
+  margin-top: 16px;
+  padding: 14px 32px;
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: bold;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.bconfig-start:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}

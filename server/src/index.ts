@@ -75,7 +75,8 @@ function makeCalcPokemon(p: AppPokemon, curHP?: number, boosts?: Record<string, 
   });
 }
 
-function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSnapshot {
+function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number): BattleSnapshot {
+  const activeFieldSize = fieldSize ?? leftIds.length;
   const leftPokemon = leftIds.map((id) => POKEMON_BY_ID[id]).filter(Boolean);
   const rightPokemon = rightIds.map((id) => POKEMON_BY_ID[id]).filter(Boolean);
 
@@ -109,6 +110,36 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
     ...leftPokemon.map((p, i) => ({ ...p, instanceId: `l${i}`, side: 'left' as const })),
     ...rightPokemon.map((p, i) => ({ ...p, instanceId: `r${i}`, side: 'right' as const })),
   ];
+
+  // Track which pokemon are currently on field vs reserve
+  const activeIds = new Set<string>();
+  for (let i = 0; i < Math.min(activeFieldSize, leftPokemon.length); i++) activeIds.add(`l${i}`);
+  for (let i = 0; i < Math.min(activeFieldSize, rightPokemon.length); i++) activeIds.add(`r${i}`);
+
+  // Ordered reserve queues (by pick order, after the initial active ones)
+  const leftReserve: string[] = [];
+  for (let i = activeFieldSize; i < leftPokemon.length; i++) leftReserve.push(`l${i}`);
+  const rightReserve: string[] = [];
+  for (let i = activeFieldSize; i < rightPokemon.length; i++) rightReserve.push(`r${i}`);
+
+  // Bring in a reserve to replace a fainted pokemon; returns log entry or null
+  function tryReplace(faintedId: string, side: 'left' | 'right', roundNum: number): BattleLogEntry | null {
+    const reserve = side === 'left' ? leftReserve : rightReserve;
+    if (reserve.length === 0) return null;
+    const replacementId = reserve.shift()!;
+    activeIds.delete(faintedId);
+    activeIds.add(replacementId);
+    const rp = allPokemon.find((p) => p.instanceId === replacementId)!;
+    const rpState = [...left, ...right].find((p) => p.instanceId === replacementId)!;
+    return {
+      round: roundNum,
+      attackerInstanceId: '', attackerName: '',
+      moveName: '', targetInstanceId: faintedId, targetName: '',
+      damage: 0, effectiveness: null, targetFainted: false,
+      message: `${rp.name} was sent in!`,
+      replacement: { instanceId: replacementId, name: rp.name, sprite: rpState.sprite, side },
+    };
+  }
 
   // Track stat boosts per pokemon (clamped to [-6, +6])
   const boosts: Record<string, Record<string, number>> = {};
@@ -152,10 +183,16 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
   let weatherTurnsLeft = 0;
 
   while (round < 50) {
-    const alive = allPokemon.filter((p) => hp[p.instanceId] > 0);
-    const leftAlive = alive.filter((p) => p.side === 'left');
-    const rightAlive = alive.filter((p) => p.side === 'right');
-    if (leftAlive.length === 0 || rightAlive.length === 0) break;
+    // Active pokemon on the field that are still alive
+    const onField = allPokemon.filter((p) => hp[p.instanceId] > 0 && activeIds.has(p.instanceId));
+    // Total alive (including reserves) to check game-over
+    const leftTotalAlive = allPokemon.filter((p) => p.side === 'left' && hp[p.instanceId] > 0).length;
+    const rightTotalAlive = allPokemon.filter((p) => p.side === 'right' && hp[p.instanceId] > 0).length;
+    if (leftTotalAlive === 0 || rightTotalAlive === 0) break;
+    // Also break if no one is on field (shouldn't happen if reserves exist)
+    const leftOnField = onField.filter((p) => p.side === 'left');
+    const rightOnField = onField.filter((p) => p.side === 'right');
+    if (leftOnField.length === 0 || rightOnField.length === 0) break;
 
     round++;
 
@@ -186,7 +223,7 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
       }
     }
     // Sort by speed stat, accounting for boosts and paralysis
-    const sorted = [...alive].sort((a, b) => {
+    const sorted = [...onField].sort((a, b) => {
       const baseSpeA = calcInstances[a.instanceId].rawStats.spe;
       const baseSpeB = calcInstances[b.instanceId].rawStats.spe;
       const boostA = boosts[a.instanceId].spe;
@@ -203,7 +240,8 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
 
     for (const attacker of sorted) {
       if (hp[attacker.instanceId] <= 0) continue;
-      const opponents = allPokemon.filter((p) => p.side !== attacker.side && hp[p.instanceId] > 0);
+      if (!activeIds.has(attacker.instanceId)) continue;
+      const opponents = allPokemon.filter((p) => p.side !== attacker.side && hp[p.instanceId] > 0 && activeIds.has(p.instanceId));
       if (opponents.length === 0) continue;
 
       const target = opponents[Math.floor(Math.random() * opponents.length)];
@@ -488,10 +526,16 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
         message,
         ...(statusApplied ? { statusChange: { instanceId: target.instanceId, status: statusApplied } } : {}),
       });
+
+      // Replace fainted pokemon with next reserve
+      if (fainted) {
+        const rep = tryReplace(target.instanceId, target.side, round);
+        if (rep) log.push(rep);
+      }
     }
 
     // End-of-turn status damage (burn, poison, toxic)
-    for (const p of alive) {
+    for (const p of onField) {
       if (hp[p.instanceId] <= 0) continue;
       const s = status[p.instanceId];
       if (!s) continue;
@@ -523,6 +567,11 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
           message: statusMsg,
           statusDamage: { instanceId: p.instanceId, damage: statusDmg },
         });
+
+        if (fainted) {
+          const rep = tryReplace(p.instanceId, p.side, round);
+          if (rep) log.push(rep);
+        }
       }
     }
   }
@@ -538,7 +587,7 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[]): BattleSna
   else if (rightHp > 0 && leftHp <= 0) winner = 'right';
   else winner = leftHp >= rightHp ? 'left' : 'right';
 
-  return { left, right, log, winner, round };
+  return { left, right, log, winner, round, fieldSize: activeFieldSize };
 }
 
 function flipSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
@@ -546,9 +595,13 @@ function flipSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
   return {
     left: snapshot.right.map((p) => ({ ...p, side: 'left' as const })),
     right: snapshot.left.map((p) => ({ ...p, side: 'right' as const })),
-    log: snapshot.log.map((e) => ({ ...e })),
+    log: snapshot.log.map((e) => ({
+      ...e,
+      replacement: e.replacement ? { ...e.replacement, side: flipSide(e.replacement.side) } : undefined,
+    })),
     winner: snapshot.winner ? flipSide(snapshot.winner) : null,
     round: snapshot.round,
+    fieldSize: snapshot.fieldSize,
   };
 }
 
@@ -794,11 +847,11 @@ app.get(`${BASE_PATH}/api/players/online`, (_req, res) => {
 
 // AI / demo battle endpoint
 app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
-  const { leftTeam, rightTeam } = req.body;
+  const { leftTeam, rightTeam, fieldSize } = req.body;
   if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
     return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
   }
-  const snapshot = simulateBattleFromIds(leftTeam, rightTeam);
+  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize);
   return res.json({ snapshot });
 });
 
@@ -806,6 +859,7 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
 
 // Track challenges: Map<challengerName, targetName>
 const pendingChallenges = new Map<string, string>();
+const pendingChallengeConfigs = new Map<string, { fieldSize: number; totalPokemon: number }>();
 // Track connected players: Map<playerName, socketId>
 const connectedPlayers = new Map<string, string>();
 // Track active battles: Map<battleId, battle state>
@@ -815,6 +869,8 @@ interface ActiveBattle {
   player2: string;
   player1Team: number[] | null;
   player2Team: number[] | null;
+  fieldSize: number;
+  totalPokemon: number;
 }
 const activeBattles = new Map<string, ActiveBattle>();
 
@@ -831,23 +887,6 @@ interface ActiveTrade {
 }
 const activeTrades = new Map<string, ActiveTrade>();
 
-// Draft battle state
-const pendingDraftChallenges = new Map<string, string>();
-interface ActiveDraft {
-  id: string;
-  player1: string;
-  player2: string;
-  player1Picks: number[];
-  player2Picks: number[];
-  phase: number;
-}
-const activeDrafts = new Map<string, ActiveDraft>();
-const DRAFT_CONFIG = [
-  { player: 1 as const, picks: 1 },
-  { player: 2 as const, picks: 2 },
-  { player: 1 as const, picks: 2 },
-  { player: 2 as const, picks: 1 },
-];
 
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -859,9 +898,13 @@ io.on('connection', (socket) => {
     console.log(`Player identified: ${name}`);
   });
 
-  socket.on('battle:challenge', (targetName: string) => {
+  socket.on('battle:challenge', (data: string | { target: string; fieldSize?: number; totalPokemon?: number }) => {
     if (!playerName) return;
+    const targetName = typeof data === 'string' ? data : data.target;
+    const fieldSize = (typeof data === 'object' ? data.fieldSize : undefined) ?? 3;
+    const totalPokemon = (typeof data === 'object' ? data.totalPokemon : undefined) ?? 3;
     pendingChallenges.set(playerName, targetName);
+    pendingChallengeConfigs.set(playerName, { fieldSize, totalPokemon });
     console.log(`${playerName} challenges ${targetName}`);
 
     // Check if there's a mutual challenge
@@ -871,6 +914,9 @@ io.on('connection', (socket) => {
       pendingChallenges.delete(playerName);
       pendingChallenges.delete(targetName);
 
+      const config = pendingChallengeConfigs.get(targetName) ?? { fieldSize: 3, totalPokemon: 3 };
+      pendingChallengeConfigs.delete(playerName);
+      pendingChallengeConfigs.delete(targetName);
       const battleId = uuidv4();
       const battle: ActiveBattle = {
         id: battleId,
@@ -878,14 +924,16 @@ io.on('connection', (socket) => {
         player2: targetName,
         player1Team: null,
         player2Team: null,
+        fieldSize: config.fieldSize,
+        totalPokemon: config.totalPokemon,
       };
       activeBattles.set(battleId, battle);
 
       // Notify both players
       const socket1 = connectedPlayers.get(playerName);
       const socket2 = connectedPlayers.get(targetName);
-      if (socket1) io.to(socket1).emit('battle:matched', { battleId, opponent: targetName });
-      if (socket2) io.to(socket2).emit('battle:matched', { battleId, opponent: playerName });
+      if (socket1) io.to(socket1).emit('battle:matched', { battleId, opponent: targetName, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
+      if (socket2) io.to(socket2).emit('battle:matched', { battleId, opponent: playerName, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
       console.log(`Battle matched: ${playerName} vs ${targetName} (${battleId})`);
     } else {
       // Notify challenger they're waiting
@@ -899,6 +947,7 @@ io.on('connection', (socket) => {
   socket.on('battle:cancel', () => {
     if (!playerName) return;
     pendingChallenges.delete(playerName);
+    pendingChallengeConfigs.delete(playerName);
     socket.emit('battle:cancelled');
   });
 
@@ -916,7 +965,7 @@ io.on('connection', (socket) => {
       const socket2 = connectedPlayers.get(battle.player2);
 
       // Simulate battle on server so both players see the same result
-      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team);
+      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize);
 
       const battleDataP1 = {
         battleId,
@@ -1069,150 +1118,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- Draft events ---
-
-  socket.on('draft:challenge', (targetName: string) => {
-    if (!playerName) return;
-    pendingDraftChallenges.set(playerName, targetName);
-    console.log(`${playerName} draft-challenges ${targetName}`);
-
-    const otherChallenge = pendingDraftChallenges.get(targetName);
-    if (otherChallenge === playerName) {
-      pendingDraftChallenges.delete(playerName);
-      pendingDraftChallenges.delete(targetName);
-
-      const draftId = uuidv4();
-      const draft: ActiveDraft = {
-        id: draftId,
-        player1: playerName,
-        player2: targetName,
-        player1Picks: [],
-        player2Picks: [],
-        phase: 0,
-      };
-      activeDrafts.set(draftId, draft);
-
-      const socket1 = connectedPlayers.get(playerName);
-      const socket2 = connectedPlayers.get(targetName);
-      if (socket1) io.to(socket1).emit('draft:matched', { battleId: draftId, opponent: targetName, yourPosition: 1 });
-      if (socket2) io.to(socket2).emit('draft:matched', { battleId: draftId, opponent: playerName, yourPosition: 2 });
-      console.log(`Draft matched: ${playerName} vs ${targetName} (${draftId})`);
-
-      const draftState = {
-        battleId: draftId,
-        player1Picks: [] as number[],
-        player2Picks: [] as number[],
-        phase: 0,
-        currentPlayer: 1 as 1 | 2,
-        picksNeeded: 1,
-      };
-      if (socket1) io.to(socket1).emit('draft:update', draftState);
-      if (socket2) io.to(socket2).emit('draft:update', draftState);
-    } else {
-      socket.emit('draft:waiting', { target: targetName });
-      const targetSocket = connectedPlayers.get(targetName);
-      if (targetSocket) io.to(targetSocket).emit('draft:challenged', { challenger: playerName });
-    }
-  });
-
-  socket.on('draft:cancel', () => {
-    if (!playerName) return;
-    pendingDraftChallenges.delete(playerName);
-    socket.emit('draft:cancelled');
-  });
-
-  socket.on('draft:submitPicks', ({ battleId, picks }: { battleId: string; picks: number[] }) => {
-    if (!playerName) return;
-    const draft = activeDrafts.get(battleId);
-    if (!draft) return;
-
-    const isPlayer1 = draft.player1 === playerName;
-    const isPlayer2 = draft.player2 === playerName;
-    if (!isPlayer1 && !isPlayer2) return;
-
-    const playerNum = isPlayer1 ? 1 : 2;
-    const config = DRAFT_CONFIG[draft.phase];
-    if (!config || config.player !== playerNum) return;
-    if (picks.length !== config.picks) return;
-
-    // Validate no duplicates
-    const allPicked = new Set([...draft.player1Picks, ...draft.player2Picks]);
-    for (const id of picks) {
-      if (allPicked.has(id)) return;
-    }
-
-    if (isPlayer1) {
-      draft.player1Picks.push(...picks);
-    } else {
-      draft.player2Picks.push(...picks);
-    }
-    draft.phase++;
-
-    const socket1 = connectedPlayers.get(draft.player1);
-    const socket2 = connectedPlayers.get(draft.player2);
-
-    if (draft.phase >= DRAFT_CONFIG.length) {
-      // Draft complete — simulate battle
-      const snapshot = simulateBattleFromIds(draft.player1Picks, draft.player2Picks);
-
-      if (socket1) io.to(socket1).emit('draft:start', {
-        battleId, player1: draft.player1, player2: draft.player2,
-        player1Team: draft.player1Picks, player2Team: draft.player2Picks, snapshot,
-      });
-      if (socket2) io.to(socket2).emit('draft:start', {
-        battleId, player1: draft.player1, player2: draft.player2,
-        player1Team: draft.player1Picks, player2Team: draft.player2Picks,
-        snapshot: flipSnapshot(snapshot),
-      });
-      console.log(`Draft battle starting: ${draft.player1} vs ${draft.player2}`);
-
-      // Elo update
-      const winnerName = snapshot.winner === 'left' ? draft.player1 : draft.player2;
-      const loserName = snapshot.winner === 'left' ? draft.player2 : draft.player1;
-      const winnerRow = db.prepare('SELECT id, elo FROM players WHERE name = ?').get(winnerName) as any;
-      const loserRow = db.prepare('SELECT id, elo FROM players WHERE name = ?').get(loserName) as any;
-      if (winnerRow && loserRow) {
-        const { winnerNewElo, loserNewElo, winnerDelta, loserDelta } = calculateEloChanges(winnerRow.elo, loserRow.elo);
-        db.prepare('UPDATE players SET elo = ? WHERE id = ?').run(winnerNewElo, winnerRow.id);
-        db.prepare('UPDATE players SET elo = ? WHERE id = ?').run(loserNewElo, loserRow.id);
-
-        const eloUpdate = { winnerName, loserName, winnerNewElo, loserNewElo, winnerDelta, loserDelta };
-        if (socket1) io.to(socket1).emit('draft:eloUpdate', eloUpdate);
-        if (socket2) io.to(socket2).emit('draft:eloUpdate', eloUpdate);
-
-        const p1Row = snapshot.winner === 'left' ? winnerRow : loserRow;
-        const p2Row = snapshot.winner === 'left' ? loserRow : winnerRow;
-        const recordUsage = db.prepare(
-          'INSERT INTO battle_pokemon_usage (player_id, pokemon_id, times_used) VALUES (?, ?, 1) ON CONFLICT(player_id, pokemon_id) DO UPDATE SET times_used = times_used + 1'
-        );
-        for (const pid of draft.player1Picks) recordUsage.run(p1Row.id, pid);
-        for (const pid of draft.player2Picks) recordUsage.run(p2Row.id, pid);
-
-        console.log(`Draft Elo: ${winnerName} ${winnerRow.elo}→${winnerNewElo} (+${winnerDelta}), ${loserName} ${loserRow.elo}→${loserNewElo} (${loserDelta})`);
-      }
-
-      activeDrafts.delete(battleId);
-    } else {
-      const nextConfig = DRAFT_CONFIG[draft.phase];
-      const draftState = {
-        battleId,
-        player1Picks: [...draft.player1Picks],
-        player2Picks: [...draft.player2Picks],
-        phase: draft.phase,
-        currentPlayer: nextConfig.player as 1 | 2,
-        picksNeeded: nextConfig.picks,
-      };
-      if (socket1) io.to(socket1).emit('draft:update', draftState);
-      if (socket2) io.to(socket2).emit('draft:update', draftState);
-    }
-  });
-
   socket.on('disconnect', () => {
     if (playerName) {
       connectedPlayers.delete(playerName);
       pendingChallenges.delete(playerName);
+      pendingChallengeConfigs.delete(playerName);
       pendingTrades.delete(playerName);
-      pendingDraftChallenges.delete(playerName);
     }
     console.log(`Client disconnected: ${socket.id}`);
   });

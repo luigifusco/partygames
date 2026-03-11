@@ -44,19 +44,13 @@ export default function MenuScreen({ playerName, essence, elo, collectionSize, i
             🔄 Trade
           </button>
         )}
-        {collectionSize >= 3 && (
+        {collectionSize >= 2 && (
           <>
             <button className="menu-btn" onClick={() => navigate('/battle')}>
               ⚔️ Battle
             </button>
             <button className="menu-btn" onClick={() => navigate('/battle-demo')}>
               🤖 Battle Demo (vs AI)
-            </button>
-            <button className="menu-btn" onClick={() => navigate('/draft')}>
-              ⚡ Draft Battle
-            </button>
-            <button className="menu-btn" onClick={() => navigate('/draft-demo')}>
-              🤖 Draft Demo (vs AI)
             </button>
           </>
         )}

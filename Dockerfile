@@ -42,6 +42,8 @@ RUN cd client && npm run build
 # --- Runtime ---
 FROM node:25-slim
 
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy built client
@@ -49,6 +51,7 @@ COPY --from=builder /app/client/dist client/dist
 
 # Copy server source + deps (tsx runs TypeScript at runtime)
 COPY --from=builder /app/server server
+RUN cd server && npm rebuild better-sqlite3
 
 # Copy shared source (imported by server at runtime)
 COPY --from=builder /app/shared shared

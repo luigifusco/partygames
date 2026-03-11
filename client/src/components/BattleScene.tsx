@@ -145,6 +145,11 @@ const PokemonCard = ({
 };
 
 function formatLogEntry(entry: BattleLogEntry): React.ReactNode {
+  // Replacement log entries
+  if (entry.replacement) {
+    return <span className="stat-change">🔄 {entry.replacement.name} was sent in!</span>;
+  }
+
   // Weather log entries use the message directly with weather styling
   if (entry.weather) {
     return <span className={`weather-${entry.weather}`}>{entry.message}</span>;
@@ -190,18 +195,24 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const animatingRef = useRef(false);
 
+  const fieldSize = snapshot.fieldSize ?? snapshot.left.length;
+
   const arenaBg = useMemo(() => {
     const bg = BATTLE_BGS[Math.floor(Math.random() * BATTLE_BGS.length)];
     return `${BASE_PATH}/bgs/${bg}.jpg`;
   }, []);
 
+  // Track which pokemon are currently displayed on the field
+  const [displayedLeft, setDisplayedLeft] = useState<BattlePokemonState[]>(() => snapshot.left.slice(0, fieldSize));
+  const [displayedRight, setDisplayedRight] = useState<BattlePokemonState[]>(() => snapshot.right.slice(0, fieldSize));
+
   // Build ordered entry list: alternate left[0], right[0], left[1], right[1], ...
   const entryOrder = useRef<{ instanceId: string; name: string }[]>([]);
   if (entryOrder.current.length === 0) {
-    const maxLen = Math.max(snapshot.left.length, snapshot.right.length);
+    const maxLen = Math.max(displayedLeft.length, displayedRight.length);
     for (let i = 0; i < maxLen; i++) {
-      if (i < snapshot.left.length) entryOrder.current.push({ instanceId: snapshot.left[i].instanceId, name: snapshot.left[i].name });
-      if (i < snapshot.right.length) entryOrder.current.push({ instanceId: snapshot.right[i].instanceId, name: snapshot.right[i].name });
+      if (i < displayedLeft.length) entryOrder.current.push({ instanceId: displayedLeft[i].instanceId, name: displayedLeft[i].name });
+      if (i < displayedRight.length) entryOrder.current.push({ instanceId: displayedRight[i].instanceId, name: displayedRight[i].name });
     }
   }
 
@@ -363,6 +374,22 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           playSfx('faint');
           playCry(entry.targetName, 0.2);
         }
+        // Handle replacement: swap fainted pokemon out for reserve
+        if (entry.replacement) {
+          const rep = entry.replacement;
+          const fullState = [...snapshot.left, ...snapshot.right].find((p) => p.instanceId === rep.instanceId);
+          if (fullState) {
+            newHp[rep.instanceId] = fullState.maxHp;
+            newBoosts[rep.instanceId] = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            newStatus[rep.instanceId] = '';
+            visibleSet.current.add(rep.instanceId);
+            const setDisplayed = rep.side === 'left' ? setDisplayedLeft : setDisplayedRight;
+            setDisplayed((prev) =>
+              prev.map((p) => p.instanceId === entry.targetInstanceId ? fullState : p)
+            );
+            playCry(rep.name, 0.3);
+          }
+        }
         return {
           ...prev,
           currentLogIndex: nextIdx,
@@ -391,7 +418,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     <div className="battle-scene">
       <div className="battle-arena" ref={arenaRef} style={{ backgroundImage: `url(${arenaBg})` }}>
         <div className="battle-side left">
-          {snapshot.left.map((p) => (
+          {displayedLeft.map((p) => (
             <PokemonCard
               key={p.instanceId}
               poke={p}
@@ -406,7 +433,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         </div>
         <div className="battle-divider" />
         <div className="battle-side right">
-          {snapshot.right.map((p) => (
+          {displayedRight.map((p) => (
             <PokemonCard
               key={p.instanceId}
               poke={p}

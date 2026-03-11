@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 import BattleScene from '../components/BattleScene';
+import BattleConfigScreen from '../components/BattleConfigScreen';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { calculateBattleEssence } from '@shared/essence';
 import { useOnlinePlayers } from '../useOnlinePlayers';
 import type { PokemonInstance } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
-import type { BattleSnapshot, EloUpdate } from '@shared/battle-types';
+import type { BattleSnapshot, BattleConfig, EloUpdate } from '@shared/battle-types';
+import { DEFAULT_BATTLE_CONFIG } from '@shared/battle-types';
 import './BattleMultiplayer.css';
 import '../pages/BattleDemo.css';
 
-type Phase = 'challenge' | 'waiting' | 'teamSelect' | 'waitingTeam' | 'battle';
+type Phase = 'config' | 'challenge' | 'waiting' | 'teamSelect' | 'waitingTeam' | 'battle';
 
 interface BattleMultiplayerProps {
   playerName: string;
@@ -26,12 +28,14 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   const location = useLocation();
   const autoChallenge = (location.state as any)?.autoChallenge as string | undefined;
   const onlinePlayers = useOnlinePlayers(playerName);
-  const [phase, setPhase] = useState<Phase>('challenge');
+  const [config, setConfig] = useState<BattleConfig>(DEFAULT_BATTLE_CONFIG);
+  const [phase, setPhase] = useState<Phase>(autoChallenge ? 'challenge' : 'config');
   const [targetName, setTargetName] = useState('');
   const [opponentName, setOpponentName] = useState('');
   const [battleId, setBattleId] = useState('');
+  const [teamSize, setTeamSize] = useState(3);
   const [challengers, setChallengers] = useState<string[]>([]);
-  const [selected, setSelected] = useState<number[]>([]); // indices into collection
+  const [selected, setSelected] = useState<number[]>([]);
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [opponentTeamIds, setOpponentTeamIds] = useState<number[]>([]);
   const [rewarded, setRewarded] = useState(false);
@@ -50,9 +54,11 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     }
     socket.on('connect', onConnect);
 
-    const onMatched = ({ battleId, opponent }: { battleId: string; opponent: string }) => {
+    const onMatched = ({ battleId, opponent, fieldSize, totalPokemon }: { battleId: string; opponent: string; fieldSize?: number; totalPokemon?: number }) => {
       setBattleId(battleId);
       setOpponentName(opponent);
+      if (totalPokemon) setTeamSize(totalPokemon);
+      if (fieldSize) setConfig((prev) => ({ ...prev, fieldSize: fieldSize as 2 | 3, totalPokemon: totalPokemon ?? prev.totalPokemon }));
       setPhase('teamSelect');
     };
 
@@ -68,7 +74,6 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
       const isPlayer1 = data.player1 === playerName;
       const theirTeam = isPlayer1 ? data.player2Team : data.player1Team;
       setOpponentTeamIds(theirTeam);
-
       setSnapshot(data.snapshot);
       setBattleId(data.battleId);
       setPhase('battle');
@@ -105,15 +110,14 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   useEffect(() => {
     if (autoChallenge && phase === 'challenge') {
       setTargetName(autoChallenge);
-      socket.emit('battle:challenge', autoChallenge);
-      // Clear location state to prevent re-triggering
+      socket.emit('battle:challenge', { target: autoChallenge, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
       window.history.replaceState({}, '');
     }
   }, [autoChallenge]);
 
   const handleChallenge = () => {
     if (!targetName.trim()) return;
-    socket.emit('battle:challenge', targetName.trim());
+    socket.emit('battle:challenge', { target: targetName.trim(), fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
   };
 
   const handleCancel = () => {
@@ -124,7 +128,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   const togglePokemon = (idx: number) => {
     if (selected.includes(idx)) {
       setSelected(selected.filter((i) => i !== idx));
-    } else if (selected.length < 3) {
+    } else if (selected.length < teamSize) {
       setSelected([...selected, idx]);
     }
   };
@@ -136,6 +140,20 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     });
     setPhase('waitingTeam');
   };
+
+  // Config phase
+  if (phase === 'config') {
+    return (
+      <BattleConfigScreen
+        onConfirm={(c) => {
+          setConfig(c);
+          setTeamSize(c.totalPokemon);
+          setPhase('challenge');
+        }}
+        onBack={() => navigate('/play')}
+      />
+    );
+  }
 
   // Battle phase
   if (phase === 'battle' && snapshot) {
@@ -159,14 +177,13 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
 
   // Team selection phase
   if (phase === 'teamSelect' || phase === 'waitingTeam') {
-    // Build sorted indices
     const indices = collection.map((_, i) => i).sort((a, b) => collection[a].pokemon.id - collection[b].pokemon.id);
 
     return (
       <div className="battle-mp-screen">
         <div className="battle-mp-team-header">
           <button className="battle-mp-back" onClick={() => navigate('/play')}>← Back</button>
-          <h2>Pick Your Team ({selected.length}/3)</h2>
+          <h2>Pick Your Team ({selected.length}/{teamSize})</h2>
           <div className="opponent-name">vs {opponentName}</div>
         </div>
         {phase === 'waitingTeam' && (
@@ -184,11 +201,11 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
                   </div>
                 );
               })}
-              {Array.from({ length: 3 - selected.length }).map((_, i) => (
+              {Array.from({ length: teamSize - selected.length }).map((_, i) => (
                 <div key={`empty-${i}`} className="team-select-chosen-card empty">?</div>
               ))}
             </div>
-            {selected.length === 3 && (
+            {selected.length === teamSize && (
               <div style={{ textAlign: 'center', padding: '4px' }}>
                 <button className="team-select-go" onClick={submitTeam}>⚔️ Lock In!</button>
               </div>
@@ -231,8 +248,8 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   return (
     <div className="battle-mp-screen">
       <div className="battle-mp-header">
-        <button className="battle-mp-back" onClick={() => navigate('/play')}>← Back</button>
-        <h2>⚔️ Battle</h2>
+        <button className="battle-mp-back" onClick={() => setPhase('config')}>← Back</button>
+        <h2>⚔️ Battle ({config.fieldSize}v{config.fieldSize}, {config.totalPokemon} total)</h2>
       </div>
       <div className="battle-mp-content">
         {challengers.length > 0 && (
