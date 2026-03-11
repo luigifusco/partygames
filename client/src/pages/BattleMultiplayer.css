@@ -21,6 +21,17 @@
   background: #4a4a7a;
 }
 
+.online-players-section {
+  margin-bottom: 12px;
+}
+
+.online-players-label {
+  font-size: 12px;
+  color: #8f8;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
 .battle-mp-screen {
   display: flex;
   flex-direction: column;

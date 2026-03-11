@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
-import { getRecentTrainers, addRecentTrainer } from '../recentTrainers';
+import { useOnlinePlayers } from '../useOnlinePlayers';
 import type { PokemonInstance } from '@shared/types';
 import { randomNature, randomIVs } from '@shared/natures';
 import './TradeScreen.css';
@@ -20,6 +20,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
   const navigate = useNavigate();
   const location = useLocation();
   const autoChallenge = (location.state as any)?.autoChallenge as string | undefined;
+  const onlinePlayers = useOnlinePlayers(playerName);
   const [phase, setPhase] = useState<Phase>('request');
   const [targetName, setTargetName] = useState('');
   const [partnerName, setPartnerName] = useState('');
@@ -40,7 +41,6 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
     const onMatched = ({ tradeId, partner }: { tradeId: string; partner: string }) => {
       setTradeId(tradeId);
       setPartnerName(partner);
-      addRecentTrainer(playerName, partner);
       setPhase('selectPokemon');
     };
 
@@ -274,13 +274,16 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
 
         {phase === 'request' && (
           <>
-            {getRecentTrainers(playerName).length > 0 && (
-              <div className="recent-trainers">
-                {getRecentTrainers(playerName).map((name) => (
-                  <button key={name} className="recent-trainer-btn" onClick={() => setTargetName(name)}>
-                    {name}
-                  </button>
-                ))}
+            {onlinePlayers.length > 0 && (
+              <div className="online-players-section">
+                <div className="online-players-label">🟢 Online</div>
+                <div className="recent-trainers">
+                  {onlinePlayers.map((name) => (
+                    <button key={name} className="recent-trainer-btn" onClick={() => setTargetName(name)}>
+                      {name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <input

@@ -15,13 +15,14 @@ RUN cd damage-calc/calc && npm run compile
 COPY client/package*.json client/
 RUN cd client && npm install
 
+# Install server deps (native module compilation is slow — cache before source copy)
+COPY server/package*.json server/
+RUN cd server && npm install && npm rebuild better-sqlite3
+
 # Copy source
 COPY shared shared
 COPY client client
 COPY server server
-
-# Install server deps (force native module compilation for this platform)
-RUN cd server && npm install && npm rebuild better-sqlite3
 
 # Copy public assets, resolving symlinks into real files
 COPY assets assets

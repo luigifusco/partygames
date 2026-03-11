@@ -786,6 +786,12 @@ app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
   return res.json({ players: result });
 });
 
+// Online players endpoint
+app.get(`${BASE_PATH}/api/players/online`, (_req, res) => {
+  const names = Array.from(connectedPlayers.keys());
+  return res.json({ players: names });
+});
+
 // AI / demo battle endpoint
 app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
   const { leftTeam, rightTeam } = req.body;

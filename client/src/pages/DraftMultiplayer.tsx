@@ -4,7 +4,7 @@ import { socket } from '../socket';
 import BattleScene from '../components/BattleScene';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { calculateBattleEssence } from '@shared/essence';
-import { getRecentTrainers, addRecentTrainer } from '../recentTrainers';
+import { useOnlinePlayers } from '../useOnlinePlayers';
 import type { Pokemon, PokemonInstance } from '@shared/types';
 import type { BattleSnapshot, EloUpdate } from '@shared/battle-types';
 import './DraftBattle.css';
@@ -25,6 +25,7 @@ export default function DraftMultiplayer({ playerName, collection, essence, onGa
   const navigate = useNavigate();
   const location = useLocation();
   const autoChallenge = (location.state as any)?.autoChallenge as string | undefined;
+  const onlinePlayers = useOnlinePlayers(playerName);
   const [phase, setPhase] = useState<Phase>('challenge');
   const [targetName, setTargetName] = useState('');
   const [opponentName, setOpponentName] = useState('');
@@ -58,7 +59,6 @@ export default function DraftMultiplayer({ playerName, collection, essence, onGa
       setBattleId(battleId);
       setOpponentName(opponent);
       setMyPosition(yourPosition);
-      addRecentTrainer(playerName, opponent);
       setPhase('draft');
       setPlayer1Picks([]);
       setPlayer2Picks([]);
@@ -303,13 +303,16 @@ export default function DraftMultiplayer({ playerName, collection, essence, onGa
 
         {phase === 'challenge' && (
           <>
-            {getRecentTrainers(playerName).length > 0 && (
-              <div className="recent-trainers">
-                {getRecentTrainers(playerName).map((name) => (
-                  <button key={name} className="recent-trainer-btn" onClick={() => setTargetName(name)}>
-                    {name}
-                  </button>
-                ))}
+            {onlinePlayers.length > 0 && (
+              <div className="online-players-section">
+                <div className="online-players-label">🟢 Online</div>
+                <div className="recent-trainers">
+                  {onlinePlayers.map((name) => (
+                    <button key={name} className="recent-trainer-btn" onClick={() => setTargetName(name)}>
+                      {name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <input

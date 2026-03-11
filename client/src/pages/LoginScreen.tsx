@@ -16,9 +16,11 @@ interface LoginScreenProps {
 
 const API_BASE = BASE_PATH;
 
+const LAST_PLAYER_KEY = 'lastPlayerName';
+
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const navigate = useNavigate();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(() => localStorage.getItem(LAST_PLAYER_KEY) ?? '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -38,6 +40,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         setError(data.error || 'Registration failed');
         return;
       }
+      localStorage.setItem(LAST_PLAYER_KEY, name.trim());
       onLogin(data.player, [], []);
       navigate('/play');
     } catch {
@@ -63,6 +66,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         setError(data.error || 'Login failed');
         return;
       }
+      localStorage.setItem(LAST_PLAYER_KEY, name.trim());
       const pokemonRows = data.pokemon;
       const itemRows = data.items ?? [];
       onLogin(data.player, pokemonRows, itemRows);
