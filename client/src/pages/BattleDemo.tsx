@@ -23,22 +23,32 @@ function pickRandomFrom(count: number, exclude: Set<number>): Pokemon[] {
   return picks;
 }
 
-// Draft schedule: player picks 1, AI picks 2, player picks 2, AI picks 1 (for 3-total)
-// For other sizes we generalize: alternate, player first, distributing evenly
+// Snake draft: A picks 1, B picks 2, A picks 2, ..., last player picks 1
 function buildDraftSchedule(total: number): { who: 'player' | 'ai'; picks: number }[] {
   const schedule: { who: 'player' | 'ai'; picks: number }[] = [];
   let playerLeft = total;
   let aiLeft = total;
   let turn: 'player' | 'ai' = 'player';
-  // Simple alternation: pick 1 at a time
+  let first = true;
+
   while (playerLeft > 0 || aiLeft > 0) {
-    if (turn === 'player' && playerLeft > 0) {
-      schedule.push({ who: 'player', picks: 1 });
-      playerLeft--;
-    } else if (turn === 'ai' && aiLeft > 0) {
-      schedule.push({ who: 'ai', picks: 1 });
-      aiLeft--;
+    const left = turn === 'player' ? playerLeft : aiLeft;
+    if (left <= 0) { turn = turn === 'player' ? 'ai' : 'player'; continue; }
+
+    // First pick is 1, last pick is whatever remains (capped at 1 for balance), middle picks are 2
+    const otherLeft = turn === 'player' ? aiLeft : playerLeft;
+    let picks: number;
+    if (first) {
+      picks = 1;
+      first = false;
+    } else if (left <= 1 || (otherLeft === 0 && left <= 1)) {
+      picks = left;
+    } else {
+      picks = Math.min(2, left);
     }
+
+    schedule.push({ who: turn, picks });
+    if (turn === 'player') playerLeft -= picks; else aiLeft -= picks;
     turn = turn === 'player' ? 'ai' : 'player';
   }
   return schedule;
