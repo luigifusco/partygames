@@ -307,6 +307,13 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       const entry = snapshot.log[nextIdx];
       animatingRef.current = true;
 
+      // Show round banner when a new round starts
+      const prevRound = nextIdx > 0 ? snapshot.log[nextIdx - 1].round : 0;
+      if (entry.round > prevRound) {
+        setAnim((prev) => ({ ...prev, actionText: `— Round ${entry.round} —`, attackingId: null }));
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+
       // Build action text from the entry message (server provides good messages)
       let actionText = entry.message;
 
