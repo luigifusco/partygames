@@ -7,9 +7,10 @@ interface MenuScreenProps {
   elo: number;
   collectionSize: number;
   itemCount: number;
+  notificationCount: number;
 }
 
-export default function MenuScreen({ playerName, essence, elo, collectionSize, itemCount }: MenuScreenProps) {
+export default function MenuScreen({ playerName, essence, elo, collectionSize, itemCount, notificationCount }: MenuScreenProps) {
   const navigate = useNavigate();
 
   return (
@@ -20,6 +21,9 @@ export default function MenuScreen({ playerName, essence, elo, collectionSize, i
       <div className="menu-player">⚡ {elo} Elo</div>
       <div className="menu-player">Collection: {collectionSize} Pokémon</div>
       <div className="menu-buttons">
+        <button className="menu-btn menu-btn-notif" onClick={() => navigate('/notifications')}>
+          🔔 Notifications{notificationCount > 0 && <span className="notif-badge">{notificationCount}</span>}
+        </button>
         <button className="menu-btn" onClick={() => navigate('/collection')}>
           🎒 My Pokémon
         </button>

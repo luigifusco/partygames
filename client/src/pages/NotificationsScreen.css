@@ -1,0 +1,122 @@
+.notif-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: #1a1a2e;
+  color: #eee;
+  font-family: 'Courier New', monospace;
+}
+
+.notif-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  flex-shrink: 0;
+}
+
+.notif-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.notif-back {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 16px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.notif-back:hover {
+  color: #fff;
+}
+
+.notif-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notif-empty {
+  text-align: center;
+  color: #666;
+  padding: 40px 0;
+  font-size: 14px;
+}
+
+.notif-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.notif-card-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.notif-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-card-text {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.notif-card-time {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.notif-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.notif-accept {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: bold;
+  border: 1px solid #4caf50;
+  border-radius: 6px;
+  background: rgba(76, 175, 80, 0.15);
+  color: #6fdb73;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notif-accept:hover {
+  background: rgba(76, 175, 80, 0.3);
+}
+
+.notif-dismiss {
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #aaa;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notif-dismiss:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LoginScreen from './pages/LoginScreen';
 import MenuScreen from './pages/MenuScreen';
 import PokedexScreen from './pages/PokedexScreen';
@@ -13,6 +13,8 @@ import DraftBattle from './pages/DraftBattle';
 import DraftMultiplayer from './pages/DraftMultiplayer';
 import ShopScreen from './pages/ShopScreen';
 import TradeScreen from './pages/TradeScreen';
+import NotificationsScreen from './pages/NotificationsScreen';
+import type { Notification } from './pages/NotificationsScreen';
 import TVView from './pages/TVView';
 import { socket } from './socket';
 import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, teachTMOnServer, useBoostOnServer, buildInstance, buildItem } from './api';
@@ -35,6 +37,7 @@ export default function App() {
   const [elo, setElo] = useState(STARTING_ELO);
   const [collection, setCollection] = useState<PokemonInstance[]>([]);
   const [items, setItems] = useState<OwnedItem[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const spendEssence = (amount: number) => {
     const newEssence = essence - amount;
@@ -158,6 +161,52 @@ export default function App() {
     }
   };
 
+  // Global notification listeners
+  useEffect(() => {
+    const addNotification = (type: Notification['type'], from: string) => {
+      setNotifications((prev) => {
+        // Deduplicate: only one notification per (type, from)
+        if (prev.some((n) => n.type === type && n.from === from)) return prev;
+        return [...prev, { id: crypto.randomUUID(), type, from, timestamp: Date.now() }];
+      });
+    };
+
+    const onBattleChallenged = ({ challenger }: { challenger: string }) => {
+      addNotification('battle', challenger);
+    };
+    const onTradeIncoming = ({ from }: { from: string }) => {
+      addNotification('trade', from);
+    };
+    const onDraftChallenged = ({ challenger }: { challenger: string }) => {
+      addNotification('draft', challenger);
+    };
+
+    socket.on('battle:challenged', onBattleChallenged);
+    socket.on('trade:incoming', onTradeIncoming);
+    socket.on('draft:challenged', onDraftChallenged);
+
+    return () => {
+      socket.off('battle:challenged', onBattleChallenged);
+      socket.off('trade:incoming', onTradeIncoming);
+      socket.off('draft:challenged', onDraftChallenged);
+    };
+  }, []);
+
+  const dismissNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  const navigate = useNavigate();
+  const handleAcceptNotification = useCallback((notification: Notification) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+    const routes: Record<Notification['type'], string> = {
+      battle: '/battle',
+      trade: '/trade',
+      draft: '/draft',
+    };
+    navigate(routes[notification.type], { state: { autoChallenge: notification.from } });
+  }, [navigate]);
+
   const handleLogin = (playerData: { id: string; name: string; essence: number; elo: number }, pokemonRows: any[], itemRows: any[]) => {
     setPlayer({ id: playerData.id, name: playerData.name });
     setEssence(playerData.essence);
@@ -182,7 +231,8 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/play" element={<MenuScreen playerName={player.name} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} />} />
+      <Route path="/play" element={<MenuScreen playerName={player.name} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} />} />
+      <Route path="/notifications" element={<NotificationsScreen notifications={notifications} onAccept={handleAcceptNotification} onDismiss={dismissNotification} />} />
       <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} />} />
       <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} />} />
       <Route path="/pokedex" element={<PokedexScreen />} />

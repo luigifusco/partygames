@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 import BattleScene from '../components/BattleScene';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
@@ -23,6 +23,8 @@ interface BattleMultiplayerProps {
 
 export default function BattleMultiplayer({ playerName, collection, essence, onGainEssence, onEloUpdate }: BattleMultiplayerProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const autoChallenge = (location.state as any)?.autoChallenge as string | undefined;
   const [phase, setPhase] = useState<Phase>('challenge');
   const [targetName, setTargetName] = useState('');
   const [opponentName, setOpponentName] = useState('');
@@ -98,6 +100,16 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
       socket.off('battle:eloUpdate', handleEloUpdate);
     };
   }, [playerName, opponentName]);
+
+  // Auto-challenge when accepting a notification
+  useEffect(() => {
+    if (autoChallenge && phase === 'challenge') {
+      setTargetName(autoChallenge);
+      socket.emit('battle:challenge', autoChallenge);
+      // Clear location state to prevent re-triggering
+      window.history.replaceState({}, '');
+    }
+  }, [autoChallenge]);
 
   const handleChallenge = () => {
     if (!targetName.trim()) return;

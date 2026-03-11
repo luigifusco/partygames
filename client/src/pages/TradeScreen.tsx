@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { getRecentTrainers, addRecentTrainer } from '../recentTrainers';
@@ -18,6 +18,8 @@ interface TradeScreenProps {
 
 export default function TradeScreen({ playerName, collection, onTrade }: TradeScreenProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const autoChallenge = (location.state as any)?.autoChallenge as string | undefined;
   const [phase, setPhase] = useState<Phase>('request');
   const [targetName, setTargetName] = useState('');
   const [partnerName, setPartnerName] = useState('');
@@ -109,6 +111,15 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
       socket.off('trade:execute', onExecute);
     };
   }, [playerName, myPokemonId]);
+
+  // Auto-request when accepting a notification
+  useEffect(() => {
+    if (autoChallenge && phase === 'request') {
+      setTargetName(autoChallenge);
+      socket.emit('trade:request', autoChallenge);
+      window.history.replaceState({}, '');
+    }
+  }, [autoChallenge]);
 
   const handleRequest = () => {
     if (!targetName.trim()) return;

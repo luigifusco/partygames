@@ -58,6 +58,25 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
+.menu-btn-notif {
+  position: relative;
+}
+
+.notif-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  background: #e53935;
+  color: #fff;
+  border-radius: 10px;
+}
+
 .menu-essence {
   font-size: 18px;
   color: #ffd700;

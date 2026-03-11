@@ -30,6 +30,12 @@ docker build -t pokemonparty .
 docker run -p 3001:3001 -v ./data:/app/data pokemonparty
 ```
 
+Deployed instance (Docker Compose via Traefik):
+```
+cd ~/Carlo/docker/pokemonparty && docker compose up -d --build
+```
+The compose file at `~/Carlo/docker/pokemonparty/docker-compose.yaml` builds from the project source at `~/projects/pokemonparty` (via symlink at `~/Carlo/projects/pokemonparty`). After making changes, rebuild and restart with the command above to deploy.
+
 ## Configuration
 
 | Variable | Default | Description |
