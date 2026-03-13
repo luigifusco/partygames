@@ -271,6 +271,13 @@ export default function BattleDemo({ essence, onGainEssence }: BattleDemoProps) 
                   <img src={p.sprite} alt={p.name} />
                   <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
                   <div className="team-select-card-name">{p.name}</div>
+                  <div className="team-select-card-info">
+                    <div className="team-select-card-moves">
+                      {p.moves.map((m, i) => (
+                        <span key={i} className="team-select-card-move">{m}</span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -332,6 +339,13 @@ export default function BattleDemo({ essence, onGainEssence }: BattleDemoProps) 
                 <img src={p.sprite} alt={p.name} />
                 <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
                 <div className="team-select-card-name">{p.name}</div>
+                <div className="team-select-card-info">
+                  <div className="team-select-card-moves">
+                    {p.moves.map((m, i) => (
+                      <span key={i} className="team-select-card-move">{m}</span>
+                    ))}
+                  </div>
+                </div>
               </div>
             );
           })}

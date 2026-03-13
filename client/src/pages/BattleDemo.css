@@ -253,8 +253,4 @@
     font-size: 9px;
   }
 
-  /* Hide detailed move/nature info on small screens */
-  .team-select-card-info {
-    display: none;
-  }
 }
