@@ -16,7 +16,7 @@
   min-height: 0;
   padding: 12px;
   gap: 12px;
-  overflow: hidden;
+  overflow: visible;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -27,7 +27,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: hidden;
+  overflow: visible;
   justify-content: center;
 }
 
@@ -41,10 +41,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 4px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
   transition: opacity 0.5s, transform 0.4s ease-out;
   width: min(160px, 100%);
   aspect-ratio: 1;
@@ -58,6 +57,7 @@
 
 .pokemon-card.entered {
   animation: pokemonEnter 0.4s ease-out;
+  z-index: 10;
 }
 
 @keyframes pokemonEnter {
@@ -77,7 +77,7 @@
 
 .pokemon-card.attacking {
   transform: scale(1.05);
-  background: rgba(255, 255, 100, 0.15);
+  z-index: 10;
 }
 
 .pokemon-sprite {
@@ -93,18 +93,33 @@
   transform: scaleX(-1);
 }
 
-.pokemon-name {
+/* Unified status bar at top of card */
+.pokemon-status-bar {
   position: relative;
   z-index: 1;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+  padding: 2px 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pokemon-status-bar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.pokemon-name {
   font-size: 12px;
   font-weight: bold;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .status-badge {
@@ -134,7 +149,6 @@
   height: 6px;
   background: #333;
   border-radius: 4px;
-  margin-top: 4px;
   overflow: hidden;
 }
 
@@ -154,20 +168,6 @@
   white-space: nowrap;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   flex-shrink: 0;
-}
-
-/* Status overlay (boosts + HP bar backdrop) */
-.pokemon-status-overlay {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  margin-top: auto;
-  background: rgba(0, 0, 0, 0.55);
-  border-radius: 0 0 6px 6px;
-  padding: 2px 4px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
 }
 
 /* Stat boost indicators */

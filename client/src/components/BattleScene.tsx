@@ -100,21 +100,26 @@ const PokemonCard = ({
   return (
     <div className={classes} ref={cardRef} data-instance-id={poke.instanceId}
          data-base-transform={poke.side === 'left' ? '' : ''}>
-      <div className="pokemon-name">
-        {poke.name}
-        {statusCondition && STATUS_DISPLAY[statusCondition] && (
-          <span className={`status-badge ${STATUS_DISPLAY[statusCondition].cls}`}>
-            {STATUS_DISPLAY[statusCondition].label}
-          </span>
-        )}
-      </div>
-      <img
-        ref={imgRef}
-        className={`pokemon-sprite ${poke.side}`}
-        src={frozenSrc.current ?? poke.sprite}
-        alt={poke.name}
-      />
-      <div className="pokemon-status-overlay">
+      <div className="pokemon-status-bar">
+        <div className="pokemon-status-bar-top">
+          <span className="pokemon-name">{poke.name}</span>
+          {statusCondition && STATUS_DISPLAY[statusCondition] && (
+            <span className={`status-badge ${STATUS_DISPLAY[statusCondition].cls}`}>
+              {STATUS_DISPLAY[statusCondition].label}
+            </span>
+          )}
+        </div>
+        <div className="pokemon-hp">
+          <div className="hp-bar-container">
+            <div
+              className={`hp-bar ${getHpClass(currentHp, poke.maxHp)}`}
+              style={{ width: `${hpPct}%` }}
+            />
+          </div>
+          <div className="hp-text">
+            {fainted ? 'Fainted' : `${currentHp} / ${poke.maxHp}`}
+          </div>
+        </div>
         {(() => {
           const active = Object.entries(boosts).filter(([, v]) => v !== 0);
           if (active.length === 0) return null;
@@ -128,18 +133,13 @@ const PokemonCard = ({
             </div>
           );
         })()}
-        <div className="pokemon-hp">
-          <div className="hp-bar-container">
-            <div
-              className={`hp-bar ${getHpClass(currentHp, poke.maxHp)}`}
-              style={{ width: `${hpPct}%` }}
-            />
-          </div>
-          <div className="hp-text">
-            {fainted ? 'Fainted' : `${currentHp} / ${poke.maxHp}`}
-          </div>
-        </div>
       </div>
+      <img
+        ref={imgRef}
+        className={`pokemon-sprite ${poke.side}`}
+        src={frozenSrc.current ?? poke.sprite}
+        alt={poke.name}
+      />
     </div>
   );
 };
