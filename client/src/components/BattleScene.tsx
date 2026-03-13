@@ -371,7 +371,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // --- Normal move entry ---
 
       // 1. Show "X used Y!" text and highlight attacker
-      const moveText = `${entry.attackerName} used ${entry.moveName}!`;
+      const moveText = `${entry.attackerName} used ${entry.moveName} on ${entry.targetName}!`;
       setAnim((prev) => ({ ...prev, attackingId: entry.attackerInstanceId, actionText: moveText }));
 
       // Pause so the text is readable
