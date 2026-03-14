@@ -98,7 +98,7 @@ function makeCalcPokemon(p: AppPokemon, curHP?: number, boosts?: Record<string, 
   });
 }
 
-function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number): BattleSnapshot {
+function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[]): BattleSnapshot {
   const activeFieldSize = fieldSize ?? leftIds.length;
   const leftPokemon = leftIds.map((id) => POKEMON_BY_ID[id]).filter(Boolean);
   const rightPokemon = rightIds.map((id) => POKEMON_BY_ID[id]).filter(Boolean);
@@ -116,6 +116,7 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
     return {
       instanceId: `l${i}`, name: p.name, sprite: p.sprite, types: p.types,
       currentHp: cp.maxHP(), maxHp: cp.maxHP(), side: 'left' as const,
+      heldItem: leftHeldItems?.[i] ?? null,
     };
   });
   const right: BattlePokemonState[] = rightPokemon.map((p, i) => {
@@ -123,6 +124,7 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
     return {
       instanceId: `r${i}`, name: p.name, sprite: p.sprite, types: p.types,
       currentHp: cp.maxHP(), maxHp: cp.maxHP(), side: 'right' as const,
+      heldItem: rightHeldItems?.[i] ?? null,
     };
   });
 
@@ -144,6 +146,32 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
   for (let i = activeFieldSize; i < leftPokemon.length; i++) leftReserve.push(`l${i}`);
   const rightReserve: string[] = [];
   for (let i = activeFieldSize; i < rightPokemon.length; i++) rightReserve.push(`r${i}`);
+
+  // Track held items per pokemon (consumed in battle only)
+  const heldItems: Record<string, string | null> = {};
+  for (let i = 0; i < leftPokemon.length; i++) heldItems[`l${i}`] = leftHeldItems?.[i] ?? null;
+  for (let i = 0; i < rightPokemon.length; i++) heldItems[`r${i}`] = rightHeldItems?.[i] ?? null;
+
+  // Swap a non-fainted active pokemon with a reserve; returns log entry or null
+  function trySwap(swapOutId: string, side: 'left' | 'right', roundNum: number, reason: string): BattleLogEntry | null {
+    const reserve = side === 'left' ? leftReserve : rightReserve;
+    if (reserve.length === 0) return null;
+    const swapInId = reserve.shift()!;
+    activeIds.delete(swapOutId);
+    activeIds.add(swapInId);
+    // Put the swapped-out pokemon back to the end of reserve
+    reserve.push(swapOutId);
+    const swapIn = allPokemon.find((p) => p.instanceId === swapInId)!;
+    const swapInState = [...left, ...right].find((p) => p.instanceId === swapInId)!;
+    return {
+      round: roundNum,
+      attackerInstanceId: '', attackerName: '',
+      moveName: '', targetInstanceId: swapOutId, targetName: '',
+      damage: 0, effectiveness: null, targetFainted: false,
+      message: reason,
+      replacement: { instanceId: swapInId, name: swapIn.name, sprite: swapInState.sprite, side },
+    };
+  }
 
   // Bring in a reserve to replace a fainted pokemon; returns log entry or null
   function tryReplace(faintedId: string, side: 'left' | 'right', roundNum: number): BattleLogEntry | null {
@@ -554,6 +582,30 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
       if (fainted) {
         const rep = tryReplace(target.instanceId, target.side, round);
         if (rep) log.push(rep);
+      }
+
+      // Held item triggers (only if target survived and damage was dealt)
+      if (!fainted && damage > 0) {
+        // Red Card: forces the attacker to swap out
+        if (heldItems[target.instanceId] === 'red-card' && activeIds.has(attacker.instanceId)) {
+          heldItems[target.instanceId] = null; // consumed
+          const swap = trySwap(attacker.instanceId, attacker.side, round,
+            `${target.name}'s Red Card forced ${attacker.name} to switch out!`);
+          if (swap) {
+            swap.itemConsumed = { instanceId: target.instanceId, itemId: 'red-card' };
+            log.push(swap);
+          }
+        }
+        // Eject Button: forces the holder to swap out
+        if (heldItems[target.instanceId] === 'eject-button') {
+          heldItems[target.instanceId] = null; // consumed
+          const swap = trySwap(target.instanceId, target.side, round,
+            `${target.name}'s Eject Button activated! It switched out!`);
+          if (swap) {
+            swap.itemConsumed = { instanceId: target.instanceId, itemId: 'eject-button' };
+            log.push(swap);
+          }
+        }
       }
     }
 
@@ -992,13 +1044,13 @@ app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
 
 // AI / demo battle endpoint
 app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
-  const { leftTeam, rightTeam, fieldSize, selectionMode } = req.body;
+  const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems } = req.body;
   if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
     return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
   }
   const fs = fieldSize ?? leftTeam.length;
   const mode = selectionMode ?? 'blind';
-  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize);
+  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems);
 
   const labels = { field_size: String(fs), total_pokemon: String(leftTeam.length), selection_mode: mode, opponent_type: 'ai' };
   battlesTotal.inc(labels);
@@ -1109,13 +1161,13 @@ io.on('connection', (socket) => {
     socket.emit('battle:cancelled');
   });
 
-  socket.on('battle:selectTeam', ({ battleId, team }: { battleId: string; team: number[] }) => {
+  socket.on('battle:selectTeam', ({ battleId, team, heldItems }: { battleId: string; team: number[]; heldItems?: (string | null)[] }) => {
     if (!playerName) return;
     const battle = activeBattles.get(battleId);
     if (!battle) return;
 
-    if (battle.player1 === playerName) battle.player1Team = team;
-    else if (battle.player2 === playerName) battle.player2Team = team;
+    if (battle.player1 === playerName) { battle.player1Team = team; (battle as any).player1HeldItems = heldItems ?? []; }
+    else if (battle.player2 === playerName) { battle.player2Team = team; (battle as any).player2HeldItems = heldItems ?? []; }
 
     // Check if both teams are selected
     if (battle.player1Team && battle.player2Team) {
@@ -1123,7 +1175,7 @@ io.on('connection', (socket) => {
       const socket2 = connectedPlayers.get(battle.player2);
 
       // Simulate battle on server so both players see the same result
-      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize);
+      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems);
 
       const battleDataP1 = {
         battleId,

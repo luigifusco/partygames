@@ -20,6 +20,7 @@ export interface BattlePokemonState {
   currentHp: number;
   maxHp: number;
   side: 'left' | 'right';
+  heldItem?: string | null;
 }
 
 export interface BattleLogEntry {
@@ -38,6 +39,7 @@ export interface BattleLogEntry {
   statusChange?: { instanceId: string; status: string };
   statusDamage?: { instanceId: string; damage: number };
   replacement?: { instanceId: string; name: string; sprite: string; side: 'left' | 'right' };
+  itemConsumed?: { instanceId: string; itemId: string };
 }
 
 export interface BattleSnapshot {

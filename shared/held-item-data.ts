@@ -41,6 +41,10 @@ export const HELD_ITEMS: HeldItemDef[] = [
 
   // Status cure
   { id: 'lum-berry', name: 'Lum Berry', description: 'Cures any status condition once. Consumed after use.', price: 100, sprite: `${ITEMS_PATH}/lum-berry.png` },
+
+  // Swap items
+  { id: 'red-card', name: 'Red Card', description: 'When hit by an attack, forces the attacker to swap out. Consumed after use.', price: 200, sprite: `${ITEMS_PATH}/red-card.png` },
+  { id: 'eject-button', name: 'Eject Button', description: 'When hit by an attack, the holder swaps out. Consumed after use.', price: 150, sprite: `${ITEMS_PATH}/eject-button.png` },
 ];
 
 export const HELD_ITEMS_BY_ID: Record<string, HeldItemDef> = {};

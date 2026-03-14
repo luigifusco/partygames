@@ -3,6 +3,7 @@ import type { BattlePokemonState, BattleLogEntry, BattleSnapshot } from '@shared
 import { getMoveAnim } from '../data/moveAnimations';
 import { runMoveAnimation } from './BattleAnimationEngine';
 import { playSfx, getMoveSfxType, playCry, startBattleBgm, stopBattleBgm } from './BattleSounds';
+import { getHeldItemSprite } from '@shared/held-item-data';
 import { BASE_PATH } from '../config';
 import './BattleScene.css';
 
@@ -26,6 +27,7 @@ interface AnimationState {
   pokemonHp: Record<string, number>;
   pokemonBoosts: Record<string, Record<string, number>>;
   pokemonStatus: Record<string, string>;
+  pokemonItems: Record<string, string | null>;
   attackingId: string | null;
   actionText: string | null;
   finished: boolean;
@@ -57,6 +59,7 @@ const PokemonCard = ({
   cardRef,
   boosts,
   statusCondition,
+  heldItemId,
 }: {
   poke: BattlePokemonState;
   currentHp: number;
@@ -65,6 +68,7 @@ const PokemonCard = ({
   cardRef: (el: HTMLDivElement | null) => void;
   boosts: Record<string, number>;
   statusCondition: string;
+  heldItemId: string | null;
 }) => {
   const fainted = currentHp <= 0;
   const hpPct = Math.max(0, (currentHp / poke.maxHp) * 100);
@@ -108,6 +112,9 @@ const PokemonCard = ({
               {STATUS_DISPLAY[statusCondition].label}
             </span>
           )}
+          {heldItemId && (
+            <img src={getHeldItemSprite(heldItemId)} alt="" className="battle-held-icon" />
+          )}
         </div>
         <div className="pokemon-hp">
           <div className="hp-bar-container">
@@ -147,7 +154,7 @@ const PokemonCard = ({
 function formatLogEntry(entry: BattleLogEntry): React.ReactNode {
   // Replacement log entries
   if (entry.replacement) {
-    return <span className="stat-change">🔄 {entry.replacement.name} was sent in!</span>;
+    return <span className="stat-change">🔄 {entry.message || `${entry.replacement.name} was sent in!`}</span>;
   }
 
   // Weather log entries
@@ -236,10 +243,12 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   const initialHp: Record<string, number> = {};
   const initialBoosts: Record<string, Record<string, number>> = {};
   const initialStatus: Record<string, string> = {};
+  const initialItems: Record<string, string | null> = {};
   for (const p of [...snapshot.left, ...snapshot.right]) {
     initialHp[p.instanceId] = p.maxHp;
     initialBoosts[p.instanceId] = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
     initialStatus[p.instanceId] = '';
+    initialItems[p.instanceId] = p.heldItem ?? null;
   }
 
   const [anim, setAnim] = useState<AnimationState>({
@@ -249,6 +258,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     pokemonHp: initialHp,
     pokemonBoosts: initialBoosts,
     pokemonStatus: initialStatus,
+    pokemonItems: initialItems,
     attackingId: null,
     actionText: null,
     finished: false,
@@ -338,7 +348,12 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
             );
             playCry(rep.name, 0.3);
           }
-          return { ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonBoosts: newBoosts, pokemonStatus: newStatus, attackingId: null };
+          return {
+            ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonBoosts: newBoosts, pokemonStatus: newStatus, attackingId: null,
+            pokemonItems: entry.itemConsumed
+              ? { ...prev.pokemonItems, [entry.itemConsumed.instanceId]: null }
+              : prev.pokemonItems,
+          };
         });
         animatingRef.current = false;
         return;
@@ -479,6 +494,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
               cardRef={setCardRef(p.instanceId)}
               boosts={anim.pokemonBoosts[p.instanceId] ?? {}}
               statusCondition={anim.pokemonStatus[p.instanceId] ?? ''}
+              heldItemId={anim.pokemonItems[p.instanceId] ?? null}
             />
           ))}
         </div>
@@ -494,6 +510,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
               cardRef={setCardRef(p.instanceId)}
               boosts={anim.pokemonBoosts[p.instanceId] ?? {}}
               statusCondition={anim.pokemonStatus[p.instanceId] ?? ''}
+              heldItemId={anim.pokemonItems[p.instanceId] ?? null}
             />
           ))}
         </div>

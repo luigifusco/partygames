@@ -289,3 +289,12 @@
   color: #ffd700;
   margin-top: 4px;
 }
+
+/* Held item icon in battle status bar */
+.battle-held-icon {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+  margin-left: auto;
+}

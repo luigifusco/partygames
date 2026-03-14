@@ -139,6 +139,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     socket.emit('battle:selectTeam', {
       battleId,
       team: selected.map((idx) => collection[idx].pokemon.id),
+      heldItems: selected.map((idx) => collection[idx].heldItem ?? null),
     });
     setPhase('waitingTeam');
   };
