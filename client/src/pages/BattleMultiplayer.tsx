@@ -10,6 +10,7 @@ import type { PokemonInstance } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
 import type { BattleSnapshot, BattleConfig, EloUpdate } from '@shared/battle-types';
 import { DEFAULT_BATTLE_CONFIG } from '@shared/battle-types';
+import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import PokemonIcon from '../components/PokemonIcon';
 import './BattleMultiplayer.css';
 import '../pages/BattleDemo.css';
@@ -237,6 +238,12 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
                         <span key={i} className="team-select-card-move">{m}</span>
                       ))}
                     </div>
+                    {inst.heldItem && (
+                      <div className="team-select-card-held">
+                        <img src={getHeldItemSprite(inst.heldItem)} alt="" className="team-select-held-icon" />
+                        <span>{getHeldItemName(inst.heldItem)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

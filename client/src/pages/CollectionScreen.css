@@ -371,3 +371,19 @@
   background: rgba(255, 255, 255, 0.15);
   color: #eee;
 }
+
+/* Held item indicator on collection cards */
+.collection-held-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  color: #90caf9;
+  padding: 2px 4px;
+}
+
+.collection-held-icon {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+}

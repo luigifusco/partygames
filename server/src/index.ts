@@ -664,7 +664,7 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
   }
 
   // Also fetch their pokemon collection
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2 FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   return res.json({ player, pokemon, items });
 });
@@ -676,7 +676,7 @@ app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
     return res.status(404).json({ error: 'Player not found' });
   }
 
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2 FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   return res.json({ player, pokemon, items });
 });
@@ -1170,20 +1170,18 @@ io.on('connection', (socket) => {
         for (const pid of battle.player2Team) recordUsage.run(p2Row.id, pid);
 
         console.log(`Elo update: ${winnerName} ${winnerRow.elo}→${winnerNewElo} (+${winnerDelta}), ${loserName} ${loserRow.elo}→${loserNewElo} (${loserDelta})`);
+
+        // Record battle in DB with config
+        const recordBattle = db.prepare(
+          'INSERT INTO battles (id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        recordBattle.run(battleId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, battle.fieldSize, battle.totalPokemon, 'blind', 'pvp', snapshot.round);
       }
 
       activeBattles.delete(battleId);
       const labels = { field_size: String(battle.fieldSize), total_pokemon: String(battle.totalPokemon), selection_mode: 'blind', opponent_type: 'pvp' };
       battlesTotal.inc(labels);
       battleRounds.observe({ field_size: String(battle.fieldSize), total_pokemon: String(battle.totalPokemon) }, snapshot.round);
-
-      // Record battle in DB with config
-      const recordBattle = db.prepare(
-        'INSERT INTO battles (id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)'
-      );
-      if (winnerRow && loserRow) {
-        recordBattle.run(battleId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, battle.fieldSize, battle.totalPokemon, 'blind', 'pvp', snapshot.round);
-      }
     } else {
       socket.emit('battle:waitingForOpponent');
     }

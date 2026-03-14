@@ -378,7 +378,9 @@ export default function ItemsScreen({ items, collection, onTeachTM, onUseBoost, 
       )}
 
       {/* Held Item: Pick a pokemon to give the item to */}
-      {heldItemPhase?.step === 'pickPokemon' && (
+      {heldItemPhase?.step === 'pickPokemon' && (() => {
+        const eligible = sortedCollection.filter((inst) => !inst.heldItem);
+        return (
         <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setHeldItemPhase(null)}>
           <div className="teach-content">
             <div className="teach-header">
@@ -388,27 +390,22 @@ export default function ItemsScreen({ items, collection, onTeachTM, onUseBoost, 
             <div className="held-item-desc" style={{ fontSize: '11px', color: '#aaa', padding: '0 12px 8px', textAlign: 'center' }}>
               {HELD_ITEMS_BY_ID[heldItemPhase.itemId]?.description}
             </div>
-            {sortedCollection.length === 0 ? (
-              <div className="teach-empty">No Pokémon in your collection</div>
+            {eligible.length === 0 ? (
+              <div className="teach-empty">All Pokémon are already holding items</div>
             ) : (
               <div className="teach-pokemon-grid">
-                {sortedCollection.map((inst) => (
+                {eligible.map((inst) => (
                   <div key={inst.instanceId} className="teach-pokemon-card" onClick={() => handleHeldItemPickPokemon(inst)}>
                     <img src={inst.pokemon.sprite} alt={inst.pokemon.name} />
                     <div className="teach-pokemon-name">{inst.pokemon.name}</div>
-                    {inst.heldItem && (
-                      <div className="held-item-badge" style={{ fontSize: '9px' }}>
-                        <img src={getHeldItemSprite(inst.heldItem)} alt="" className="held-item-mini" />
-                        <span>{getHeldItemName(inst.heldItem)}</span>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { PokemonInstance, Pokemon, BoxTier, OwnedItem } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
+import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import PokemonCard from '../components/PokemonCard';
 import './CollectionScreen.css';
 
@@ -105,6 +106,12 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
                 pokemon={inst.pokemon}
                 onClick={() => navigate(`/pokemon/${getCollectionIndex(inst)}`)}
               >
+                {inst.heldItem && (
+                  <div className="collection-held-item">
+                    <img src={getHeldItemSprite(inst.heldItem)} alt="" className="collection-held-icon" />
+                    <span>{getHeldItemName(inst.heldItem)}</span>
+                  </div>
+                )}
                 {canEvolve && (
                   <button className="collection-evolve-btn" onClick={(e) => { e.stopPropagation(); startEvolve(inst); }}>
                     ✨ Evolve ({tokens}/3)

@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import type { PokemonInstance, Stats } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
 import { NATURE_BY_NAME, calcStat, STAT_LABELS } from '@shared/natures';
+import { getHeldItemSprite, getHeldItemName, HELD_ITEMS_BY_ID } from '@shared/held-item-data';
 import './PokemonDetailScreen.css';
 
 interface PokemonDetailScreenProps {
@@ -115,6 +116,21 @@ export default function PokemonDetailScreen({ collection }: PokemonDetailScreenP
               <span className="detail-move-name">{moveName}</span>
             </div>
           ))}
+        </div>
+
+        <div className="detail-section-title">Held Item</div>
+        <div className="detail-held-item">
+          {inst.heldItem ? (
+            <div className="detail-held-item-info">
+              <img src={getHeldItemSprite(inst.heldItem)} alt="" className="detail-held-icon" />
+              <div>
+                <div className="detail-held-name">{getHeldItemName(inst.heldItem)}</div>
+                <div className="detail-held-desc">{HELD_ITEMS_BY_ID[inst.heldItem]?.description}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="detail-held-none">None</div>
+          )}
         </div>
 
         <div className="detail-section-title">Base Stats</div>

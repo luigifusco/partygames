@@ -254,3 +254,19 @@
   }
 
 }
+
+/* Held item on team selection cards */
+.team-select-card-held {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 8px;
+  color: #90caf9;
+  padding: 1px 0;
+}
+
+.team-select-held-icon {
+  width: 12px;
+  height: 12px;
+  image-rendering: pixelated;
+}
