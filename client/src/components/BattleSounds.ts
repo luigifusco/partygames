@@ -211,7 +211,13 @@ export function getMoveSfxType(moveName: string): SfxType {
 
 // --- Battle BGM ---
 
-const BATTLE_BGMS = [
+interface BgmTrack {
+  url: string;
+  loopStart: number;
+  loopEnd: number;
+}
+
+const BATTLE_BGMS: BgmTrack[] = [
   { url: 'audio/dpp-trainer.mp3', loopStart: 13.440, loopEnd: 96.959 },
   { url: 'audio/dpp-rival.mp3', loopStart: 13.888, loopEnd: 66.352 },
   { url: 'audio/hgss-johto-trainer.mp3', loopStart: 23.731, loopEnd: 125.086 },
@@ -228,13 +234,56 @@ const BATTLE_BGMS = [
   { url: 'audio/sm-rival.mp3', loopStart: 11.389, loopEnd: 62.158 },
 ];
 
+// Named tracks for specific trainer types
+const BGM_KANTO_TRAINER: BgmTrack = { url: 'audio/hgss-kanto-trainer.mp3', loopStart: 13.003, loopEnd: 94.656 };
+const BGM_KANTO_GYM: BgmTrack = { url: 'audio/bw2-kanto-gym-leader.mp3', loopStart: 14.626, loopEnd: 58.986 };
+const BGM_JOHTO_TRAINER: BgmTrack = { url: 'audio/hgss-johto-trainer.mp3', loopStart: 23.731, loopEnd: 125.086 };
+const BGM_ELITE4: BgmTrack = { url: 'audio/spl-elite4.mp3', loopStart: 3.962, loopEnd: 152.509 };
+const BGM_CHAMPION_DPP: BgmTrack = { url: 'audio/dpp-trainer.mp3', loopStart: 13.440, loopEnd: 96.959 };
+const BGM_RIVAL_DPP: BgmTrack = { url: 'audio/dpp-rival.mp3', loopStart: 13.888, loopEnd: 66.352 };
+const BGM_HOENN_TRAINER: BgmTrack = { url: 'audio/oras-trainer.mp3', loopStart: 13.579, loopEnd: 91.548 };
+const BGM_HOENN_RIVAL: BgmTrack = { url: 'audio/oras-rival.mp3', loopStart: 14.303, loopEnd: 69.149 };
+const BGM_SINNOH_TRAINER: BgmTrack = { url: 'audio/dpp-trainer.mp3', loopStart: 13.440, loopEnd: 96.959 };
+const BGM_RED: BgmTrack = { url: 'audio/bw2-kanto-gym-leader.mp3', loopStart: 14.626, loopEnd: 58.986 };
+
+// Trainer ID → specific BGM
+const TRAINER_BGM: Record<string, BgmTrack> = {
+  // Kanto Gym Leaders
+  brock: BGM_KANTO_GYM, misty: BGM_KANTO_GYM, ltsurge: BGM_KANTO_GYM,
+  erika: BGM_KANTO_GYM, koga: BGM_KANTO_GYM, janine: BGM_KANTO_GYM,
+  sabrina: BGM_KANTO_GYM, blaine: BGM_KANTO_GYM, giovanni: BGM_KANTO_GYM,
+  // Kanto E4 / Champions
+  bruno: BGM_ELITE4,
+  lance: BGM_ELITE4, blue: BGM_ELITE4, red: BGM_RED,
+  // Johto Gym Leaders
+  falkner: BGM_JOHTO_TRAINER, bugsy: BGM_JOHTO_TRAINER, whitney: BGM_JOHTO_TRAINER,
+  morty: BGM_JOHTO_TRAINER, chuck: BGM_JOHTO_TRAINER, jasmine: BGM_JOHTO_TRAINER,
+  pryce: BGM_JOHTO_TRAINER, clair: BGM_JOHTO_TRAINER,
+  // Johto E4 / Rival
+  will: BGM_ELITE4, karen: BGM_ELITE4, silver: BGM_RIVAL_DPP,
+  // Hoenn Gym Leaders
+  roxanne: BGM_HOENN_TRAINER, brawly: BGM_HOENN_TRAINER, wattson: BGM_HOENN_TRAINER,
+  flannery: BGM_HOENN_TRAINER, norman: BGM_HOENN_TRAINER, winona: BGM_HOENN_TRAINER,
+  // Hoenn E4 / Champions
+  sidney: BGM_ELITE4, phoebe: BGM_ELITE4, glacia: BGM_ELITE4, drake: BGM_ELITE4,
+  steven: BGM_ELITE4, wallace: BGM_ELITE4,
+  // Sinnoh Gym Leaders
+  fantina: BGM_SINNOH_TRAINER, maylene: BGM_SINNOH_TRAINER, crasherwake: BGM_SINNOH_TRAINER,
+  byron: BGM_SINNOH_TRAINER, candice: BGM_SINNOH_TRAINER, volkner: BGM_SINNOH_TRAINER,
+  // Sinnoh E4 / Champions / Rival
+  aaron: BGM_ELITE4, bertha: BGM_ELITE4, flint: BGM_ELITE4, lucian: BGM_ELITE4,
+  cynthia: BGM_CHAMPION_DPP, barry: BGM_RIVAL_DPP,
+};
+
 let currentBgm: HTMLAudioElement | null = null;
 let bgmLoopHandler: (() => void) | null = null;
 
-export function startBattleBgm(volume = 0.25) {
+export function startBattleBgm(volume = 0.25, trainerId?: string) {
   stopBattleBgm();
   try {
-    const track = BATTLE_BGMS[Math.floor(Math.random() * BATTLE_BGMS.length)];
+    const track = trainerId && TRAINER_BGM[trainerId]
+      ? TRAINER_BGM[trainerId]
+      : BATTLE_BGMS[Math.floor(Math.random() * BATTLE_BGMS.length)];
     const audio = new Audio(`${SHOWDOWN_CDN}/${track.url}`);
     audio.volume = volume;
 

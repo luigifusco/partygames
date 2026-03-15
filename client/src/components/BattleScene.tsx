@@ -18,6 +18,7 @@ interface BattleSceneProps {
   snapshot: BattleSnapshot;
   turnDelayMs?: number;
   essenceGained?: number;
+  trainerId?: string;
 }
 
 interface AnimationState {
@@ -212,7 +213,7 @@ function formatLogEntry(entry: BattleLogEntry): React.ReactNode {
   return <>{parts}</>;
 }
 
-export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGained }: BattleSceneProps) {
+export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGained, trainerId }: BattleSceneProps) {
   const logEndRef = useRef<HTMLDivElement>(null);
   const arenaRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -270,7 +271,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
   // Start BGM on mount, stop on unmount
   useEffect(() => {
-    startBattleBgm();
+    startBattleBgm(0.25, trainerId);
     return () => stopBattleBgm();
   }, []);
 
