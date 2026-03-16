@@ -18,6 +18,15 @@ import './BattleMultiplayer.css';
 
 const API_BASE = BASE_PATH;
 
+const REGION_ORDER = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova'];
+const ROLE_ORDER = ['Gym Leader', 'Elite Four', 'Champion', 'Rival', 'Villain'];
+
+function trainerRole(t: AITrainer): string {
+  if (['Team Plasma Boss', 'Team Plasma Scientist', 'Team Aqua Boss', 'Team Magma Boss'].includes(t.title)) return 'Villain';
+  if (t.title === 'Pokémon Master') return 'Champion';
+  return t.title;
+}
+
 function pickRandomFrom(count: number, exclude: Set<number>): Pokemon[] {
   const available = POKEMON.filter((p) => !exclude.has(p.id));
   const picks: Pokemon[] = [];
@@ -177,6 +186,17 @@ export default function BattleDemo({ essence, onGainEssence, collection }: Battl
   }, [draftDone, isDraft, snapshot, loading, draftBattleStarted, selected, aiTeam]);
 
   // Trainer selection screen
+  const [regionFilter, setRegionFilter] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState<string | null>(null);
+
+  const filteredTrainers = useMemo(() => {
+    return AI_TRAINERS.filter((t) => {
+      if (regionFilter && t.region !== regionFilter) return false;
+      if (roleFilter && trainerRole(t) !== roleFilter) return false;
+      return true;
+    });
+  }, [regionFilter, roleFilter]);
+
   if (!trainer) {
     return (
       <div className="battle-mp-screen">
@@ -184,8 +204,22 @@ export default function BattleDemo({ essence, onGainEssence, collection }: Battl
           <button className="battle-mp-back" onClick={() => navigate('/play')}>← Back</button>
           <h2>⚔️ Challenge a Trainer</h2>
         </div>
+        <div className="trainer-filters">
+          <div className="trainer-filter-row">
+            {REGION_ORDER.map((r) => (
+              <button key={r} className={`trainer-filter-pill${regionFilter === r ? ' active' : ''}`}
+                onClick={() => setRegionFilter(regionFilter === r ? null : r)}>{r}</button>
+            ))}
+          </div>
+          <div className="trainer-filter-row">
+            {ROLE_ORDER.map((r) => (
+              <button key={r} className={`trainer-filter-pill role${roleFilter === r ? ' active' : ''}`}
+                onClick={() => setRoleFilter(roleFilter === r ? null : r)}>{r}</button>
+            ))}
+          </div>
+        </div>
         <div className="trainer-list">
-          {AI_TRAINERS.map((t) => (
+          {filteredTrainers.map((t) => (
             <div key={t.id} className="trainer-card" onClick={() => setTrainer(t)}>
               <img src={t.sprite} alt={t.name} className="trainer-sprite" />
               <div className="trainer-info">

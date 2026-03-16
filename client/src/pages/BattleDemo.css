@@ -272,6 +272,49 @@
 }
 
 /* Trainer selection list */
+.trainer-filters {
+  padding: 8px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.trainer-filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.trainer-filter-pill {
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ccc;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.trainer-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.trainer-filter-pill.active {
+  background: rgba(100, 180, 255, 0.25);
+  border-color: rgba(100, 180, 255, 0.6);
+  color: #fff;
+}
+
+.trainer-filter-pill.role.active {
+  background: rgba(255, 180, 80, 0.25);
+  border-color: rgba(255, 180, 80, 0.6);
+  color: #fff;
+}
+
 .trainer-list {
   flex: 1;
   overflow-y: auto;
