@@ -926,20 +926,18 @@ function parseProtocol(
       }
 
       case '-ability': {
-        // Ability activation — log it as a message
+        // Ability activation (Intimidate, Turboblaze, etc.)
+        flushPendingMove();
         const abilIdent = parts[2];
         const abilName = parts[3];
         const abilParsed = parsePokemonIdent(abilIdent);
-        // Don't clutter log with initial ability announcements
-        if (currentRound > 0) {
-          pushLog({
-            round: currentRound,
-            attackerInstanceId: getInstanceId(abilIdent), attackerName: abilParsed.name,
-            moveName: '', targetInstanceId: getInstanceId(abilIdent), targetName: abilParsed.name,
-            damage: 0, effectiveness: null, targetFainted: false,
-            message: `${abilParsed.name}'s ${abilName}!`,
-          });
-        }
+        pushLog({
+          round: currentRound,
+          attackerInstanceId: getInstanceId(abilIdent), attackerName: abilParsed.name,
+          moveName: '', targetInstanceId: getInstanceId(abilIdent), targetName: abilParsed.name,
+          damage: 0, effectiveness: null, targetFainted: false,
+          message: `${abilParsed.name}'s ${abilName}!`,
+        });
         break;
       }
 
