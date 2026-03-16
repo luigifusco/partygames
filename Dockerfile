@@ -63,8 +63,7 @@ COPY --from=builder /app/damage-calc/calc/node_modules damage-calc/calc/node_mod
 COPY --from=builder /app/damage-calc/calc/package.json damage-calc/calc/package.json
 
 # Copy pokemon-showdown built simulator + data
-COPY --from=builder /app/pokemon-showdown/dist/sim pokemon-showdown/dist/sim
-COPY --from=builder /app/pokemon-showdown/dist/lib pokemon-showdown/dist/lib
+COPY --from=builder /app/pokemon-showdown/dist pokemon-showdown/dist
 COPY --from=builder /app/pokemon-showdown/data pokemon-showdown/data
 COPY --from=builder /app/pokemon-showdown/config pokemon-showdown/config
 COPY --from=builder /app/pokemon-showdown/package.json pokemon-showdown/package.json
