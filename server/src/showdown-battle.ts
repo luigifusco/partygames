@@ -174,21 +174,16 @@ export function runShowdownBattle(
 
   // Post-process: remove friendly-fire damage entries caused by Showdown's
   // automatic target redirection when the intended opponent faints mid-turn.
-  // Convert them to "missed" entries to avoid confusing UI.
-  for (const entry of snapshot.log) {
-    if (!entry.moveName || entry.damage === 0) continue;
+  // These are removed entirely from the log — the player never sees them.
+  snapshot.log = snapshot.log.filter((entry) => {
+    if (!entry.moveName || entry.damage === 0) return true;
     const aSide = entry.attackerInstanceId?.[0]; // 'l' or 'r'
     const tSide = entry.targetInstanceId?.[0];
     if (aSide && tSide && aSide === tSide && entry.attackerInstanceId !== entry.targetInstanceId) {
-      // Friendly fire — nullify the damage in hpState and show as miss
-      entry.damage = 0;
-      entry.effectiveness = 'neutral';
-      entry.targetFainted = false;
-      entry.message = `${entry.attackerName} used ${entry.moveName}! But there was no target!`;
-      // Restore target HP in hpState (undo the damage Showdown applied)
-      // We can't perfectly undo, but the next event's hpState will correct it
+      return false; // Remove friendly-fire entry
     }
-  }
+    return true;
+  });
 
   return snapshot;
 }
