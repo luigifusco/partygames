@@ -93,12 +93,13 @@ function parseHPString(hpStr: string): { hp: number; maxHp: number; status: stri
 
 // Parse "p1a: Victini" → { side: 'left', slot: 'a', name: 'Victini' }
 function parsePokemonIdent(ident: string): { side: 'left' | 'right'; playerKey: string; name: string } {
-  const match = ident.match(/^(p[12])([a-c]): (.+)$/);
+  // Matches both "p1a: Name" (active slot) and "p1: Name" (bench/generic)
+  const match = ident.match(/^(p[12])[a-c]?: (.+)$/);
   if (!match) return { side: 'left', playerKey: 'p1', name: ident };
   return {
     side: match[1] === 'p1' ? 'left' : 'right',
     playerKey: match[1],
-    name: match[3],
+    name: match[2],
   };
 }
 
@@ -140,7 +141,8 @@ export function runShowdownBattle(
   });
 
   // Handle team preview
-  battle.makeChoices('default', 'default');
+  battle.choose('p1', 'default');
+  battle.choose('p2', 'default');
 
   // Run battle: auto-choose random moves each turn
   let turns = 0;
@@ -149,9 +151,10 @@ export function runShowdownBattle(
     const p2choice = buildChoice(battle, 1);
 
     try {
-      battle.makeChoices(p1choice, p2choice);
+      battle.choose('p1', p1choice);
+      battle.choose('p2', p2choice);
     } catch (e: any) {
-      try { battle.makeChoices('default', 'default'); } catch { break; }
+      try { battle.choose('p1', 'default'); battle.choose('p2', 'default'); } catch { break; }
     }
     turns++;
   }
