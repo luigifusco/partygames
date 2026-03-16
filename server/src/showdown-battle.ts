@@ -5,6 +5,14 @@
 // with proper abilities, items, crits, priority, etc.
 
 import { Teams, Dex } from '../../pokemon-showdown/dist/sim/index.js';
+// Battle imported dynamically to avoid circular issues at module load time
+let BattleClass: any = null;
+function getBattleClass() {
+  if (!BattleClass) {
+    BattleClass = require('../../pokemon-showdown/dist/sim/index.js').Battle;
+  }
+  return BattleClass;
+}
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon } from '../../shared/types.js';
 
@@ -118,11 +126,12 @@ export function runShowdownBattle(
   const leftTeam = buildShowdownTeam(leftEntries);
   const rightTeam = buildShowdownTeam(rightEntries);
 
-  const { Battle } = require('../../pokemon-showdown/dist/sim/index.js');
+  const Battle = getBattleClass();
 
-  const format = fieldSize > 1 ? 'gen5doublescustomgame' : 'gen5customgame';
+  // Always use singles format — the game's multi-pokemon field is handled
+  // by PS's team/switching mechanics
   const battle = new Battle({
-    formatid: format,
+    formatid: 'gen5customgame',
     p1: { name: 'Left', team: leftTeam },
     p2: { name: 'Right', team: rightTeam },
   });
@@ -138,8 +147,9 @@ export function runShowdownBattle(
 
     try {
       battle.makeChoices(p1choice, p2choice);
-    } catch {
-      break;
+    } catch (e: any) {
+      // If invalid choice, try a safe default
+      try { battle.makeChoices('default', 'default'); } catch { break; }
     }
     turns++;
   }
