@@ -39,8 +39,12 @@ export const AI_TRAINERS: AITrainer[] = [
     coreTeam: [34, 112, 31], extraTeam: [105, 473, 472] },
 
   // Elite Four
+  { id: 'lorelei', name: 'Lorelei', title: 'Elite Four', region: 'Kanto', sprite: `${TRAINERS_PATH}/lorelei.png`,
+    coreTeam: [87, 91, 131], extraTeam: [124, 80, 473] },
   { id: 'bruno', name: 'Bruno', title: 'Elite Four', region: 'Kanto', sprite: `${TRAINERS_PATH}/bruno.png`,
     coreTeam: [68, 107, 106], extraTeam: [95, 208, 448] },
+  { id: 'agatha', name: 'Agatha', title: 'Elite Four', region: 'Kanto', sprite: `${TRAINERS_PATH}/agatha.png`,
+    coreTeam: [94, 169, 110], extraTeam: [24, 429, 442] },
 
   // Champions & Rivals
   { id: 'lance', name: 'Lance', title: 'Champion', region: 'Kanto', sprite: `${TRAINERS_PATH}/lance.png`,
@@ -95,6 +99,10 @@ export const AI_TRAINERS: AITrainer[] = [
     coreTeam: [289, 115, 128], extraTeam: [143, 242, 217] },
   { id: 'winona', name: 'Winona', title: 'Gym Leader', region: 'Hoenn', sprite: `${TRAINERS_PATH}/winona.png`,
     coreTeam: [334, 227, 277], extraTeam: [357, 430, 468] },
+  { id: 'tateliza', name: 'Tate & Liza', title: 'Gym Leader', region: 'Hoenn', sprite: `${TRAINERS_PATH}/tate.png`,
+    coreTeam: [338, 337, 344], extraTeam: [178, 282, 376] },
+  { id: 'juan', name: 'Juan', title: 'Gym Leader', region: 'Hoenn', sprite: `${TRAINERS_PATH}/juan.png`,
+    coreTeam: [230, 350, 365], extraTeam: [340, 342, 171] },
 
   // Elite Four
   { id: 'sidney', name: 'Sidney', title: 'Elite Four', region: 'Hoenn', sprite: `${TRAINERS_PATH}/sidney.png`,
@@ -112,9 +120,17 @@ export const AI_TRAINERS: AITrainer[] = [
   { id: 'wallace', name: 'Wallace', title: 'Champion', region: 'Hoenn', sprite: `${TRAINERS_PATH}/wallace.png`,
     coreTeam: [350, 130, 272], extraTeam: [340, 73, 230] },
 
+  // Rivals
+  { id: 'wally', name: 'Wally', title: 'Rival', region: 'Hoenn', sprite: `${TRAINERS_PATH}/wally.png`,
+    coreTeam: [282, 475, 407], extraTeam: [334, 82, 181] },
+
   // ==================== SINNOH ====================
 
   // Gym Leaders
+  { id: 'roark', name: 'Roark', title: 'Gym Leader', region: 'Sinnoh', sprite: `${TRAINERS_PATH}/roark.png`,
+    coreTeam: [409, 76, 142], extraTeam: [476, 369, 411] },
+  { id: 'gardenia', name: 'Gardenia', title: 'Gym Leader', region: 'Sinnoh', sprite: `${TRAINERS_PATH}/gardenia.png`,
+    coreTeam: [407, 389, 465], extraTeam: [182, 470, 3] },
   { id: 'fantina', name: 'Fantina', title: 'Gym Leader', region: 'Sinnoh', sprite: `${TRAINERS_PATH}/fantina.png`,
     coreTeam: [429, 94, 426], extraTeam: [354, 477, 442] },
   { id: 'maylene', name: 'Maylene', title: 'Gym Leader', region: 'Sinnoh', sprite: `${TRAINERS_PATH}/maylene.png`,
@@ -143,6 +159,68 @@ export const AI_TRAINERS: AITrainer[] = [
     coreTeam: [445, 448, 442], extraTeam: [350, 468, 407] },
   { id: 'barry', name: 'Barry', title: 'Rival', region: 'Sinnoh', sprite: `${TRAINERS_PATH}/barry.png`,
     coreTeam: [395, 398, 214], extraTeam: [143, 407, 78] },
+
+  // ==================== UNOVA ====================
+
+  // Gym Leaders (Black & White)
+  { id: 'cilan', name: 'Cilan', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/cilan.png`,
+    coreTeam: [512, 598, 549], extraTeam: [465, 407, 286] },
+  { id: 'chili', name: 'Chili', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/chili.png`,
+    coreTeam: [514, 555, 609], extraTeam: [467, 59, 229] },
+  { id: 'cress', name: 'Cress', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/cress.png`,
+    coreTeam: [516, 593, 581], extraTeam: [130, 350, 419] },
+  { id: 'lenora', name: 'Lenora', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/lenora.png`,
+    coreTeam: [508, 505, 573], extraTeam: [626, 242, 289] },
+  { id: 'burgh', name: 'Burgh', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/burgh.png`,
+    coreTeam: [542, 545, 589], extraTeam: [469, 214, 416] },
+  { id: 'elesa', name: 'Elesa', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/elesa.png`,
+    coreTeam: [523, 587, 596], extraTeam: [466, 405, 181] },
+  { id: 'clay', name: 'Clay', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/clay.png`,
+    coreTeam: [530, 553, 537], extraTeam: [450, 472, 340] },
+  { id: 'skyla', name: 'Skyla', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/skyla.png`,
+    coreTeam: [581, 628, 521], extraTeam: [398, 227, 468] },
+  { id: 'brycen', name: 'Brycen', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/brycen.png`,
+    coreTeam: [614, 615, 584], extraTeam: [461, 478, 473] },
+  { id: 'drayden', name: 'Drayden', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/drayden.png`,
+    coreTeam: [612, 621, 635], extraTeam: [445, 330, 149] },
+
+  // Gym Leaders (Black 2 & White 2)
+  { id: 'cheren-gym', name: 'Cheren', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/cheren.png`,
+    coreTeam: [508, 573, 626], extraTeam: [521, 510, 289] },
+  { id: 'roxie', name: 'Roxie', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/roxie.png`,
+    coreTeam: [545, 569, 591], extraTeam: [454, 110, 89] },
+  { id: 'marlon', name: 'Marlon', title: 'Gym Leader', region: 'Unova', sprite: `${TRAINERS_PATH}/marlon.png`,
+    coreTeam: [593, 565, 537], extraTeam: [365, 130, 340] },
+
+  // Elite Four
+  { id: 'shauntal', name: 'Shauntal', title: 'Elite Four', region: 'Unova', sprite: `${TRAINERS_PATH}/shauntal.png`,
+    coreTeam: [609, 563, 623], extraTeam: [593, 426, 429] },
+  { id: 'grimsley', name: 'Grimsley', title: 'Elite Four', region: 'Unova', sprite: `${TRAINERS_PATH}/grimsley.png`,
+    coreTeam: [553, 625, 560], extraTeam: [510, 359, 430] },
+  { id: 'caitlin', name: 'Caitlin', title: 'Elite Four', region: 'Unova', sprite: `${TRAINERS_PATH}/caitlin.png`,
+    coreTeam: [579, 576, 518], extraTeam: [561, 475, 376] },
+  { id: 'marshal', name: 'Marshal', title: 'Elite Four', region: 'Unova', sprite: `${TRAINERS_PATH}/marshal.png`,
+    coreTeam: [534, 620, 539], extraTeam: [538, 448, 68] },
+
+  // Champions
+  { id: 'alder', name: 'Alder', title: 'Champion', region: 'Unova', sprite: `${TRAINERS_PATH}/alder.png`,
+    coreTeam: [637, 626, 621], extraTeam: [584, 589, 617] },
+  { id: 'iris-champ', name: 'Iris', title: 'Champion', region: 'Unova', sprite: `${TRAINERS_PATH}/iris.png`,
+    coreTeam: [612, 635, 567], extraTeam: [621, 131, 306] },
+
+  // Rivals & Villains
+  { id: 'n', name: 'N', title: 'Rival', region: 'Unova', sprite: `${TRAINERS_PATH}/n.png`,
+    coreTeam: [571, 601, 567], extraTeam: [565, 584, 612] },
+  { id: 'bianca', name: 'Bianca', title: 'Rival', region: 'Unova', sprite: `${TRAINERS_PATH}/bianca.png`,
+    coreTeam: [518, 508, 620], extraTeam: [609, 516, 586] },
+  { id: 'cheren', name: 'Cheren', title: 'Rival', region: 'Unova', sprite: `${TRAINERS_PATH}/cheren.png`,
+    coreTeam: [521, 526, 514], extraTeam: [510, 612, 500] },
+  { id: 'hugh', name: 'Hugh', title: 'Rival', region: 'Unova', sprite: `${TRAINERS_PATH}/hugh.png`,
+    coreTeam: [521, 626, 503], extraTeam: [330, 466, 604] },
+  { id: 'ghetsis', name: 'Ghetsis', title: 'Team Plasma Boss', region: 'Unova', sprite: `${TRAINERS_PATH}/ghetsis.png`,
+    coreTeam: [635, 563, 537], extraTeam: [625, 604, 452] },
+  { id: 'colress', name: 'Colress', title: 'Team Plasma Scientist', region: 'Unova', sprite: `${TRAINERS_PATH}/colress.png`,
+    coreTeam: [601, 462, 376], extraTeam: [606, 479, 474] },
 ];
 
 export const AI_TRAINERS_BY_ID: Record<string, AITrainer> = {};
