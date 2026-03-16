@@ -1,13 +1,13 @@
 // Shared battle types used by both client and server
 
 export interface BattleConfig {
-  fieldSize: 2 | 3;
-  totalPokemon: number;  // must be a multiple of fieldSize: 2,3,4,6
+  fieldSize: 1 | 2 | 3;
+  totalPokemon: number;
   selectionMode: 'blind' | 'draft';
 }
 
 export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
-  fieldSize: 3,
+  fieldSize: 1,
   totalPokemon: 3,
   selectionMode: 'blind',
 };

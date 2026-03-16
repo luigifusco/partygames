@@ -12,19 +12,20 @@ interface BattleConfigScreenProps {
 }
 
 const VALID_TOTALS: Record<number, number[]> = {
+  1: [1, 2, 3, 4, 5, 6],
   2: [2, 4, 6],
   3: [3, 6],
 };
 
 export default function BattleConfigScreen({ onConfirm, onBack, showDraftOption = true, showOwnPokemonOption = false, ownPokemonCount = 0 }: BattleConfigScreenProps) {
-  const [fieldSize, setFieldSize] = useState<2 | 3>(DEFAULT_BATTLE_CONFIG.fieldSize);
+  const [fieldSize, setFieldSize] = useState<1 | 2 | 3>(DEFAULT_BATTLE_CONFIG.fieldSize);
   const [totalPokemon, setTotalPokemon] = useState<number>(DEFAULT_BATTLE_CONFIG.totalPokemon);
   const [selectionMode, setSelectionMode] = useState<'blind' | 'draft'>(DEFAULT_BATTLE_CONFIG.selectionMode);
   const [useOwnPokemon, setUseOwnPokemon] = useState(false);
 
   const validTotals = VALID_TOTALS[fieldSize];
 
-  const handleFieldSize = (fs: 2 | 3) => {
+  const handleFieldSize = (fs: 1 | 2 | 3) => {
     setFieldSize(fs);
     // Reset total if current value isn't valid for new field size
     if (!VALID_TOTALS[fs].includes(totalPokemon)) {
@@ -42,7 +43,7 @@ export default function BattleConfigScreen({ onConfirm, onBack, showDraftOption 
         <div className="bconfig-group">
           <div className="bconfig-label">Pokémon on field (per side)</div>
           <div className="bconfig-options">
-            {([2, 3] as const).map((n) => (
+            {([1, 2, 3] as const).map((n) => (
               <button
                 key={n}
                 className={`bconfig-option ${fieldSize === n ? 'active' : ''}`}
