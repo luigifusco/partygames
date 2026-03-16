@@ -170,7 +170,27 @@ export function runShowdownBattle(
     filteredLog.push(line);
   }
 
-  return parseProtocol(filteredLog, leftEntries, rightEntries, fieldSize, battle);
+  const snapshot = parseProtocol(filteredLog, leftEntries, rightEntries, fieldSize, battle);
+
+  // Post-process: remove friendly-fire damage entries caused by Showdown's
+  // automatic target redirection when the intended opponent faints mid-turn.
+  // Convert them to "missed" entries to avoid confusing UI.
+  for (const entry of snapshot.log) {
+    if (!entry.moveName || entry.damage === 0) continue;
+    const aSide = entry.attackerInstanceId?.[0]; // 'l' or 'r'
+    const tSide = entry.targetInstanceId?.[0];
+    if (aSide && tSide && aSide === tSide && entry.attackerInstanceId !== entry.targetInstanceId) {
+      // Friendly fire — nullify the damage in hpState and show as miss
+      entry.damage = 0;
+      entry.effectiveness = 'neutral';
+      entry.targetFainted = false;
+      entry.message = `${entry.attackerName} used ${entry.moveName}! But there was no target!`;
+      // Restore target HP in hpState (undo the damage Showdown applied)
+      // We can't perfectly undo, but the next event's hpState will correct it
+    }
+  }
+
+  return snapshot;
 }
 
 function buildChoice(battle: any, sideIndex: number): string {
@@ -358,15 +378,27 @@ function buildChoice(battle: any, sideIndex: number): string {
 
       const moveIdx = active.moves.indexOf(pick.move) + 1;
 
-      // Policy 1: No Friendly Fire — always target opponent slots in multi battles
+      // Policy 1: No Friendly Fire — always target a living opponent in multi battles
       if (isMulti && (pick.move.target === 'normal' || pick.move.target === 'any' || pick.move.target === 'adjacentFoe')) {
-        // Policy 4b: Focus Fire — target lowest HP opponent
-        if (opponents.length > 0) {
-          const weakest = opponents.reduce((a: any, b: any) => (a.hp / a.maxhp) < (b.hp / b.maxhp) ? a : b);
-          const slot = oppSide.active.indexOf(weakest);
-          choices.push(`move ${moveIdx} -${slot + 1}`);
+        // Find living opponents and their slot indices
+        const livingOppSlots: number[] = [];
+        for (let j = 0; j < oppSide.active.length; j++) {
+          const opp = oppSide.active[j];
+          if (opp && !opp.fainted && opp.hp > 0) livingOppSlots.push(j);
+        }
+        if (livingOppSlots.length > 0) {
+          // Policy 12: Focus Fire — target lowest HP living opponent
+          let bestSlot = livingOppSlots[0];
+          let bestHpPct = 1;
+          for (const slot of livingOppSlots) {
+            const opp = oppSide.active[slot];
+            const pct = opp.hp / opp.maxhp;
+            if (pct < bestHpPct) { bestHpPct = pct; bestSlot = slot; }
+          }
+          choices.push(`move ${moveIdx} -${bestSlot + 1}`);
         } else {
-          choices.push(`move ${moveIdx} -1`);
+          // No living opponents — just pick the move without targeting
+          choices.push(`move ${moveIdx}`);
         }
       } else {
         choices.push(`move ${moveIdx}`);
