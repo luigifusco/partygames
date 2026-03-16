@@ -375,8 +375,11 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
       // For status condition entries (no move), just show text
       if (!entry.moveName) {
+        if (entry.targetFainted) {
+          playSfx('faint');
+          playCry(entry.targetName, 0.25, 0.6);
+        }
         setAnim((prev) => ({ ...prev, actionText }));
-        // Apply status damage/changes using absolute HP snapshot
         setAnim((prev) => {
           const newHp = entry.hpState ? { ...entry.hpState } : { ...prev.pokemonHp };
           if (!entry.hpState && entry.statusDamage) {
@@ -386,10 +389,6 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           if (entry.statusChange) {
             newStatus = { ...prev.pokemonStatus };
             newStatus[entry.statusChange.instanceId] = entry.statusChange.status;
-          }
-          if (entry.targetFainted) {
-            playSfx('faint');
-            playCry(entry.targetName, 0.25, 0.6);
           }
           return { ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonStatus: newStatus, attackingId: null };
         });
@@ -437,11 +436,16 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         resultText = resultText ? `${resultText} ${entry.targetName} fainted!` : `${entry.targetName} fainted!`;
       }
 
+      // Play faint sounds before state update
+      if (entry.targetFainted) {
+        playSfx('faint');
+        playCry(entry.targetName, 0.25, 0.6);
+      }
+
       setAnim((prev) => {
         // Use absolute HP snapshot from server if available — eliminates desync
         const newHp = entry.hpState ? { ...entry.hpState } : { ...prev.pokemonHp };
         if (!entry.hpState) {
-          // Fallback: incremental damage for old-format entries
           if (entry.damage > 0) {
             newHp[entry.targetInstanceId] = Math.max(0, (newHp[entry.targetInstanceId] ?? 0) - entry.damage);
           }
@@ -463,10 +467,6 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         if (entry.statusChange) {
           newStatus = { ...prev.pokemonStatus };
           newStatus[entry.statusChange.instanceId] = entry.statusChange.status;
-        }
-        if (entry.targetFainted) {
-          playSfx('faint');
-          playCry(entry.targetName, 0.25, 0.6);
         }
         return {
           ...prev,
