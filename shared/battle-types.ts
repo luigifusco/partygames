@@ -40,6 +40,8 @@ export interface BattleLogEntry {
   statusDamage?: { instanceId: string; damage: number };
   replacement?: { instanceId: string; name: string; sprite: string; side: 'left' | 'right' };
   itemConsumed?: { instanceId: string; itemId: string };
+  /** Absolute HP snapshot for all pokemon after this event — client should SET hp to these values */
+  hpState?: Record<string, number>;
 }
 
 export interface BattleSnapshot {

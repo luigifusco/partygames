@@ -266,7 +266,36 @@ function parseProtocol(
     return id;
   }
 
+  // Build absolute HP snapshot from pokemonState at the current point in time
+  function getHpSnapshot(): Record<string, number> {
+    const snap: Record<string, number> = {};
+    // Start with tracked protocol state for pokemon that have appeared in battle
+    for (const [ident, state] of Object.entries(pokemonState)) {
+      const instId = getInstanceId(ident);
+      snap[instId] = Math.max(0, state.hp);
+    }
+    // For unseen pokemon (still in reserve), use maxHp from battle object
+    for (let i = 0; i < leftEntries.length; i++) {
+      if (snap[`l${i}`] === undefined) {
+        const bPkmn = battle?.sides?.[0]?.pokemon?.[i];
+        snap[`l${i}`] = bPkmn?.maxhp ?? 100;
+      }
+    }
+    for (let i = 0; i < rightEntries.length; i++) {
+      if (snap[`r${i}`] === undefined) {
+        const bPkmn = battle?.sides?.[1]?.pokemon?.[i];
+        snap[`r${i}`] = bPkmn?.maxhp ?? 100;
+      }
+    }
+    return snap;
+  }
+
   const log: BattleLogEntry[] = [];
+  // Helper to push log entries with automatic HP snapshot
+  function pushLog(entry: BattleLogEntry) {
+    entry.hpState = getHpSnapshot();
+    log.push(entry);
+  }
   let currentRound = 0;
   let winner: 'left' | 'right' | null = null;
 
@@ -303,7 +332,7 @@ function parseProtocol(
     }
     if (pendingFainted) message += ` ${m.targetName} fainted!`;
 
-    log.push({
+    pushLog({
       round: m.round,
       attackerInstanceId: attackerInstId,
       attackerName: m.attackerName,
@@ -352,7 +381,7 @@ function parseProtocol(
 
         // Log replacement if this is mid-battle (after turn 0)
         if (currentRound > 0) {
-          log.push({
+          pushLog({
             round: currentRound,
             attackerInstanceId: '', attackerName: '',
             moveName: '', targetInstanceId: '', targetName: '',
@@ -415,7 +444,7 @@ function parseProtocol(
         const parsed = parsePokemonIdent(healIdent);
         const source = parts[4] || '';
         if (healAmount > 0) {
-          log.push({
+          pushLog({
             round: currentRound,
             attackerInstanceId: getInstanceId(healIdent),
             attackerName: parsed.name,
@@ -468,7 +497,7 @@ function parseProtocol(
         } else {
           // Faint from status damage or other cause
           flushPendingMove();
-          log.push({
+          pushLog({
             round: currentRound,
             attackerInstanceId: getInstanceId(faintIdent),
             attackerName: faintParsed.name,
@@ -496,7 +525,7 @@ function parseProtocol(
           // Secondary effect from a move
           pendingStatusChange = { instanceId: statusInstId, status: statusName };
         } else {
-          log.push({
+          pushLog({
             round: currentRound,
             attackerInstanceId: '', attackerName: '',
             moveName: '', targetInstanceId: statusInstId, targetName: statusParsed.name,
@@ -512,7 +541,7 @@ function parseProtocol(
         const cureIdent = parts[2];
         const cureParsed = parsePokemonIdent(cureIdent);
         const cureInstId = getInstanceId(cureIdent);
-        log.push({
+        pushLog({
           round: currentRound,
           attackerInstanceId: cureInstId, attackerName: cureParsed.name,
           moveName: '', targetInstanceId: cureInstId, targetName: cureParsed.name,
@@ -536,7 +565,7 @@ function parseProtocol(
         const direction = amount > 0 ? 'rose' : 'fell';
         const intensity = Math.abs(amount) >= 2 ? ' sharply' : '';
 
-        log.push({
+        pushLog({
           round: currentRound,
           attackerInstanceId: boostInstId, attackerName: boostParsed.name,
           moveName: '', targetInstanceId: boostInstId, targetName: boostParsed.name,
@@ -558,7 +587,7 @@ function parseProtocol(
           const weatherMsg = weatherTag === 'rain' ? '🌧️ It started to rain!'
             : weatherTag === 'sun' ? '☀️ The sunlight turned harsh!'
             : 'The weather cleared up.';
-          log.push({
+          pushLog({
             round: currentRound,
             attackerInstanceId: '', attackerName: '',
             moveName: '', targetInstanceId: '', targetName: '',
@@ -597,7 +626,7 @@ function parseProtocol(
           'flinch': `${cantParsed.name} flinched!`,
         };
 
-        log.push({
+        pushLog({
           round: currentRound,
           attackerInstanceId: getInstanceId(cantIdent), attackerName: cantParsed.name,
           moveName: '', targetInstanceId: getInstanceId(cantIdent), targetName: cantParsed.name,
@@ -614,7 +643,7 @@ function parseProtocol(
         const abilParsed = parsePokemonIdent(abilIdent);
         // Don't clutter log with initial ability announcements
         if (currentRound > 0) {
-          log.push({
+          pushLog({
             round: currentRound,
             attackerInstanceId: getInstanceId(abilIdent), attackerName: abilParsed.name,
             moveName: '', targetInstanceId: getInstanceId(abilIdent), targetName: abilParsed.name,
@@ -631,7 +660,7 @@ function parseProtocol(
         const itemName = parts[3];
         const itemParsed = parsePokemonIdent(itemIdent);
         if (cmd === '-enditem') {
-          log.push({
+          pushLog({
             round: currentRound,
             attackerInstanceId: getInstanceId(itemIdent), attackerName: itemParsed.name,
             moveName: '', targetInstanceId: getInstanceId(itemIdent), targetName: itemParsed.name,
@@ -651,18 +680,31 @@ function parseProtocol(
 
   flushPendingMove();
 
-  // Build final BattlePokemonState arrays using battle object for accurate HP
+  // Get final HP from the last log entry's hpState (most accurate)
+  const finalHp = log.length > 0 && log[log.length - 1].hpState
+    ? log[log.length - 1].hpState!
+    : getHpSnapshot();
+
+  // Get maxHp from battle object, keyed by pokemon name
+  const maxHpByName: Record<string, number> = {};
+  if (battle) {
+    for (const side of battle.sides) {
+      for (const p of side.pokemon) {
+        maxHpByName[p.name || p.species?.name] = p.maxhp;
+      }
+    }
+  }
+
+  // Build final BattlePokemonState arrays using protocol-tracked HP
   const left: BattlePokemonState[] = leftEntries.map((e, i) => {
     const instId = `l${i}`;
-    const bPkmn = battle?.sides[0]?.pokemon[i];
-
     return {
       instanceId: instId,
       name: e.pokemon.name,
       sprite: e.pokemon.sprite,
       types: [...e.pokemon.types],
-      currentHp: bPkmn ? bPkmn.hp : 0,
-      maxHp: bPkmn ? bPkmn.maxhp : 100,
+      currentHp: finalHp[instId] ?? 0,
+      maxHp: maxHpByName[e.pokemon.name] ?? 100,
       side: 'left' as const,
       heldItem: e.heldItem ?? null,
     };
@@ -670,15 +712,13 @@ function parseProtocol(
 
   const right: BattlePokemonState[] = rightEntries.map((e, i) => {
     const instId = `r${i}`;
-    const bPkmn = battle?.sides[1]?.pokemon[i];
-
     return {
       instanceId: instId,
       name: e.pokemon.name,
       sprite: e.pokemon.sprite,
       types: [...e.pokemon.types],
-      currentHp: bPkmn ? bPkmn.hp : 0,
-      maxHp: bPkmn ? bPkmn.maxhp : 100,
+      currentHp: finalHp[instId] ?? 0,
+      maxHp: maxHpByName[e.pokemon.name] ?? 100,
       side: 'right' as const,
       heldItem: e.heldItem ?? null,
     };

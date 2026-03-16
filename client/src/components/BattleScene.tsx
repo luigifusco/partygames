@@ -318,6 +318,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       const entry = snapshot.log[nextIdx];
       animatingRef.current = true;
 
+      try {
       // Show round banner when a new round starts
       const prevRound = nextIdx > 0 ? snapshot.log[nextIdx - 1].round : 0;
       if (entry.round > prevRound) {
@@ -331,22 +332,32 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // For replacement entries, just show text briefly
       if (entry.replacement) {
         setAnim((prev) => ({ ...prev, actionText }));
-        // Apply replacement immediately
+        // Apply replacement — use hpState for HP and correct instanceId for slot
         setAnim((prev) => {
-          const newHp = { ...prev.pokemonHp };
+          const newHp = entry.hpState ? { ...entry.hpState } : { ...prev.pokemonHp };
           const newBoosts = { ...prev.pokemonBoosts };
           const newStatus = { ...prev.pokemonStatus };
           const rep = entry.replacement!;
           const fullState = [...snapshot.left, ...snapshot.right].find((p) => p.instanceId === rep.instanceId);
           if (fullState) {
-            newHp[rep.instanceId] = fullState.maxHp;
+            if (!entry.hpState) newHp[rep.instanceId] = fullState.maxHp;
             newBoosts[rep.instanceId] = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
             newStatus[rep.instanceId] = '';
             visibleSet.current.add(rep.instanceId);
             const setDisplayed = rep.side === 'left' ? setDisplayedLeft : setDisplayedRight;
-            setDisplayed((prev) =>
-              prev.map((p) => p.instanceId === entry.targetInstanceId ? fullState : p)
-            );
+            setDisplayed((prev) => {
+              // Replace the fainted slot or add if new
+              const existing = prev.findIndex(p => p.instanceId === rep.instanceId);
+              if (existing >= 0) return prev; // Already displayed
+              // Find the fainted slot to replace
+              const faintedIdx = prev.findIndex(p => (newHp[p.instanceId] ?? 0) <= 0);
+              if (faintedIdx >= 0 && fullState) {
+                const next = [...prev];
+                next[faintedIdx] = fullState;
+                return next;
+              }
+              return prev;
+            });
             playCry(rep.name, 0.3);
           }
           return {
@@ -363,16 +374,16 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // For status condition entries (no move), just show text
       if (!entry.moveName) {
         setAnim((prev) => ({ ...prev, actionText }));
-        // Apply status damage/changes
+        // Apply status damage/changes using absolute HP snapshot
         setAnim((prev) => {
-          const newHp = { ...prev.pokemonHp };
+          const newHp = entry.hpState ? { ...entry.hpState } : { ...prev.pokemonHp };
+          if (!entry.hpState && entry.statusDamage) {
+            newHp[entry.statusDamage.instanceId] = Math.max(0, (newHp[entry.statusDamage.instanceId] ?? 0) - entry.statusDamage.damage);
+          }
           let newStatus = prev.pokemonStatus;
           if (entry.statusChange) {
             newStatus = { ...prev.pokemonStatus };
             newStatus[entry.statusChange.instanceId] = entry.statusChange.status;
-          }
-          if (entry.statusDamage) {
-            newHp[entry.statusDamage.instanceId] = Math.max(0, (newHp[entry.statusDamage.instanceId] ?? 0) - entry.statusDamage.damage);
           }
           if (entry.targetFainted) {
             playSfx('faint');
@@ -425,12 +436,16 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       }
 
       setAnim((prev) => {
-        const newHp = { ...prev.pokemonHp };
-        if (entry.damage > 0) {
-          newHp[entry.targetInstanceId] = Math.max(
-            0,
-            (newHp[entry.targetInstanceId] ?? 0) - entry.damage
-          );
+        // Use absolute HP snapshot from server if available — eliminates desync
+        const newHp = entry.hpState ? { ...entry.hpState } : { ...prev.pokemonHp };
+        if (!entry.hpState) {
+          // Fallback: incremental damage for old-format entries
+          if (entry.damage > 0) {
+            newHp[entry.targetInstanceId] = Math.max(0, (newHp[entry.targetInstanceId] ?? 0) - entry.damage);
+          }
+          if (entry.statusDamage) {
+            newHp[entry.statusDamage.instanceId] = Math.max(0, (newHp[entry.statusDamage.instanceId] ?? 0) - entry.statusDamage.damage);
+          }
         }
         let newBoosts = prev.pokemonBoosts;
         if (entry.boostChanges) {
@@ -447,12 +462,6 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           newStatus = { ...prev.pokemonStatus };
           newStatus[entry.statusChange.instanceId] = entry.statusChange.status;
         }
-        if (entry.statusDamage) {
-          newHp[entry.statusDamage.instanceId] = Math.max(
-            0,
-            (newHp[entry.statusDamage.instanceId] ?? 0) - entry.statusDamage.damage
-          );
-        }
         if (entry.targetFainted) {
           playSfx('faint');
           playCry(entry.targetName, 0.2);
@@ -468,7 +477,9 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         };
       });
 
-      animatingRef.current = false;
+      } finally {
+        animatingRef.current = false;
+      }
     }, turnDelayMs);
 
     return () => clearTimeout(timer);
