@@ -450,25 +450,16 @@ function parseProtocol(
   }
 
   // Build absolute HP snapshot from pokemonState at the current point in time
+  // Track maxHp from switch events for reserve pokemon
+  const knownMaxHp: Record<string, number> = {};
+
   function getHpSnapshot(): Record<string, number> {
     const snap: Record<string, number> = {};
-    // Start with tracked protocol state for pokemon that have appeared in battle
+    // Only include pokemon that have appeared in battle (via |switch| events)
+    // Reserves are NOT included — the client initializes them at maxHp
     for (const [ident, state] of Object.entries(pokemonState)) {
       const instId = getInstanceId(ident);
       snap[instId] = Math.max(0, state.hp);
-    }
-    // For unseen pokemon (still in reserve), use maxHp from battle object
-    for (let i = 0; i < leftEntries.length; i++) {
-      if (snap[`l${i}`] === undefined) {
-        const bPkmn = battle?.sides?.[0]?.pokemon?.[i];
-        snap[`l${i}`] = bPkmn?.maxhp ?? 100;
-      }
-    }
-    for (let i = 0; i < rightEntries.length; i++) {
-      if (snap[`r${i}`] === undefined) {
-        const bPkmn = battle?.sides?.[1]?.pokemon?.[i];
-        snap[`r${i}`] = bPkmn?.maxhp ?? 100;
-      }
     }
     return snap;
   }
@@ -561,6 +552,7 @@ function parseProtocol(
         const instId = getInstanceId(ident);
 
         pokemonState[ident] = { hp, maxHp, side: parsed.side, name: parsed.name, species: detailParts[0] };
+        knownMaxHp[instId] = maxHp;
 
         // Log replacement if this is mid-battle (after turn 0)
         if (currentRound > 0) {

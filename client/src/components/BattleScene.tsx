@@ -334,9 +334,9 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // For replacement entries, just show text briefly
       if (entry.replacement) {
         setAnim((prev) => ({ ...prev, actionText }));
-        // Apply replacement — use hpState for HP and correct instanceId for slot
+        // Apply replacement
         setAnim((prev) => {
-          const newHp = entry.hpState ? { ...entry.hpState } : { ...prev.pokemonHp };
+          const newHp = entry.hpState ? { ...prev.pokemonHp, ...entry.hpState } : { ...prev.pokemonHp };
           const newBoosts = { ...prev.pokemonBoosts };
           const newStatus = { ...prev.pokemonStatus };
           const rep = entry.replacement!;
@@ -347,18 +347,25 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
             newStatus[rep.instanceId] = '';
             visibleSet.current.add(rep.instanceId);
             const setDisplayed = rep.side === 'left' ? setDisplayedLeft : setDisplayedRight;
-            setDisplayed((prev) => {
-              // Replace the fainted slot or add if new
-              const existing = prev.findIndex(p => p.instanceId === rep.instanceId);
-              if (existing >= 0) return prev; // Already displayed
-              // Find the fainted slot to replace
-              const faintedIdx = prev.findIndex(p => (newHp[p.instanceId] ?? 0) <= 0);
-              if (faintedIdx >= 0 && fullState) {
-                const next = [...prev];
+            setDisplayed((displayed) => {
+              // Don't add if already displayed
+              if (displayed.some(p => p.instanceId === rep.instanceId)) return displayed;
+              // Find the fainted slot: check prev.pokemonHp (before this entry's hpState)
+              // to find which displayed pokemon was at 0 HP
+              const faintedIdx = displayed.findIndex(p => (prev.pokemonHp[p.instanceId] ?? 0) <= 0);
+              if (faintedIdx >= 0) {
+                const next = [...displayed];
                 next[faintedIdx] = fullState;
                 return next;
               }
-              return prev;
+              // Fallback: replace first slot that's not the replacement
+              const fallbackIdx = displayed.findIndex(p => p.instanceId !== rep.instanceId);
+              if (fallbackIdx >= 0) {
+                const next = [...displayed];
+                next[fallbackIdx] = fullState;
+                return next;
+              }
+              return displayed;
             });
             playCry(rep.name, 0.3);
           }
@@ -381,7 +388,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         }
         setAnim((prev) => ({ ...prev, actionText }));
         setAnim((prev) => {
-          const newHp = entry.hpState ? { ...entry.hpState } : { ...prev.pokemonHp };
+          const newHp = entry.hpState ? { ...prev.pokemonHp, ...entry.hpState } : { ...prev.pokemonHp };
           if (!entry.hpState && entry.statusDamage) {
             newHp[entry.statusDamage.instanceId] = Math.max(0, (newHp[entry.statusDamage.instanceId] ?? 0) - entry.statusDamage.damage);
           }
@@ -444,7 +451,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
       setAnim((prev) => {
         // Use absolute HP snapshot from server if available — eliminates desync
-        const newHp = entry.hpState ? { ...entry.hpState } : { ...prev.pokemonHp };
+        const newHp = entry.hpState ? { ...prev.pokemonHp, ...entry.hpState } : { ...prev.pokemonHp };
         if (!entry.hpState) {
           if (entry.damage > 0) {
             newHp[entry.targetInstanceId] = Math.max(0, (newHp[entry.targetInstanceId] ?? 0) - entry.damage);
