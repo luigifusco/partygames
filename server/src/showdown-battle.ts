@@ -141,8 +141,7 @@ export function runShowdownBattle(
   });
 
   // Handle team preview
-  battle.choose('p1', 'default');
-  battle.choose('p2', 'default');
+  battle.makeChoices('default', 'default');
 
   // Run battle: auto-choose random moves each turn
   let turns = 0;
@@ -151,10 +150,10 @@ export function runShowdownBattle(
     const p2choice = buildChoice(battle, 1);
 
     try {
-      battle.choose('p1', p1choice);
-      battle.choose('p2', p2choice);
+      battle.makeChoices(p1choice, p2choice);
     } catch (e: any) {
-      try { battle.choose('p1', 'default'); battle.choose('p2', 'default'); } catch { break; }
+      // If choices failed, try simpler alternatives
+      try { battle.makeChoices('default', 'default'); } catch { break; }
     }
     turns++;
   }
