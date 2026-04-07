@@ -174,16 +174,40 @@ export function runShowdownBattle(
 
   const snapshot = parseProtocol(filteredLog, leftEntries, rightEntries, fieldSize, battle);
 
-  // Post-process: remove friendly-fire damage entries caused by Showdown's
-  // automatic target redirection when the intended opponent faints mid-turn.
-  // These are removed entirely from the log — the player never sees them.
+  // Post-process: clean up log entries that would cause visual confusion.
+  // Track HP state to detect attacks on already-fainted pokemon.
+  const trackHp: Record<string, number> = {};
+  for (const p of [...snapshot.left, ...snapshot.right]) trackHp[p.instanceId] = p.maxHp;
+
   snapshot.log = snapshot.log.filter((entry) => {
-    if (!entry.moveName || entry.damage === 0) return true;
-    const aSide = entry.attackerInstanceId?.[0]; // 'l' or 'r'
-    const tSide = entry.targetInstanceId?.[0];
-    if (aSide && tSide && aSide === tSide && entry.attackerInstanceId !== entry.targetInstanceId) {
-      return false; // Remove friendly-fire entry
+    // Update tracked HP from hpState
+    if (entry.hpState) {
+      for (const [id, v] of Object.entries(entry.hpState)) trackHp[id] = v;
     }
+
+    if (!entry.moveName) return true;
+
+    // Remove friendly-fire (attack redirected to ally)
+    const aSide = entry.attackerInstanceId?.[0];
+    const tSide = entry.targetInstanceId?.[0];
+    if (aSide && tSide && aSide === tSide && entry.attackerInstanceId !== entry.targetInstanceId && entry.damage > 0) {
+      return false;
+    }
+
+    // Remove attacks on already-fainted pokemon (queued moves hitting dead targets)
+    if (entry.damage > 0 && entry.targetInstanceId) {
+      const targetHp = trackHp[entry.targetInstanceId] ?? 999;
+      if (targetHp <= 0) return false;
+    }
+
+    // Update HP from damage for subsequent checks within same turn
+    if (entry.damage > 0 && entry.targetInstanceId) {
+      trackHp[entry.targetInstanceId] = Math.max(0, (trackHp[entry.targetInstanceId] ?? 0) - entry.damage);
+    }
+    if (entry.targetFainted && entry.targetInstanceId) {
+      trackHp[entry.targetInstanceId] = 0;
+    }
+
     return true;
   });
 
