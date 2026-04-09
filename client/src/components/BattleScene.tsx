@@ -506,21 +506,18 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // Pause so the text is readable
       await new Promise((r) => setTimeout(r, 500));
 
-      // 2. Play move SFX and animation
-      if (entry.damage === 0 && entry.effectiveness !== null && !entry.boostChanges && !entry.weather) {
-        playSfx('miss');
-      } else if (entry.damage > 0) {
-        playHitSound(entry.effectiveness);
-      } else if (entry.moveName) {
-        playSfx(getMoveSfxType(entry.moveName));
-      }
-
+      // 2. Play move animation (sound plays after)
       const animConfig = getMoveAnim(entry.moveName);
       const attackerEl = cardRefs.current[entry.attackerInstanceId];
       const defenderEl = cardRefs.current[entry.targetInstanceId];
 
       if (arenaRef.current && entry.moveName) {
         await runMoveAnimation(animConfig, arenaRef.current, attackerEl, defenderEl);
+      }
+
+      // 3. Play hit sound after animation, as HP bar starts draining
+      if (entry.damage > 0) {
+        playHitSound(entry.effectiveness);
       }
 
       // 3. Apply damage, boosts, status AFTER animation and show result
