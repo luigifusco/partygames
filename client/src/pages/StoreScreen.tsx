@@ -6,6 +6,8 @@ import { getTMSprite, getMoveType } from '@shared/move-data';
 import { rollBoost, getBoostSprite, getBoostName } from '@shared/boost-data';
 import type { StatKey } from '@shared/boost-data';
 import type { BoxTier, Pokemon } from '@shared/types';
+import { randomNature } from '@shared/natures';
+import { NATURE_BY_NAME } from '@shared/natures';
 import './StoreScreen.css';
 
 const TIERS: { tier: BoxTier; icon: string; desc: string }[] = [
@@ -22,6 +24,9 @@ interface PackCard {
   sprite: string;
   tier?: string;
   moveType?: string;
+  nature?: string;
+  ability?: string;
+  moves?: [string, string];
 }
 
 interface StoreScreenProps {
@@ -56,7 +61,16 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
     ]);
 
     const packCards: PackCard[] = [
-      ...result.map((p) => ({ type: 'pokemon' as const, name: p.name, sprite: p.sprite, tier: p.tier })),
+      ...result.map((p) => {
+        const nature = randomNature();
+        const nd = NATURE_BY_NAME[nature];
+        return {
+          type: 'pokemon' as const, name: p.name, sprite: p.sprite, tier: p.tier,
+          nature,
+          ability: '', // actual ability assigned server-side
+          moves: p.moves as [string, string],
+        };
+      }),
       { type: 'tm', name: tm, sprite: getTMSprite(tm), moveType: getMoveType(tm) },
       { type: 'boost', name: getBoostName(boost), sprite: getBoostSprite(boost) },
     ];
@@ -215,6 +229,12 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
                     onContextMenu={(e) => e.preventDefault()}
                   />
                   <div className="pack-reveal-name">{card.name}</div>
+                  {card.type === 'pokemon' && card.moves && (
+                    <div className="pack-reveal-info">
+                      <span className="pack-reveal-nature">{card.nature}</span>
+                      <span className="pack-reveal-moves">{card.moves[0]} / {card.moves[1]}</span>
+                    </div>
+                  )}
                   <div className={`pack-reveal-badge ${badgeClass}`}>
                     {card.type === 'pokemon' ? card.tier :
                      card.type === 'tm' ? 'TM' : 'Boost'}
