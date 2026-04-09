@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { BattlePokemonState, BattleLogEntry, BattleSnapshot } from '@shared/battle-types';
 import { getMoveAnim } from '../data/moveAnimations';
 import { runMoveAnimation } from './BattleAnimationEngine';
-import { playSfx, getMoveSfxType, playCry, preloadCries, playHitSound, preloadHitSounds, startBattleBgm, stopBattleBgm } from './BattleSounds';
+import { playSfx, getMoveSfxType, playCry, preloadCries, playHitSound, preloadHitSounds, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted } from './BattleSounds';
 import { getHeldItemSprite } from '@shared/held-item-data';
 import { BASE_PATH } from '../config';
 import './BattleScene.css';
@@ -219,6 +219,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const animatingRef = useRef(false);
   const [debugView, setDebugView] = useState(false);
+  const [muted, setMuted] = useState(false);
 
   const fieldSize = snapshot.fieldSize ?? snapshot.left.length;
 
@@ -668,7 +669,10 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         <span className="playback-counter">{anim.currentLogIndex + 1}/{snapshot.log.length}</span>
       </div>
 
-      <button className="battle-debug-toggle" onClick={() => setDebugView(!debugView)}>
+      <button className="battle-debug-toggle" onClick={() => { toggleBgmMute(); setMuted(isBgmMuted()); }}>
+        {muted ? '🔇' : '🔊'}
+      </button>
+      <button className="battle-debug-toggle battle-debug-toggle-2" onClick={() => setDebugView(!debugView)}>
         {debugView ? '✕ Close Debug' : '🐛'}
       </button>
 

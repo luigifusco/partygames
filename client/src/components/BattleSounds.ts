@@ -314,6 +314,18 @@ export function stopBattleBgm() {
   }
 }
 
+export function toggleBgmMute(): boolean {
+  if (currentBgm) {
+    currentBgm.muted = !currentBgm.muted;
+    return currentBgm.muted;
+  }
+  return false;
+}
+
+export function isBgmMuted(): boolean {
+  return currentBgm?.muted ?? false;
+}
+
 // --- Hit sounds (MP3, keyed by effectiveness) ---
 
 const HIT_SOUNDS: Record<string, string> = {
