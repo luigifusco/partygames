@@ -277,7 +277,7 @@ export default function BattleDemo({ essence, onGainEssence, collection }: Battl
       <div className="battle-demo-wrapper">
         <BattleScene snapshot={snapshot} turnDelayMs={2000} essenceGained={essenceGained} trainerId={trainer?.id} />
         <button className="battle-demo-back" onClick={() => { setSnapshot(null); setSelected([]); setAiTeam([]); setOpponentTeam([]); setRewarded(false); setConfig(null); setTrainer(null); setDraftSchedule([]); setDraftPhase(0); setAllPickedIndices(new Set()); setAllPickedAiIds(new Set()); setDraftBattleStarted(false); }}>
-          ← New Battle
+          ✕
         </button>
       </div>
     );
