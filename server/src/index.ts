@@ -27,7 +27,7 @@ import {
 } from '../../damage-calc/calc/dist/index.js';
 
 const GEN = 5;
-const BATTLE_LEVEL = 50;
+const BATTLE_LEVEL = 100;
 const calcGen = Generations.get(GEN);
 const ZERO_EVS = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
 

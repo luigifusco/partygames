@@ -69,7 +69,7 @@ function buildShowdownTeam(entries: BattleTeamEntry[]): string {
       item,
       moves: [...e.moves],
       nature: e.nature || 'Serious',
-      level: 50,
+      level: 100,
       evs: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
       ivs: { hp: ivs.hp, atk: ivs.attack, def: ivs.defense, spa: ivs.spAtk, spd: ivs.spDef, spe: ivs.speed },
     };
