@@ -145,6 +145,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         const inst = collection[idx];
         return inst.learnedMoves ?? null;
       }),
+      abilities: selected.map((idx) => collection[idx].ability ?? null),
     });
     setPhase('waitingTeam');
   };

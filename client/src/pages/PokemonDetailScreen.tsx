@@ -118,6 +118,15 @@ export default function PokemonDetailScreen({ collection }: PokemonDetailScreenP
           ))}
         </div>
 
+        <div className="detail-section-title">Ability</div>
+        <div className="detail-ability">
+          {inst.ability ? (
+            <div className="detail-ability-name">{inst.ability}</div>
+          ) : (
+            <div className="detail-held-none">Unknown</div>
+          )}
+        </div>
+
         <div className="detail-section-title">Held Item</div>
         <div className="detail-held-item">
           {inst.heldItem ? (

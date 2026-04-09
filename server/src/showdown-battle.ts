@@ -24,6 +24,7 @@ interface BattleTeamEntry {
   moves: [string, string];
   ivs?: { hp: number; attack: number; defense: number; spAtk: number; spDef: number; speed: number };
   nature?: string;
+  ability?: string;
 }
 
 // Map our held item IDs to Showdown item names
@@ -56,10 +57,22 @@ function getShowdownAbility(speciesName: string): string {
   return species.abilities[0] || 'No Ability';
 }
 
+/** Pick a random ability from a species' available abilities */
+export function randomAbilityForSpecies(speciesName: string): string {
+  const species = GEN5_DEX.species.get(speciesName);
+  if (!species || !species.abilities) return 'No Ability';
+  const pool: string[] = [];
+  if (species.abilities[0]) pool.push(species.abilities[0]);
+  if (species.abilities[1]) pool.push(species.abilities[1]);
+  if (species.abilities.H) pool.push(species.abilities.H);
+  if (pool.length === 0) return 'No Ability';
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 function buildShowdownTeam(entries: BattleTeamEntry[]): string {
   const sets = entries.map((e) => {
     const species = e.pokemon.name;
-    const ability = getShowdownAbility(species);
+    const ability = e.ability || getShowdownAbility(species);
     const item = e.heldItem ? (ITEM_ID_TO_SHOWDOWN[e.heldItem] || '') : '';
     const ivs = e.ivs || { hp: 15, attack: 15, defense: 15, spAtk: 15, spDef: 15, speed: 15 };
 

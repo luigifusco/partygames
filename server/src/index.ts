@@ -16,7 +16,7 @@ import type { StatusCondition } from '../../shared/move-data.js';
 import { canLearnMove } from '../../shared/tm-learnsets.js';
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
-import { runShowdownBattle } from './showdown-battle.js';
+import { runShowdownBattle, randomAbilityForSpecies } from './showdown-battle.js';
 import {
   calculate as calcDamage,
   Pokemon as CalcPokemon,
@@ -99,7 +99,7 @@ function makeCalcPokemon(p: AppPokemon, curHP?: number, boosts?: Record<string, 
   });
 }
 
-function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[], leftMoves?: ([string, string] | null)[], rightMoves?: ([string, string] | null)[]): BattleSnapshot {
+function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[], leftMoves?: ([string, string] | null)[], rightMoves?: ([string, string] | null)[], leftAbilities?: (string | null)[], rightAbilities?: (string | null)[]): BattleSnapshot {
   const activeFieldSize = fieldSize ?? leftIds.length;
 
   const leftEntries = leftIds.map((id, i) => {
@@ -110,8 +110,9 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
       pokemon: base,
       moves: (moves ?? base.moves) as [string, string],
       heldItem: leftHeldItems?.[i] ?? null,
+      ability: leftAbilities?.[i] ?? undefined,
     };
-  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null }[];
+  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string }[];
 
   const rightEntries = rightIds.map((id, i) => {
     const base = POKEMON_BY_ID[id];
@@ -121,8 +122,9 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
       pokemon: base,
       moves: (moves ?? base.moves) as [string, string],
       heldItem: rightHeldItems?.[i] ?? null,
+      ability: rightAbilities?.[i] ?? undefined,
     };
-  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null }[];
+  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string }[];
 
   return runShowdownBattle(leftEntries, rightEntries, activeFieldSize > 1 ? activeFieldSize : 1);
 }
@@ -178,7 +180,7 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
   }
 
   // Also fetch their pokemon collection
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   return res.json({ player, pokemon, items });
 });
@@ -190,7 +192,7 @@ app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
     return res.status(404).json({ error: 'Player not found' });
   }
 
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   return res.json({ player, pokemon, items });
 });
@@ -209,15 +211,17 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon`, (req, res) => {
   if (!Array.isArray(pokemonIds)) return res.status(400).json({ error: 'Invalid pokemonIds' });
 
   const insert = db.prepare(
-    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   const created: any[] = [];
   for (const pid of pokemonIds) {
     const id = uuidv4();
     const nature = randomNature();
     const ivs = randomIVs();
-    insert.run(id, req.params.id, pid, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed);
-    created.push({ id, pokemon_id: pid, nature, iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense, iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed });
+    const species = POKEMON_BY_ID[pid];
+    const ability = species ? randomAbilityForSpecies(species.name) : null;
+    insert.run(id, req.params.id, pid, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability);
+    created.push({ id, pokemon_id: pid, nature, iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense, iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed, ability });
   }
   return res.json({ ok: true, pokemon: created });
 });
@@ -506,13 +510,13 @@ app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
 
 // AI / demo battle endpoint
 app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
-  const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves } = req.body;
+  const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities } = req.body;
   if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
     return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
   }
   const fs = fieldSize ?? leftTeam.length;
   const mode = selectionMode ?? 'blind';
-  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves);
+  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities);
 
   const labels = { field_size: String(fs), total_pokemon: String(leftTeam.length), selection_mode: mode, opponent_type: 'ai' };
   battlesTotal.inc(labels);
@@ -623,13 +627,13 @@ io.on('connection', (socket) => {
     socket.emit('battle:cancelled');
   });
 
-  socket.on('battle:selectTeam', ({ battleId, team, heldItems, moves }: { battleId: string; team: number[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[] }) => {
+  socket.on('battle:selectTeam', ({ battleId, team, heldItems, moves, abilities }: { battleId: string; team: number[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[]; abilities?: (string | null)[] }) => {
     if (!playerName) return;
     const battle = activeBattles.get(battleId);
     if (!battle) return;
 
-    if (battle.player1 === playerName) { battle.player1Team = team; (battle as any).player1HeldItems = heldItems ?? []; (battle as any).player1Moves = moves ?? []; }
-    else if (battle.player2 === playerName) { battle.player2Team = team; (battle as any).player2HeldItems = heldItems ?? []; (battle as any).player2Moves = moves ?? []; }
+    if (battle.player1 === playerName) { battle.player1Team = team; (battle as any).player1HeldItems = heldItems ?? []; (battle as any).player1Moves = moves ?? []; (battle as any).player1Abilities = abilities ?? []; }
+    else if (battle.player2 === playerName) { battle.player2Team = team; (battle as any).player2HeldItems = heldItems ?? []; (battle as any).player2Moves = moves ?? []; (battle as any).player2Abilities = abilities ?? []; }
 
     // Check if both teams are selected
     if (battle.player1Team && battle.player2Team) {
@@ -637,7 +641,7 @@ io.on('connection', (socket) => {
       const socket2 = connectedPlayers.get(battle.player2);
 
       // Simulate battle on server so both players see the same result
-      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves);
+      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities);
 
       const battleDataP1 = {
         battleId,
