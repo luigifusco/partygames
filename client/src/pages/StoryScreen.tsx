@@ -6,6 +6,7 @@ import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { openBox, rollTM } from '@shared/boxes';
 import { rollBoost } from '@shared/boost-data';
 import BattleScene from '../components/BattleScene';
+import TeamSelectGrid from '../components/TeamSelectGrid';
 import type { BattleSnapshot } from '@shared/battle-types';
 import type { PokemonInstance } from '@shared/types';
 import PokemonIcon from '../components/PokemonIcon';
@@ -23,7 +24,7 @@ interface StoryScreenProps {
   collection: PokemonInstance[];
 }
 
-type Phase = 'map' | 'intro' | 'battle' | 'victory' | 'reward';
+type Phase = 'map' | 'intro' | 'select' | 'battle' | 'victory' | 'reward';
 
 export default function StoryScreen({ playerId, essence, onGainEssence, onAddPokemon, onAddItems, collection }: StoryScreenProps) {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [firstClear, setFirstClear] = useState(false);
+  const [selected, setSelected] = useState<number[]>([]);
 
   // Load progress
   useEffect(() => {
@@ -46,24 +48,38 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
 
   const startChapter = useCallback((chapter: StoryChapter) => {
     setActiveChapter(chapter);
-    setPhase('intro');
+    setSelected([]);
     setSnapshot(null);
     setFirstClear(false);
-  }, []);
+    // If player has pokemon, let them choose; otherwise go straight to battle with random team
+    if (collection.length > 0) {
+      setPhase('select');
+    } else {
+      setPhase('intro');
+    }
+  }, [collection.length]);
 
   const startBattle = useCallback(async () => {
     if (!activeChapter) return;
     setLoading(true);
     try {
-      // Use player's collection if they have pokemon, else use the chapter's team mirrored
-      const playerTeamSize = activeChapter.team.length;
-      const playerTeam = collection.length >= playerTeamSize
-        ? collection.slice(0, playerTeamSize).map(inst => inst.pokemon.id)
-        : activeChapter.team.map(() => {
-            // Give random pokemon of similar strength
-            const pool = Object.values(POKEMON_BY_ID).filter(p => p.tier !== 'legendary');
-            return pool[Math.floor(Math.random() * pool.length)].id;
-          });
+      const teamSize = activeChapter.team.length;
+      let playerTeam: number[];
+      let playerMoves: ([string, string] | null)[] | undefined;
+      let playerHeldItems: (string | null)[] | undefined;
+      let playerAbilities: (string | null)[] | undefined;
+
+      if (selected.length > 0) {
+        // Use selected collection pokemon
+        playerTeam = selected.map(idx => collection[idx].pokemon.id);
+        playerMoves = selected.map(idx => collection[idx].learnedMoves ?? null);
+        playerHeldItems = selected.map(idx => collection[idx].heldItem ?? null);
+        playerAbilities = selected.map(idx => collection[idx].ability ?? null);
+      } else {
+        // No collection — use random pokemon
+        const pool = Object.values(POKEMON_BY_ID).filter(p => p.tier !== 'legendary');
+        playerTeam = Array.from({ length: teamSize }, () => pool[Math.floor(Math.random() * pool.length)].id);
+      }
 
       const res = await fetch(`${API}/api/battle/simulate`, {
         method: 'POST',
@@ -72,6 +88,9 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
           leftTeam: playerTeam,
           rightTeam: activeChapter.team,
           fieldSize: activeChapter.fieldSize,
+          leftMoves: playerMoves,
+          leftHeldItems: playerHeldItems,
+          leftAbilities: playerAbilities,
         }),
       });
       const data = await res.json();
@@ -166,6 +185,31 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
           })}
         </div>
       </div>
+    );
+  }
+
+  // Team selection
+  if (phase === 'select' && activeChapter) {
+    const teamSize = activeChapter.team.length;
+    const instances: PokemonInstance[] = collection;
+    const toggleSelect = (idx: number) => {
+      if (selected.includes(idx)) {
+        setSelected(selected.filter(i => i !== idx));
+      } else if (selected.length < teamSize) {
+        setSelected([...selected, idx]);
+      }
+    };
+    return (
+      <TeamSelectGrid
+        instances={instances}
+        selected={selected}
+        onToggle={toggleSelect}
+        teamSize={teamSize}
+        onSubmit={selected.length === teamSize ? () => setPhase('intro') : undefined}
+        submitLabel="Continue →"
+        headerLeft={<button className="battle-mp-back" onClick={() => { setPhase('map'); setActiveChapter(null); }}>← Back</button>}
+        headerCenter={<span style={{ fontSize: 14, fontWeight: 'bold' }}>Pick {teamSize} Pokémon</span>}
+      />
     );
   }
 
