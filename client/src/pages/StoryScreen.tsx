@@ -202,8 +202,8 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
         selected={selected}
         onToggle={toggleSelect}
         teamSize={teamSize}
-        onSubmit={selected.length === teamSize ? () => setPhase('intro') : undefined}
-        submitLabel="Continue →"
+        onSubmit={selected.length === teamSize ? () => startBattle() : undefined}
+        submitLabel="⚔️ Battle!"
         headerLeft={<button className="battle-mp-back" onClick={() => setPhase('intro')}>← Back</button>}
         headerCenter={<span style={{ fontSize: 14, fontWeight: 'bold' }}>Pick {teamSize} Pokémon</span>}
       />
