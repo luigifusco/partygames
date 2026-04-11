@@ -1,10 +1,11 @@
 .story-screen {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  height: 100dvh;
   background: #1a1a2e;
   color: #eee;
   font-family: 'Courier New', monospace;
+  overflow: hidden;
 }
 
 .story-header {

@@ -19,6 +19,7 @@ interface BattleSceneProps {
   turnDelayMs?: number;
   essenceGained?: number;
   trainerId?: string;
+  onFinished?: () => void;
 }
 
 interface AnimationState {
@@ -213,7 +214,7 @@ function formatLogEntry(entry: BattleLogEntry): React.ReactNode {
   return <>{parts}</>;
 }
 
-export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGained, trainerId }: BattleSceneProps) {
+export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGained, trainerId, onFinished }: BattleSceneProps) {
   const logEndRef = useRef<HTMLDivElement>(null);
   const arenaRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -372,9 +373,12 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     return () => stopBattleBgm();
   }, []);
 
-  // Stop BGM when battle finishes
+  // Stop BGM and notify parent when battle finishes
   useEffect(() => {
-    if (anim.finished) stopBattleBgm();
+    if (anim.finished) {
+      stopBattleBgm();
+      onFinished?.();
+    }
   }, [anim.finished]);
 
   // Intro animation: reveal pokemon one by one

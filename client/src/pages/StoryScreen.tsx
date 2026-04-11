@@ -35,6 +35,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
   const [loading, setLoading] = useState(false);
   const [firstClear, setFirstClear] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
+  const [battleFinished, setBattleFinished] = useState(false);
 
   // Load progress
   useEffect(() => {
@@ -51,13 +52,9 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
     setSelected([]);
     setSnapshot(null);
     setFirstClear(false);
-    // If player has pokemon, let them choose; otherwise go straight to battle with random team
-    if (collection.length > 0) {
-      setPhase('select');
-    } else {
-      setPhase('intro');
-    }
-  }, [collection.length]);
+    setBattleFinished(false);
+    setPhase('intro');
+  }, []);
 
   const startBattle = useCallback(async () => {
     if (!activeChapter) return;
@@ -207,7 +204,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? () => setPhase('intro') : undefined}
         submitLabel="Continue →"
-        headerLeft={<button className="battle-mp-back" onClick={() => { setPhase('map'); setActiveChapter(null); }}>← Back</button>}
+        headerLeft={<button className="battle-mp-back" onClick={() => setPhase('intro')}>← Back</button>}
         headerCenter={<span style={{ fontSize: 14, fontWeight: 'bold' }}>Pick {teamSize} Pokémon</span>}
       />
     );
@@ -227,8 +224,8 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
               <PokemonIcon key={i} pokemonId={id} size={32} />
             ))}
           </div>
-          <button className="story-fight-btn" onClick={startBattle} disabled={loading}>
-            {loading ? 'Loading...' : '⚔️ Battle!'}
+          <button className="story-fight-btn" onClick={() => collection.length > 0 ? setPhase('select') : startBattle()} disabled={loading}>
+            {loading ? 'Loading...' : '⚔️ Choose Team'}
           </button>
           <button className="story-retreat-btn" onClick={() => { setPhase('map'); setActiveChapter(null); }}>
             ← Retreat
@@ -242,8 +239,8 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
   if (phase === 'battle' && snapshot && activeChapter) {
     return (
       <div className="story-battle-wrapper">
-        <BattleScene snapshot={snapshot} turnDelayMs={1500} />
-        {snapshot.winner && (
+        <BattleScene snapshot={snapshot} turnDelayMs={1500} onFinished={() => setBattleFinished(true)} />
+        {battleFinished && snapshot.winner && (
           <button className="story-continue-btn" onClick={handleBattleEnd}>
             {snapshot.winner === 'left' ? '🏆 Continue' : '💀 Try Again'}
           </button>
