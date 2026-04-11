@@ -4,4 +4,11 @@ html, body, #root {
   height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
+  background: #1a1a2e;
+}
+
+#root > * {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
