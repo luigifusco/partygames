@@ -98,7 +98,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
     } finally {
       setLoading(false);
     }
-  }, [activeChapter, collection]);
+  }, [activeChapter, collection, selected]);
 
   const handleBattleEnd = useCallback(async () => {
     if (!activeChapter || !snapshot) return;
