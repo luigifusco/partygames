@@ -209,7 +209,8 @@
 
 /* Battle log: bottom section */
 .battle-log {
-  height: 25vh;
+  flex: 1;
+  min-height: 0;
   border-top: 2px solid rgba(255, 255, 255, 0.15);
   padding: 8px 12px;
   overflow-y: auto;
