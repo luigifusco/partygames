@@ -65,6 +65,13 @@ export function openPack(
   for (let i = 0; i < CARDS_PER_PACK; i++) {
     result.push(weightedPickFromPool(pool, weights));
   }
+
+  // Sort from least to most rare
+  const RARITY_ORDER: Record<BoxTier, number> = {
+    common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4,
+  };
+  result.sort((a, b) => RARITY_ORDER[a.tier] - RARITY_ORDER[b.tier]);
+
   return result;
 }
 

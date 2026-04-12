@@ -100,6 +100,14 @@ export const PACKS: PackDef[] = [
     cost: 100,
     pool: [74, 95, 111, 138, 140, 142, 213, 222, 246, 299, 304, 337, 338, 345, 347, 369, 377, 408, 410, 438, 524, 557, 564, 566, 639],
   },
+  {
+    id: 'wild-card',
+    name: 'Wild Card',
+    description: 'Normal & oddball Pokémon',
+    icon: '🃏',
+    cost: 90,
+    pool: [19, 52, 108, 115, 128, 132, 133, 137, 161, 173, 174, 175, 190, 206, 209, 216, 234, 235, 241, 263, 287, 293, 298, 300, 327, 335, 351, 352, 399, 427, 431, 440, 446, 486, 493, 504, 506, 531, 572, 626],
+  },
 ];
 
 export const PACKS_BY_ID: Record<string, PackDef> = Object.fromEntries(
