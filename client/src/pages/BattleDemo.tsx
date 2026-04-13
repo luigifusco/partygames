@@ -72,9 +72,10 @@ interface BattleDemoProps {
   essence: number;
   onGainEssence: (amount: number) => void;
   collection: PokemonInstance[];
+  recentPokemonIds?: number[];
 }
 
-export default function BattleDemo({ essence, onGainEssence, collection }: BattleDemoProps) {
+export default function BattleDemo({ essence, onGainEssence, collection, recentPokemonIds }: BattleDemoProps) {
   const navigate = useNavigate();
   const [trainer, setTrainer] = useState<AITrainer | null>(null);
   const [config, setConfig] = useState<(BattleConfig & { useOwnPokemon?: boolean }) | null>(null);
@@ -333,6 +334,7 @@ export default function BattleDemo({ essence, onGainEssence, collection }: Battl
         disabledIndices={disabledIndices}
         onSubmit={isMyDraftTurn && pendingPicks === neededPicks ? confirmDraftPick : undefined}
         submitLabel="✓ Confirm"
+        recentPokemonIds={useOwn ? recentPokemonIds : undefined}
         headerLeft={<button className="battle-mp-back" onClick={() => setConfig(null)}>← Back</button>}
         headerCenter={<h2>⚡ Draft ({selected.length} / {teamSize})</h2>}
         aboveGrid={
@@ -379,6 +381,7 @@ export default function BattleDemo({ essence, onGainEssence, collection }: Battl
       teamSize={teamSize}
       onSubmit={selected.length === teamSize ? startBattle : undefined}
       submitLabel={loading ? '⏳ Simulating...' : '⚔️ Battle!'}
+      recentPokemonIds={useOwn ? recentPokemonIds : undefined}
       headerLeft={<button className="battle-mp-back" onClick={() => setConfig(null)}>← Back</button>}
       headerCenter={<h2>Pick Your Team ({selected.length}/{teamSize})</h2>}
     />

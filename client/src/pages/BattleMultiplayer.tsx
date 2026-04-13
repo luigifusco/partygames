@@ -24,9 +24,11 @@ interface BattleMultiplayerProps {
   essence: number;
   onGainEssence: (amount: number) => void;
   onEloUpdate: (newElo: number) => void;
+  recentPokemonIds?: number[];
+  onUpdateRecentPokemonIds?: (ids: number[]) => void;
 }
 
-export default function BattleMultiplayer({ playerName, collection, essence, onGainEssence, onEloUpdate }: BattleMultiplayerProps) {
+export default function BattleMultiplayer({ playerName, collection, essence, onGainEssence, onEloUpdate, recentPokemonIds, onUpdateRecentPokemonIds }: BattleMultiplayerProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const autoChallenge = (location.state as any)?.autoChallenge as string | undefined;
@@ -137,9 +139,10 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   };
 
   const submitTeam = () => {
+    const teamPokemonIds = selected.map((idx) => collection[idx].pokemon.id);
     socket.emit('battle:selectTeam', {
       battleId,
-      team: selected.map((idx) => collection[idx].pokemon.id),
+      team: teamPokemonIds,
       heldItems: selected.map((idx) => collection[idx].heldItem ?? null),
       moves: selected.map((idx) => {
         const inst = collection[idx];
@@ -147,6 +150,11 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
       }),
       abilities: selected.map((idx) => collection[idx].ability ?? null),
     });
+    // Optimistically update recent pokemon with the just-submitted team
+    if (onUpdateRecentPokemonIds && recentPokemonIds) {
+      const merged = [...new Set([...teamPokemonIds, ...recentPokemonIds])];
+      onUpdateRecentPokemonIds(merged);
+    }
     setPhase('waitingTeam');
   };
 
@@ -195,6 +203,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         disabled={phase === 'waitingTeam'}
         onSubmit={selected.length === teamSize ? submitTeam : undefined}
         submitLabel="⚔️ Lock In!"
+        recentPokemonIds={recentPokemonIds}
         headerLeft={<button className="battle-mp-back" onClick={() => navigate('/play')}>← Back</button>}
         headerCenter={<h2>Pick Your Team ({selected.length}/{teamSize})</h2>}
         headerRight={<div className="opponent-name">vs {opponentName}</div>}

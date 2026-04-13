@@ -11,7 +11,7 @@ interface PlayerData {
 }
 
 interface LoginScreenProps {
-  onLogin: (player: PlayerData, pokemonRows: any[], itemRows: any[]) => void;
+  onLogin: (player: PlayerData, pokemonRows: any[], itemRows: any[], recentPokemonIds?: number[]) => void;
 }
 
 const API_BASE = BASE_PATH;
@@ -69,7 +69,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       localStorage.setItem(LAST_PLAYER_KEY, name.trim());
       const pokemonRows = data.pokemon;
       const itemRows = data.items ?? [];
-      onLogin(data.player, pokemonRows, itemRows);
+      onLogin(data.player, pokemonRows, itemRows, data.recentPokemonIds);
       navigate('/play');
     } catch {
       setError('Cannot connect to server');

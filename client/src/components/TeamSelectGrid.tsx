@@ -16,6 +16,7 @@ interface TeamSelectGridProps {
   headerCenter?: React.ReactNode;
   headerRight?: React.ReactNode;
   aboveGrid?: React.ReactNode;
+  recentPokemonIds?: number[];
 }
 
 export default function TeamSelectGrid({
@@ -31,10 +32,15 @@ export default function TeamSelectGrid({
   headerCenter,
   headerRight,
   aboveGrid,
+  recentPokemonIds,
 }: TeamSelectGridProps) {
-  const sortedIndices = instances.map((_, i) => i).sort((a, b) =>
-    instances[a].pokemon.id - instances[b].pokemon.id
-  );
+  const recentSet = new Set(recentPokemonIds ?? []);
+  const sortedIndices = instances.map((_, i) => i).sort((a, b) => {
+    const aRecent = recentSet.has(instances[a].pokemon.id) ? 0 : 1;
+    const bRecent = recentSet.has(instances[b].pokemon.id) ? 0 : 1;
+    if (aRecent !== bRecent) return aRecent - bRecent;
+    return instances[a].pokemon.id - instances[b].pokemon.id;
+  });
 
   return (
     <div className="battle-mp-screen">
@@ -79,12 +85,14 @@ export default function TeamSelectGrid({
             const moves = getEffectiveMoves(inst);
             const isSelected = selected.includes(idx);
             const isDisabled = disabledIndices?.has(idx) ?? false;
+            const isRecent = recentSet.has(p.id);
             return (
               <div
                 key={idx}
-                className={`team-select-card ${isSelected ? 'selected' : ''} ${isDisabled ? 'drafted' : ''}`}
+                className={`team-select-card ${isSelected ? 'selected' : ''} ${isDisabled ? 'drafted' : ''} ${isRecent ? 'recent' : ''}`}
                 onClick={() => !disabled && !isDisabled && onToggle(idx)}
               >
+                {isRecent && <span className="recent-badge">★</span>}
                 <img src={p.sprite} alt={p.name} />
                 <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
                 <div className="team-select-card-name">{p.name}</div>

@@ -40,6 +40,7 @@ export default function App() {
   const [items, setItems] = useState<OwnedItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [discovered, setDiscovered] = useState<Set<number>>(new Set());
+  const [recentPokemonIds, setRecentPokemonIds] = useState<number[]>([]);
 
   const spendEssence = (amount: number) => {
     const newEssence = essence - amount;
@@ -263,12 +264,13 @@ export default function App() {
     navigate(routes[notification.type], { state: { autoChallenge: notification.from } });
   }, [navigate]);
 
-  const handleLogin = async (playerData: { id: string; name: string; essence: number; elo: number }, pokemonRows: any[], itemRows: any[]) => {
+  const handleLogin = async (playerData: { id: string; name: string; essence: number; elo: number }, pokemonRows: any[], itemRows: any[], recentPokemon?: number[]) => {
     setPlayer({ id: playerData.id, name: playerData.name });
     setEssence(playerData.essence);
     setElo(playerData.elo ?? STARTING_ELO);
     setCollection(pokemonRows.map(buildInstance).filter(Boolean) as PokemonInstance[]);
     setItems((itemRows ?? []).map(buildItem));
+    setRecentPokemonIds(recentPokemon ?? []);
 
     // Backfill pokedex from owned pokemon, then load discovered set
     await fetch(`${BASE_PATH}/api/player/${playerData.id}/pokedex/backfill`, { method: 'POST' });
@@ -311,8 +313,8 @@ export default function App() {
       <Route path="/shop" element={<ShopScreen essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
       <Route path="/items" element={<ItemsScreen items={items} collection={collection} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} />} />
       <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
-      <Route path="/battle" element={<BattleMultiplayer playerName={player.name} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} />} />
-      <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} />} />
+      <Route path="/battle" element={<BattleMultiplayer playerName={player.name} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
+      <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} />} />
       <Route path="/story" element={<StoryScreen playerId={player.id} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
       <Route path="/tv" element={<TVView />} />
       <Route path="*" element={<Navigate to="/play" replace />} />

@@ -64,6 +64,12 @@ export function initDb() {
       PRIMARY KEY (player_id, pokemon_id)
     );
 
+    CREATE TABLE IF NOT EXISTS battle_team_entries (
+      battle_id TEXT NOT NULL REFERENCES battles(id),
+      player_id TEXT NOT NULL REFERENCES players(id),
+      pokemon_id INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS owned_items (
       id TEXT PRIMARY KEY,
       player_id TEXT NOT NULL REFERENCES players(id),
