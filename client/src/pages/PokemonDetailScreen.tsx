@@ -69,7 +69,34 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
       <div className="detail-header">
         <button className="detail-back" onClick={() => navigate('/collection')}>← Back</button>
         <h2>#{pokemon.id}</h2>
+        <div className="detail-header-actions">
+          {canEvolve && evoTargets.length === 1 && (
+            <button className="detail-header-btn detail-evolve-btn" onClick={() => handleEvolve(evoTargets[0].id)}>✨ Evolve</button>
+          )}
+          {canEvolve && evoTargets.length > 1 && (
+            <button className="detail-header-btn detail-evolve-btn" onClick={() => setEvoPicker(!evoPicker)}>✨ Evolve</button>
+          )}
+          {!shardConfirm ? (
+            <button className="detail-header-btn detail-shard-btn" onClick={() => setShardConfirm(true)}>🔮 Shard</button>
+          ) : (
+            <button className="detail-header-btn detail-shard-yes" onClick={handleShard}>Confirm</button>
+          )}
+          {shardConfirm && (
+            <button className="detail-header-btn detail-shard-no" onClick={() => setShardConfirm(false)}>✕</button>
+          )}
+        </div>
       </div>
+
+      {evoPicker && canEvolve && (
+        <div className="detail-evo-bar">
+          {evoTargets.map((t) => (
+            <button key={t.id} className="detail-evo-option" onClick={() => handleEvolve(t.id)}>
+              <img src={t.sprite} alt={t.name} className="detail-evo-sprite" />
+              <span>{t.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="detail-scroll">
         <div className="detail-sprite-section">
@@ -159,39 +186,6 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
             </div>
           ) : (
             <div className="detail-held-none">None</div>
-          )}
-        </div>
-
-        <div className="detail-section-title">Actions</div>
-        <div className="detail-actions">
-          {canEvolve && evoTargets.length === 1 && (
-            <button className="detail-action-btn detail-evolve-btn" onClick={() => handleEvolve(evoTargets[0].id)}>
-              ✨ Evolve to {evoTargets[0].name} ({tokenCount}/3 tokens)
-            </button>
-          )}
-          {canEvolve && evoTargets.length > 1 && !evoPicker && (
-            <button className="detail-action-btn detail-evolve-btn" onClick={() => setEvoPicker(true)}>
-              ✨ Evolve ({tokenCount}/3 tokens)
-            </button>
-          )}
-          {evoPicker && evoTargets.map((t) => (
-            <button key={t.id} className="detail-action-btn detail-evolve-btn" onClick={() => handleEvolve(t.id)}>
-              ✨ → {t.name}
-            </button>
-          ))}
-          {evoTargets.length > 0 && !canEvolve && (
-            <div className="detail-evolve-hint">Needs 3 {pokemon.name} tokens to evolve ({tokenCount}/3)</div>
-          )}
-          {!shardConfirm ? (
-            <button className="detail-action-btn detail-shard-btn" onClick={() => setShardConfirm(true)}>
-              🔮 Shard
-            </button>
-          ) : (
-            <div className="detail-shard-confirm">
-              <span>Destroy {pokemon.name} for a token?</span>
-              <button className="detail-action-btn detail-shard-yes" onClick={handleShard}>Yes, shard</button>
-              <button className="detail-action-btn detail-shard-no" onClick={() => setShardConfirm(false)}>Cancel</button>
-            </div>
           )}
         </div>
       </div>
