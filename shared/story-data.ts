@@ -39,7 +39,7 @@ export const STORYLINES: Storyline[] = [
   // ───────────── BEGINNER ─────────────
   {
     id: 'brock-challenge', title: "Brock's Challenge", description: 'Prove yourself to the rock-solid gym leader.',
-    region: 'Kanto', difficulty: 'beginner', icon: '🪨', requires: [],
+    region: 'Kanto', difficulty: 'beginner', icon: '🪨', requires: ['bug-catcher', 'youngster-joey'],
     steps: [
       { type: 'dialogue', speaker: 'Brock', sprite: sp('brock'), lines: ["So you want to become a trainer?", "Show me you can handle rock-solid defense!"] },
       { type: 'battle', trainerName: 'Brock', trainerTitle: 'Gym Leader', team: [74, 95], fieldSize: 1, essenceReward: 100 },
@@ -49,7 +49,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'misty-trial', title: "Misty's Trial", description: 'Face the power of water at Cerulean Gym.',
-    region: 'Kanto', difficulty: 'beginner', icon: '🌊', requires: [],
+    region: 'Kanto', difficulty: 'beginner', icon: '🌊', requires: ['bug-catcher', 'youngster-joey'],
     steps: [
       { type: 'dialogue', speaker: 'Misty', sprite: sp('misty'), lines: ["Think you can handle the power of water?", "Let's find out!"] },
       { type: 'battle', trainerName: 'Misty', trainerTitle: 'Gym Leader', team: [120, 121], fieldSize: 1, essenceReward: 100 },
@@ -59,7 +59,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'whitney-fury', title: "Whitney's Fury", description: "Whitney won't let anyone call her weak!",
-    region: 'Johto', difficulty: 'beginner', icon: '🐄', requires: [],
+    region: 'Johto', difficulty: 'beginner', icon: '🐄', requires: ['bug-catcher', 'youngster-joey'],
     steps: [
       { type: 'dialogue', speaker: 'Whitney', sprite: sp('whitney'), lines: ["Everyone thinks I'm just a crybaby!", "I'll show you how strong I really am!"] },
       { type: 'battle', trainerName: 'Whitney', trainerTitle: 'Gym Leader', team: [35, 241], fieldSize: 1, essenceReward: 100 },
@@ -69,7 +69,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'roxanne-lesson', title: "Roxanne's Lesson", description: 'A studious battle with the Hoenn professor.',
-    region: 'Hoenn', difficulty: 'beginner', icon: '📖', requires: [],
+    region: 'Hoenn', difficulty: 'beginner', icon: '📖', requires: ['bug-catcher', 'youngster-joey'],
     steps: [
       { type: 'dialogue', speaker: 'Roxanne', sprite: sp('roxanne'), lines: ["Type matchups are the foundation of strategy.", "Allow me to demonstrate!"] },
       { type: 'battle', trainerName: 'Roxanne', trainerTitle: 'Gym Leader', team: [74, 299], fieldSize: 1, essenceReward: 100 },
