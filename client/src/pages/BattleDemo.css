@@ -97,8 +97,8 @@
 .team-select-grid {
   padding: 4px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 2px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
   align-content: start;
 }
 
@@ -107,7 +107,7 @@
   flex-direction: column;
   align-items: center;
   padding: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.06);
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
@@ -152,7 +152,8 @@
 }
 
 .team-select-card-name {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: bold;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -161,8 +162,8 @@
   position: absolute;
   top: 2px;
   z-index: 1;
-  text-shadow: 0 0 4px #000, 0 0 4px #000;
-  padding: 0 2px;
+  text-shadow: 0 0 4px #000, 0 0 4px #000, 0 0 6px #000;
+  padding: 0 4px;
   box-sizing: border-box;
 }
 
@@ -176,13 +177,13 @@
 }
 
 .team-select-card-nature {
-  font-size: 9px;
+  font-size: 10px;
   text-align: center;
   color: #ccc;
 }
 
 .team-select-card-ability {
-  font-size: 8px;
+  font-size: 9px;
   text-align: center;
   color: #ce9;
 }
@@ -194,7 +195,7 @@
 }
 
 .team-select-card-move {
-  font-size: 8px;
+  font-size: 9px;
   text-align: center;
   color: #aaa;
   white-space: nowrap;
@@ -228,56 +229,16 @@
   background: rgba(0, 0, 0, 0.8);
 }
 
-/* Tiny sprite icons — hidden by default, shown on small screens */
+/* Sprite icons — always hidden, GIF sprites always shown */
 .team-select-sprite-icon {
   display: none;
 }
 
-@media (max-width: 600px) {
-  /* Swap full GIF sprites for tiny pixel icons */
-  .team-select-sprite-icon {
-    display: inline-block;
-  }
-
-  .team-select-card > img,
-  .team-select-chosen-card > img {
-    display: none;
-  }
-
-  /* Compact chosen bar */
-  .team-select-chosen {
-    gap: 4px;
-    padding: 4px;
-  }
-
-  .team-select-chosen-card {
-    width: 44px;
-    max-width: 44px;
-    height: 44px;
-    aspect-ratio: auto;
-  }
-
-  .team-select-chosen-card.empty {
-    font-size: 16px;
-  }
-
-  .team-select-chosen-card span {
-    font-size: 8px;
-  }
-
-  /* Compact grid — fit more per row */
+/* Larger screens: 5 columns */
+@media (min-width: 600px) {
   .team-select-grid {
-    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
   }
-
-  .team-select-card {
-    padding: 4px 0 2px;
-  }
-
-  .team-select-card-name {
-    font-size: 9px;
-  }
-
 }
 
 /* Held item on team selection cards */
