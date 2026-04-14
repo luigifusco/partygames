@@ -77,12 +77,32 @@ export const STORYLINES: Storyline[] = [
     ],
     completionReward: { essence: 200 },
   },
+  {
+    id: 'bug-catcher', title: 'Bug Catcher Frenzy', description: 'A bug enthusiast blocks the path!',
+    region: 'Kanto', difficulty: 'beginner', icon: '🐛', requires: [],
+    steps: [
+      { type: 'dialogue', speaker: 'Bug Catcher', sprite: sp('bugcatcher'), lines: ["Hey! You stepped into my web of bugs!", "Nobody passes without a battle!"] },
+      { type: 'battle', trainerName: 'Bug Catcher', trainerTitle: 'Trainer', team: [10, 13], fieldSize: 1, essenceReward: 80 },
+      { type: 'dialogue', speaker: 'Bug Catcher', sprite: sp('bugcatcher'), lines: ["Wow, your Pokémon are way stronger than my bugs...", "Good luck out there!"] },
+    ],
+    completionReward: { essence: 150 },
+  },
+  {
+    id: 'youngster-joey', title: "Youngster Joey's Dare", description: 'His Rattata is in the top percentage!',
+    region: 'Kanto', difficulty: 'beginner', icon: '👦', requires: [],
+    steps: [
+      { type: 'dialogue', speaker: 'Youngster Joey', sprite: sp('youngster'), lines: ["Hey! My Rattata is in the top percentage of all Rattata!", "I challenge you to prove it!"] },
+      { type: 'battle', trainerName: 'Youngster Joey', trainerTitle: 'Trainer', team: [19, 20], fieldSize: 1, essenceReward: 80 },
+      { type: 'dialogue', speaker: 'Youngster Joey', sprite: sp('youngster'), lines: ["Okay maybe he's not THE top percentage...", "But he's still pretty good, right?"] },
+    ],
+    completionReward: { essence: 150 },
+  },
 
   // ───────────── INTERMEDIATE ─────────────
   {
     id: 'kanto-gyms', title: 'Kanto Gym Circuit', description: 'Challenge the Kanto gym leaders in sequence.',
     region: 'Kanto', difficulty: 'intermediate', icon: '🏛️',
-    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson'], requiresCount: 2,
+    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Brock', sprite: sp('brock'), lines: ["Ready for the real challenge?", "The Kanto gyms await."] },
       { type: 'battle', trainerName: 'Brock', trainerTitle: 'Gym Leader', team: [95, 76, 141], fieldSize: 1, essenceReward: 150 },
@@ -97,7 +117,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'johto-gyms', title: 'Johto Gym Circuit', description: 'Challenge the Johto gym leaders.',
     region: 'Johto', difficulty: 'intermediate', icon: '🏛️',
-    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson'], requiresCount: 2,
+    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Falkner', sprite: sp('falkner'), lines: ["Johto's gym leaders are no pushovers.", "Are you ready?"] },
       { type: 'battle', trainerName: 'Falkner', trainerTitle: 'Gym Leader', team: [22, 164], fieldSize: 1, essenceReward: 100 },
@@ -113,7 +133,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'hoenn-gyms', title: 'Hoenn Gym Circuit', description: 'Challenge the Hoenn gym leaders.',
     region: 'Hoenn', difficulty: 'intermediate', icon: '🏛️',
-    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson'], requiresCount: 2,
+    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'battle', trainerName: 'Roxanne', trainerTitle: 'Gym Leader', team: [76, 299, 306], fieldSize: 1, essenceReward: 150 },
       { type: 'battle', trainerName: 'Brawly', trainerTitle: 'Gym Leader', team: [296, 297], fieldSize: 1, essenceReward: 150 },
@@ -127,7 +147,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'sinnoh-gyms', title: 'Sinnoh Gym Circuit', description: 'Challenge the Sinnoh gym leaders.',
     region: 'Sinnoh', difficulty: 'intermediate', icon: '🏛️',
-    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson'], requiresCount: 2,
+    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'battle', trainerName: 'Maylene', trainerTitle: 'Gym Leader', team: [308, 448, 214], fieldSize: 1, essenceReward: 150 },
       { type: 'battle', trainerName: 'Crasher Wake', trainerTitle: 'Gym Leader', team: [130, 195, 419], fieldSize: 1, essenceReward: 150 },
@@ -140,6 +160,36 @@ export const STORYLINES: Storyline[] = [
   },
 
   // ───────────── ADVANCED ─────────────
+  {
+    id: 'team-rocket', title: 'Team Rocket Hideout', description: 'Infiltrate Team Rocket and face Giovanni.',
+    region: 'Kanto', difficulty: 'advanced', icon: '🚀',
+    requires: ['kanto-gyms'],
+    steps: [
+      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgrunt'), lines: ["Hand over your Pokémon!", "Team Rocket doesn't take no for an answer!"] },
+      { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [41, 109, 24], fieldSize: 1, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgruntf'), lines: ["You beat my partner? You won't get past me!"] },
+      { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [110, 89, 42], fieldSize: 1, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: ["So you've made it to the boss.", "I don't need heroes. I need power.", "And you're in my way."] },
+      { type: 'battle', trainerName: 'Giovanni', trainerTitle: 'Team Rocket Boss', team: [34, 112, 31, 89], fieldSize: 2, essenceReward: 500 },
+      { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: ["Impressive... Team Rocket will remember this.", "But we'll be back."] },
+    ],
+    completionReward: { essence: 1500, pack: 'uncommon' },
+  },
+  {
+    id: 'aqua-magma', title: 'Aqua vs Magma', description: 'Stop both teams from tearing Hoenn apart.',
+    region: 'Hoenn', difficulty: 'advanced', icon: '🌋',
+    requires: ['hoenn-gyms'],
+    steps: [
+      { type: 'dialogue', speaker: 'Aqua Grunt', sprite: sp('aquagrunt'), lines: ["Team Aqua will expand the seas!", "Stand aside or face the tide!"] },
+      { type: 'battle', trainerName: 'Aqua Grunt', trainerTitle: 'Team Aqua', team: [318, 320, 72], fieldSize: 1, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Magma Grunt', sprite: sp('magmagrunt'), lines: ["Team Magma will expand the land!", "We need that power more than Aqua does!"] },
+      { type: 'battle', trainerName: 'Magma Grunt', trainerTitle: 'Team Magma', team: [322, 218, 88], fieldSize: 1, essenceReward: 200 },
+      { type: 'battle', trainerName: 'Archie', trainerTitle: 'Team Aqua Boss', team: [319, 130, 342, 73], fieldSize: 2, essenceReward: 400 },
+      { type: 'battle', trainerName: 'Maxie', trainerTitle: 'Team Magma Boss', team: [323, 229, 330, 324], fieldSize: 2, essenceReward: 400 },
+      { type: 'dialogue', speaker: 'Steven', sprite: sp('steven'), lines: ["You've saved Hoenn from both teams.", "The balance of land and sea is restored."] },
+    ],
+    completionReward: { essence: 2000, pack: 'rare' },
+  },
   {
     id: 'kanto-e4', title: 'Kanto Elite Four', description: 'Face the strongest trainers in Kanto.',
     region: 'Kanto', difficulty: 'advanced', icon: '⭐',
