@@ -212,6 +212,37 @@ export function getMoveSfxType(moveName: string): SfxType {
   return MOVE_SFX[moveName] || 'hit';
 }
 
+// --- Move sound effects (MP3 files) ---
+
+const moveSfxCache: Record<string, HTMLAudioElement | null> = {};
+
+export function playMoveSfx(moveName: string, volume = 0.35) {
+  try {
+    const fileName = moveName.replace(/-/g, ' ');
+    const url = `${BASE_PATH}/sfx/${encodeURIComponent(fileName)}.mp3`;
+
+    if (moveSfxCache[moveName] === null) {
+      // Previously failed to load — fall back to synth
+      const sfxType = getMoveSfxType(moveName);
+      playSfx(sfxType);
+      return;
+    }
+
+    const audio = new Audio(url);
+    audio.volume = volume;
+    audio.play().catch(() => {
+      // MP3 not available — mark and fall back
+      moveSfxCache[moveName] = null;
+      const sfxType = getMoveSfxType(moveName);
+      playSfx(sfxType);
+    });
+    moveSfxCache[moveName] = audio;
+  } catch {
+    const sfxType = getMoveSfxType(moveName);
+    playSfx(sfxType);
+  }
+}
+
 // --- Battle BGM ---
 
 interface BgmTrack {

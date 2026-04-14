@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { BattlePokemonState, BattleLogEntry, BattleSnapshot } from '@shared/battle-types';
 import { getMoveAnim } from '../data/moveAnimations';
 import { runMoveAnimation } from './BattleAnimationEngine';
-import { playSfx, getMoveSfxType, playCry, preloadCries, playHitSound, preloadHitSounds, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted } from './BattleSounds';
+import { playSfx, getMoveSfxType, playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted } from './BattleSounds';
 import { getHeldItemSprite } from '@shared/held-item-data';
 import { BASE_PATH } from '../config';
 import './BattleScene.css';
@@ -518,7 +518,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // Pause so the text is readable
       await new Promise((r) => setTimeout(r, 500));
 
-      // 2. Play move animation (sound plays after)
+      // 2. Play move sound effect and animation
+      if (entry.moveName) playMoveSfx(entry.moveName);
       const animConfig = getMoveAnim(entry.moveName);
       const attackerEl = cardRefs.current[entry.attackerInstanceId];
       const defenderEl = cardRefs.current[entry.targetInstanceId];
