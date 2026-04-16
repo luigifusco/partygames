@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+
+# Build artifacts
+dist/
+build/
+client/dist/
+
+# Pokemon Showdown (large submodule, not our code)
+pokemon-showdown/
+pokemon-showdown-client/
+
+# Damage calc (dependency, not our code)
+damage-calc/
+
+# Generated JS files (we work with .ts/.tsx source)
+**/*.js
+!scripts/*.js
+!vite.config.ts
+
+# Assets (binary files, not code)
+assets/
+assets-public/
+
+# Data directory (runtime SQLite DB)
+data/
+
+# Compiled TypeScript output
+*.tsbuildinfo
