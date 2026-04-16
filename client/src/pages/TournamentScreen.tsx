@@ -28,6 +28,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
   const [selected, setSelected] = useState<number[]>([]);
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [battleFinished, setBattleFinished] = useState(false);
+  const [viewingTeamOf, setViewingTeamOf] = useState<string | null>(null);
 
   const fetchList = useCallback(async () => {
     try {
@@ -285,6 +286,9 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
                 {t.participants.map(p => (
                   <span key={p} className={'tournament-participant' + (t.fixedTeam && t.frozenTeams[p] ? ' team-ready' : '')}>
                     {p}{t.fixedTeam && t.frozenTeams[p] ? ' 🔒' : ''}
+                    {t.publicTeams && t.frozenTeams[p] && (
+                      <button className="tournament-view-team-sm" onClick={() => setViewingTeamOf(p)}>👁</button>
+                    )}
                   </span>
                 ))}
               </div>
@@ -297,6 +301,12 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
               <div className="tournament-my-match-info">
                 vs <strong>{myMatch.player1 === playerName ? myMatch.player2 : myMatch.player1}</strong>
                 {myMatch.deadline && <span className="tournament-deadline"> · {timeLeft(myMatch.deadline)} left</span>}
+                {t.publicTeams && (() => {
+                  const opp = myMatch.player1 === playerName ? myMatch.player2 : myMatch.player1;
+                  return opp && t.frozenTeams[opp] ? (
+                    <button className="tournament-view-team-btn" onClick={() => setViewingTeamOf(opp)}>👁 View Team</button>
+                  ) : null;
+                })()}
               </div>
               <button className="tournament-fight-btn" onClick={() => startTeamSelect(myMatch.id)}>
                 Choose Team & Fight!
@@ -331,6 +341,30 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
             </div>
           )}
         </div>
+
+        {viewingTeamOf && t.frozenTeams[viewingTeamOf] && (
+          <div className="tournament-team-overlay" onClick={(e) => e.target === e.currentTarget && setViewingTeamOf(null)}>
+            <div className="tournament-team-modal">
+              <div className="tournament-team-modal-header">
+                <span>{viewingTeamOf}'s Team</span>
+                <button onClick={() => setViewingTeamOf(null)}>✕</button>
+              </div>
+              <div className="tournament-team-modal-list">
+                {t.frozenTeams[viewingTeamOf].map((fp, i) => (
+                  <div key={i} className="tournament-team-pokemon">
+                    <img src={fp.sprite} alt={fp.name} className="tournament-team-sprite" />
+                    <div className="tournament-team-pokemon-info">
+                      <div className="tournament-team-pokemon-name">{fp.name}</div>
+                      {fp.ability && <div className="tournament-team-pokemon-detail">{fp.ability}</div>}
+                      {fp.moves && <div className="tournament-team-pokemon-detail">{fp.moves[0]} / {fp.moves[1]}</div>}
+                      {fp.heldItem && <div className="tournament-team-pokemon-detail">📦 {fp.heldItem}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

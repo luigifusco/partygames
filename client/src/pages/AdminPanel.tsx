@@ -111,6 +111,7 @@ export default function AdminPanel() {
   const [tournamentRegMinutes, setTournamentRegMinutes] = useState(10);
   const [tournamentMatchTime, setTournamentMatchTime] = useState(300);
   const [tournamentFixedTeam, setTournamentFixedTeam] = useState(false);
+  const [tournamentPublicTeams, setTournamentPublicTeams] = useState(false);
 
   const createTournament = async () => {
     await fetch(`${API}/api/admin/tournament/create`, {
@@ -123,6 +124,7 @@ export default function AdminPanel() {
         registrationMinutes: tournamentRegMinutes,
         matchTimeLimit: tournamentMatchTime,
         fixedTeam: tournamentFixedTeam,
+        publicTeams: tournamentPublicTeams,
       }),
     });
     alert('Tournament created!');
@@ -177,9 +179,17 @@ export default function AdminPanel() {
           </div>
           <div className="admin-weight-row">
             <label className="admin-weight-label">Fixed Team</label>
-            <button className={tournamentFixedTeam ? 'admin-save-btn' : 'admin-danger-btn'} onClick={() => setTournamentFixedTeam(!tournamentFixedTeam)}>
-              {tournamentFixedTeam ? '🔒 Yes' : '❌ No'}
-            </button>
+            <label className="admin-toggle">
+              <input type="checkbox" checked={tournamentFixedTeam} onChange={e => setTournamentFixedTeam(e.target.checked)} />
+              <span className="admin-toggle-slider" />
+            </label>
+          </div>
+          <div className="admin-weight-row">
+            <label className="admin-weight-label">Public Teams</label>
+            <label className="admin-toggle">
+              <input type="checkbox" checked={tournamentPublicTeams} onChange={e => setTournamentPublicTeams(e.target.checked)} />
+              <span className="admin-toggle-slider" />
+            </label>
           </div>
           <button className="admin-save-btn" onClick={createTournament}>🏆 Create Tournament</button>
         </div>
@@ -224,37 +234,33 @@ export default function AdminPanel() {
         <h3>🔧 Feature Toggles</h3>
         <div className="admin-weight-row">
           <label className="admin-weight-label">TM Shop</label>
-          <button
-            className={tmShopEnabled ? 'admin-save-btn' : 'admin-danger-btn'}
-            onClick={async () => {
-              const next = !tmShopEnabled;
+          <label className="admin-toggle">
+            <input type="checkbox" checked={tmShopEnabled} onChange={async (e) => {
+              const next = e.target.checked;
               await fetch(`${API}/api/admin/settings`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: 'tm_shop_enabled', value: next }),
               });
               setTmShopEnabled(next);
-            }}
-          >
-            {tmShopEnabled ? '✅ Enabled' : '❌ Disabled'}
-          </button>
+            }} />
+            <span className="admin-toggle-slider" />
+          </label>
         </div>
         <div className="admin-weight-row">
           <label className="admin-weight-label">AI Battle</label>
-          <button
-            className={aiBattleEnabled ? 'admin-save-btn' : 'admin-danger-btn'}
-            onClick={async () => {
-              const next = !aiBattleEnabled;
+          <label className="admin-toggle">
+            <input type="checkbox" checked={aiBattleEnabled} onChange={async (e) => {
+              const next = e.target.checked;
               await fetch(`${API}/api/admin/settings`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: 'ai_battle_enabled', value: next }),
               });
               setAiBattleEnabled(next);
-            }}
-          >
-            {aiBattleEnabled ? '✅ Enabled' : '❌ Disabled'}
-          </button>
+            }} />
+            <span className="admin-toggle-slider" />
+          </label>
         </div>
       </div>
 
