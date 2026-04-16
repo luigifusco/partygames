@@ -262,11 +262,15 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
             {t.fixedTeam && <span className="tournament-fixed-badge">🔒 Fixed Team</span>}
           </div>
 
-          {t.prizes?.first && (
+          {t.prizes && Array.isArray(t.prizes) && t.prizes.length > 0 && (
             <div className="tournament-prizes-bar">
-              <span>🥇 {t.prizes.first.essence}✦{t.prizes.first.pack ? ' + ' + t.prizes.first.pack + ' pack' : ''}{t.prizes.first.pokemonIds?.length ? ' + ' + t.prizes.first.pokemonIds.length + ' pkm' : ''}</span>
-              <span>🥈 {t.prizes.second.essence}✦{t.prizes.second.pack ? ' + ' + t.prizes.second.pack + ' pack' : ''}</span>
-              <span>🏅 {t.prizes.participation.essence}✦</span>
+              {t.prizes.map((p, i) => {
+                const isLast = i === t.prizes.length - 1;
+                const icon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : isLast ? '🏅' : '#' + (i + 1);
+                return (
+                  <span key={i}>{icon} {p.essence}✦{p.pack ? ' + ' + p.pack : ''}{p.pokemonIds?.length ? ' + ' + p.pokemonIds.length + 'pkm' : ''}</span>
+                );
+              })}
             </div>
           )}
 
@@ -397,7 +401,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
               <span>{t.participantCount} players</span>
             </div>
             {t.winner && <div className="tournament-card-winner">🏆 {t.winner}</div>}
-            {t.prizes?.first && <div className="tournament-card-prize">🥇 {t.prizes.first.essence}✦{t.prizes.first.pack ? ' + ' + t.prizes.first.pack : ''}</div>}
+            {t.prizes && Array.isArray(t.prizes) && t.prizes[0] && <div className="tournament-card-prize">🥇 {t.prizes[0].essence}✦{t.prizes[0].pack ? ' + ' + t.prizes[0].pack : ''}</div>}
           </div>
         ))}
       </div>

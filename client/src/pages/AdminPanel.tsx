@@ -114,19 +114,41 @@ export default function AdminPanel() {
   const [tournamentMatchTime, setTournamentMatchTime] = useState(300);
   const [tournamentFixedTeam, setTournamentFixedTeam] = useState(false);
   const [tournamentPublicTeams, setTournamentPublicTeams] = useState(false);
-  const [prize1stEssence, setPrize1stEssence] = useState(2000);
-  const [prize1stPack, setPrize1stPack] = useState('legendary');
-  const [prize1stPokemon, setPrize1stPokemon] = useState('');
-  const [prize2ndEssence, setPrize2ndEssence] = useState(1000);
-  const [prize2ndPack, setPrize2ndPack] = useState('rare');
-  const [prizePartEssence, setPrizePartEssence] = useState(200);
+  const [tournamentPrizes, setTournamentPrizes] = useState([
+    { essence: 2000, pack: 'legendary', pokemonIds: '' },
+    { essence: 1000, pack: 'rare', pokemonIds: '' },
+    { essence: 200, pack: '', pokemonIds: '' },
+  ]);
+  const [showCreateTournament, setShowCreateTournament] = useState(false);
+
+  const addPrizeTier = () => {
+    // Insert before the last entry (participation)
+    setTournamentPrizes(prev => {
+      const next = [...prev];
+      next.splice(next.length - 1, 0, { essence: 500, pack: '', pokemonIds: '' });
+      return next;
+    });
+  };
+
+  const removePrizeTier = (i: number) => {
+    if (tournamentPrizes.length <= 2) return;
+    setTournamentPrizes(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const updatePrize = (i: number, field: string, value: any) => {
+    setTournamentPrizes(prev => {
+      const next = [...prev];
+      next[i] = { ...next[i], [field]: value };
+      return next;
+    });
+  };
 
   const createTournament = async () => {
-    const prizes = {
-      first: { essence: prize1stEssence, pack: prize1stPack || undefined, pokemonIds: prize1stPokemon ? prize1stPokemon.split(',').map(Number).filter(Boolean) : undefined },
-      second: { essence: prize2ndEssence, pack: prize2ndPack || undefined },
-      participation: { essence: prizePartEssence },
-    };
+    const prizes = tournamentPrizes.map(p => ({
+      essence: p.essence,
+      pack: p.pack || undefined,
+      pokemonIds: p.pokemonIds ? p.pokemonIds.split(',').map(Number).filter(Boolean) : undefined,
+    }));
     await fetch(`${API}/api/admin/tournament/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -141,6 +163,7 @@ export default function AdminPanel() {
         prizes,
       }),
     });
+    setShowCreateTournament(false);
     alert('Tournament created!');
   };
 
@@ -162,91 +185,84 @@ export default function AdminPanel() {
 
       <div className="admin-actions">
         <button className="admin-danger-btn" onClick={wipeAllPokemon}>🗑️ Wipe All Pokémon</button>
+        <button className="admin-save-btn" onClick={() => setShowCreateTournament(true)}>🏆 Create Tournament</button>
       </div>
 
-      <div className="admin-section">
-        <h3>🏆 Create Tournament</h3>
-        <div className="admin-weights" style={{ gap: 6 }}>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">Name</label>
-            <input type="text" value={tournamentName} onChange={e => setTournamentName(e.target.value)} style={{ flex: 1 }} />
+      {showCreateTournament && (
+        <div className="admin-overlay" onClick={e => e.target === e.currentTarget && setShowCreateTournament(false)}>
+          <div className="admin-modal">
+            <div className="admin-modal-header">
+              <h3>🏆 Create Tournament</h3>
+              <button onClick={() => setShowCreateTournament(false)}>✕</button>
+            </div>
+            <div className="admin-modal-body">
+              <div className="admin-weight-row">
+                <label className="admin-weight-label">Name</label>
+                <input type="text" value={tournamentName} onChange={e => setTournamentName(e.target.value)} style={{ flex: 1 }} />
+              </div>
+              <div className="admin-weight-row">
+                <label className="admin-weight-label">Format</label>
+                <select value={tournamentFieldSize} onChange={e => setTournamentFieldSize(Number(e.target.value))}>
+                  <option value={1}>1v1</option>
+                  <option value={2}>2v2</option>
+                  <option value={3}>3v3</option>
+                </select>
+              </div>
+              <div className="admin-weight-row">
+                <label className="admin-weight-label">Team Size</label>
+                <input type="number" min={1} max={6} value={tournamentPokemon} onChange={e => setTournamentPokemon(Number(e.target.value))} />
+              </div>
+              <div className="admin-weight-row">
+                <label className="admin-weight-label">Reg (min)</label>
+                <input type="number" min={1} value={tournamentRegMinutes} onChange={e => setTournamentRegMinutes(Number(e.target.value))} />
+              </div>
+              <div className="admin-weight-row">
+                <label className="admin-weight-label">Match (sec)</label>
+                <input type="number" min={30} value={tournamentMatchTime} onChange={e => setTournamentMatchTime(Number(e.target.value))} />
+              </div>
+              <div className="admin-weight-row">
+                <label className="admin-weight-label">Fixed Team</label>
+                <label className="admin-toggle">
+                  <input type="checkbox" checked={tournamentFixedTeam} onChange={e => setTournamentFixedTeam(e.target.checked)} />
+                  <span className="admin-toggle-slider" />
+                </label>
+              </div>
+              <div className="admin-weight-row">
+                <label className="admin-weight-label">Public Teams</label>
+                <label className="admin-toggle">
+                  <input type="checkbox" checked={tournamentPublicTeams} onChange={e => setTournamentPublicTeams(e.target.checked)} />
+                  <span className="admin-toggle-slider" />
+                </label>
+              </div>
+
+              <p className="admin-hint" style={{ marginTop: 12, marginBottom: 4 }}>Prizes (top → bottom = 1st → participation)</p>
+              {tournamentPrizes.map((p, i) => {
+                const isLast = i === tournamentPrizes.length - 1;
+                const label = isLast ? '🏅 Participation' : i === 0 ? '🥇 1st' : i === 1 ? '🥈 2nd' : i === 2 ? '🥉 3rd' : `#${i + 1}`;
+                return (
+                  <div key={i} className="admin-prize-row">
+                    <span className="admin-prize-label">{label}</span>
+                    <input type="number" min={0} value={p.essence} onChange={e => updatePrize(i, 'essence', Number(e.target.value))} placeholder="✦" title="Essence" />
+                    <select value={p.pack} onChange={e => updatePrize(i, 'pack', e.target.value)} title="Pack">
+                      <option value="">—</option>
+                      <option value="common">C</option>
+                      <option value="uncommon">UC</option>
+                      <option value="rare">R</option>
+                      <option value="epic">E</option>
+                      <option value="legendary">L</option>
+                    </select>
+                    <input type="text" value={p.pokemonIds} onChange={e => updatePrize(i, 'pokemonIds', e.target.value)} placeholder="PKM IDs" title="Pokemon IDs (comma-separated)" style={{ width: 70 }} />
+                    {!isLast && i >= 2 && <button className="admin-prize-remove" onClick={() => removePrizeTier(i)}>✕</button>}
+                  </div>
+                );
+              })}
+              <button className="admin-prize-add" onClick={addPrizeTier}>+ Add Prize Tier</button>
+
+              <button className="admin-save-btn" style={{ marginTop: 12, width: '100%' }} onClick={createTournament}>🏆 Create</button>
+            </div>
           </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">Field Size</label>
-            <select value={tournamentFieldSize} onChange={e => setTournamentFieldSize(Number(e.target.value))}>
-              <option value={1}>1v1</option>
-              <option value={2}>2v2</option>
-              <option value={3}>3v3</option>
-            </select>
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">Team Size</label>
-            <input type="number" min={1} max={6} value={tournamentPokemon} onChange={e => setTournamentPokemon(Number(e.target.value))} />
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">Reg Time (min)</label>
-            <input type="number" min={1} value={tournamentRegMinutes} onChange={e => setTournamentRegMinutes(Number(e.target.value))} />
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">Match Time (sec)</label>
-            <input type="number" min={30} value={tournamentMatchTime} onChange={e => setTournamentMatchTime(Number(e.target.value))} />
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">Fixed Team</label>
-            <label className="admin-toggle">
-              <input type="checkbox" checked={tournamentFixedTeam} onChange={e => setTournamentFixedTeam(e.target.checked)} />
-              <span className="admin-toggle-slider" />
-            </label>
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">Public Teams</label>
-            <label className="admin-toggle">
-              <input type="checkbox" checked={tournamentPublicTeams} onChange={e => setTournamentPublicTeams(e.target.checked)} />
-              <span className="admin-toggle-slider" />
-            </label>
-          </div>
-          <p className="admin-hint" style={{ marginTop: 8 }}>Prizes</p>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">1st Essence</label>
-            <input type="number" min={0} value={prize1stEssence} onChange={e => setPrize1stEssence(Number(e.target.value))} />
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">1st Pack</label>
-            <select value={prize1stPack} onChange={e => setPrize1stPack(e.target.value)}>
-              <option value="">None</option>
-              <option value="common">Common</option>
-              <option value="uncommon">Uncommon</option>
-              <option value="rare">Rare</option>
-              <option value="epic">Epic</option>
-              <option value="legendary">Legendary</option>
-            </select>
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">1st Pokémon IDs</label>
-            <input type="text" placeholder="e.g. 150,151" value={prize1stPokemon} onChange={e => setPrize1stPokemon(e.target.value)} style={{ flex: 1 }} />
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">2nd Essence</label>
-            <input type="number" min={0} value={prize2ndEssence} onChange={e => setPrize2ndEssence(Number(e.target.value))} />
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">2nd Pack</label>
-            <select value={prize2ndPack} onChange={e => setPrize2ndPack(e.target.value)}>
-              <option value="">None</option>
-              <option value="common">Common</option>
-              <option value="uncommon">Uncommon</option>
-              <option value="rare">Rare</option>
-              <option value="epic">Epic</option>
-              <option value="legendary">Legendary</option>
-            </select>
-          </div>
-          <div className="admin-weight-row">
-            <label className="admin-weight-label">Participation</label>
-            <input type="number" min={0} value={prizePartEssence} onChange={e => setPrizePartEssence(Number(e.target.value))} />
-          </div>
-          <button className="admin-save-btn" onClick={createTournament}>🏆 Create Tournament</button>
         </div>
-      </div>
+      )}
 
       <div className="admin-section">
         <h3>📦 Pack Rarity Weights</h3>

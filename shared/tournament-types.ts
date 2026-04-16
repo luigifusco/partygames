@@ -26,17 +26,14 @@ export interface TournamentPrize {
   pokemonIds?: number[];
 }
 
-export interface TournamentPrizes {
-  first: TournamentPrize;
-  second: TournamentPrize;
-  participation: TournamentPrize;
-}
+/** Ranked prize list: index 0 = 1st place, 1 = 2nd, ..., last = participation */
+export type TournamentPrizes = TournamentPrize[];
 
-export const DEFAULT_PRIZES: TournamentPrizes = {
-  first: { essence: 2000, pack: 'legendary' },
-  second: { essence: 1000, pack: 'rare' },
-  participation: { essence: 200 },
-};
+export const DEFAULT_PRIZES: TournamentPrizes = [
+  { essence: 2000, pack: 'legendary' },
+  { essence: 1000, pack: 'rare' },
+  { essence: 200 },
+];
 
 export interface Tournament {
   id: string;

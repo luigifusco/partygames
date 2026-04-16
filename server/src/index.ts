@@ -861,19 +861,17 @@ function advanceTournament(t: Tournament) {
 }
 
 function distributePrizes(t: Tournament) {
-  if (!t.prizes) return;
+  if (!t.prizes || !Array.isArray(t.prizes) || t.prizes.length === 0) return;
 
   const givePrize = (playerName: string | undefined, prize: { essence: number; pack?: string; pokemonIds?: number[] }) => {
-    if (!playerName) return;
+    if (!playerName || !prize) return;
     const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
     if (!player) return;
 
-    // Essence
     if (prize.essence > 0) {
       db.prepare('UPDATE players SET essence = essence + ? WHERE id = ?').run(prize.essence, player.id);
     }
 
-    // Pokemon (exclusive rewards)
     if (prize.pokemonIds && prize.pokemonIds.length > 0) {
       const insert = db.prepare(
         'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -891,7 +889,6 @@ function distributePrizes(t: Tournament) {
       }
     }
 
-    // Notify via socket
     const socketId = connectedPlayers.get(playerName);
     if (socketId) {
       io.to(socketId).emit('tournament:prizeAwarded', {
@@ -899,19 +896,36 @@ function distributePrizes(t: Tournament) {
       });
     }
 
-    console.log(`Prize awarded to ${playerName}: ${prize.essence} essence` +
-      (prize.pokemonIds ? `, ${prize.pokemonIds.length} pokemon` : '') +
-      (prize.pack ? `, ${prize.pack} pack` : ''));
+    console.log('Prize awarded to ' + playerName + ': ' + prize.essence + ' essence' +
+      (prize.pokemonIds ? ', ' + prize.pokemonIds.length + ' pokemon' : '') +
+      (prize.pack ? ', ' + prize.pack + ' pack' : ''));
   };
 
-  givePrize(t.winner, t.prizes.first);
-  givePrize(t.runnerUp, t.prizes.second);
-
-  // Participation prizes for everyone else
-  for (const p of t.participants) {
-    if (p !== t.winner && p !== t.runnerUp) {
-      givePrize(p, t.prizes.participation);
+  // Determine rankings from bracket: work backwards from final
+  const rankings: string[] = [];
+  const maxRound = Math.max(...t.bracket.map(m => m.round));
+  // Winner
+  if (t.winner) rankings.push(t.winner);
+  // Runner-up
+  if (t.runnerUp) rankings.push(t.runnerUp);
+  // Semifinal losers (3rd/4th), then quarter losers (5th-8th), etc.
+  for (let r = maxRound - 1; r >= 1; r--) {
+    const roundMatches = t.bracket.filter(m => m.round === r);
+    for (const m of roundMatches) {
+      const loser = m.winner ? (m.player1 === m.winner ? m.player2 : m.player1) : null;
+      if (loser && !rankings.includes(loser)) rankings.push(loser);
     }
+  }
+  // Anyone not ranked yet gets last place
+  for (const p of t.participants) {
+    if (!rankings.includes(p)) rankings.push(p);
+  }
+
+  const participationPrize = t.prizes[t.prizes.length - 1];
+  for (let i = 0; i < rankings.length; i++) {
+    // Use ranked prize if available, otherwise participation (last prize in array)
+    const prize = i < t.prizes.length - 1 ? t.prizes[i] : participationPrize;
+    givePrize(rankings[i], prize);
   }
 }
 
