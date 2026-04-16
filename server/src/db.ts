@@ -194,7 +194,10 @@ export function initDb() {
       current_round INTEGER NOT NULL DEFAULT 0,
       winner TEXT,
       fixed_team INTEGER NOT NULL DEFAULT 0,
+      public_teams INTEGER NOT NULL DEFAULT 0,
       frozen_teams TEXT NOT NULL DEFAULT '{}',
+      prizes TEXT NOT NULL DEFAULT '{}',
+      runner_up TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -204,6 +207,13 @@ export function initDb() {
   if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'fixed_team')) {
     db.exec(`ALTER TABLE tournaments ADD COLUMN fixed_team INTEGER NOT NULL DEFAULT 0`);
     db.exec(`ALTER TABLE tournaments ADD COLUMN frozen_teams TEXT NOT NULL DEFAULT '{}'`);
+  }
+  if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'public_teams')) {
+    db.exec(`ALTER TABLE tournaments ADD COLUMN public_teams INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'prizes')) {
+    db.exec(`ALTER TABLE tournaments ADD COLUMN prizes TEXT NOT NULL DEFAULT '{}'`);
+    db.exec(`ALTER TABLE tournaments ADD COLUMN runner_up TEXT`);
   }
 
   return db;

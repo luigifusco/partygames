@@ -729,7 +729,8 @@ interface ActiveTrade {
 const activeTrades = new Map<string, ActiveTrade>();
 
 // --- Tournament system ---
-import type { Tournament, TournamentMatch, TournamentSummary } from '../../shared/tournament-types.js';
+import type { Tournament, TournamentMatch, TournamentSummary, TournamentPrizes } from '../../shared/tournament-types.js';
+import { DEFAULT_PRIZES } from '../../shared/tournament-types.js';
 
 function loadTournament(id: string): Tournament | null {
   const row = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id) as any;
@@ -739,20 +740,22 @@ function loadTournament(id: string): Tournament | null {
     status: row.status, registrationEnd: row.registration_end, matchTimeLimit: row.match_time_limit,
     bracket: JSON.parse(row.bracket), participants: JSON.parse(row.participants),
     currentRound: row.current_round, winner: row.winner ?? undefined, createdAt: new Date(row.created_at).getTime(),
-    fixedTeam: !!row.fixed_team, frozenTeams: JSON.parse(row.frozen_teams || '{}'),
+    fixedTeam: !!row.fixed_team, publicTeams: !!row.public_teams, frozenTeams: JSON.parse(row.frozen_teams || '{}'),
+    prizes: JSON.parse(row.prizes || '{}'), runnerUp: row.runner_up ?? undefined,
   };
 }
 
 function saveTournament(t: Tournament) {
-  db.prepare(`UPDATE tournaments SET status=?, bracket=?, participants=?, current_round=?, winner=?, frozen_teams=? WHERE id=?`)
-    .run(t.status, JSON.stringify(t.bracket), JSON.stringify(t.participants), t.currentRound, t.winner ?? null, JSON.stringify(t.frozenTeams), t.id);
+  db.prepare(`UPDATE tournaments SET status=?, bracket=?, participants=?, current_round=?, winner=?, runner_up=?, frozen_teams=?, prizes=? WHERE id=?`)
+    .run(t.status, JSON.stringify(t.bracket), JSON.stringify(t.participants), t.currentRound, t.winner ?? null, t.runnerUp ?? null, JSON.stringify(t.frozenTeams), JSON.stringify(t.prizes), t.id);
 }
 
 function broadcastTournamentUpdate(t: Tournament) {
   const summary: TournamentSummary = {
     id: t.id, name: t.name, status: t.status, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon,
     participantCount: t.participants.length, registrationEnd: t.registrationEnd,
-    currentRound: t.currentRound, winner: t.winner, fixedTeam: t.fixedTeam,
+    currentRound: t.currentRound, winner: t.winner, fixedTeam: t.fixedTeam, publicTeams: t.publicTeams,
+    prizes: t.prizes,
   };
   io.emit('tournament:updated', summary);
 }
@@ -813,9 +816,14 @@ function advanceTournament(t: Tournament) {
     // Tournament is over
     const finalMatch = roundMatches[0];
     t.winner = finalMatch?.winner ?? undefined;
+    // Runner-up is the loser of the final
+    t.runnerUp = finalMatch ? (finalMatch.player1 === finalMatch.winner ? finalMatch.player2 : finalMatch.player1) ?? undefined : undefined;
     t.status = 'completed';
     saveTournament(t);
     broadcastTournamentUpdate(t);
+
+    // Distribute prizes
+    distributePrizes(t);
     return;
   }
 
@@ -849,6 +857,61 @@ function advanceTournament(t: Tournament) {
 
   // Recurse in case all next round matches are byes
   advanceTournament(t);
+}
+
+function distributePrizes(t: Tournament) {
+  if (!t.prizes) return;
+
+  const givePrize = (playerName: string | undefined, prize: { essence: number; pack?: string; pokemonIds?: number[] }) => {
+    if (!playerName) return;
+    const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
+    if (!player) return;
+
+    // Essence
+    if (prize.essence > 0) {
+      db.prepare('UPDATE players SET essence = essence + ? WHERE id = ?').run(prize.essence, player.id);
+    }
+
+    // Pokemon (exclusive rewards)
+    if (prize.pokemonIds && prize.pokemonIds.length > 0) {
+      const insert = db.prepare(
+        'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      );
+      const discover = db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)');
+      for (const pid of prize.pokemonIds) {
+        const species = POKEMON_BY_ID[pid];
+        if (!species) continue;
+        const nature = randomNature();
+        const ivs = randomIVs();
+        const ability = randomAbilityForSpecies(species.name);
+        const moves = randomMovesForSpecies(species.name, getMoveInfo, species.moves as [string, string]);
+        insert.run(uuidv4(), player.id, pid, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+        discover.run(player.id, pid);
+      }
+    }
+
+    // Notify via socket
+    const socketId = connectedPlayers.get(playerName);
+    if (socketId) {
+      io.to(socketId).emit('tournament:prizeAwarded', {
+        tournamentId: t.id, tournamentName: t.name, prize,
+      });
+    }
+
+    console.log(`Prize awarded to ${playerName}: ${prize.essence} essence` +
+      (prize.pokemonIds ? `, ${prize.pokemonIds.length} pokemon` : '') +
+      (prize.pack ? `, ${prize.pack} pack` : ''));
+  };
+
+  givePrize(t.winner, t.prizes.first);
+  givePrize(t.runnerUp, t.prizes.second);
+
+  // Participation prizes for everyone else
+  for (const p of t.participants) {
+    if (p !== t.winner && p !== t.runnerUp) {
+      givePrize(p, t.prizes.participation);
+    }
+  }
 }
 
 function checkForfeitTimers() {
@@ -933,7 +996,8 @@ app.get(`${BASE_PATH}/api/tournaments`, (_req, res) => {
   const list: TournamentSummary[] = rows.map((r: any) => ({
     id: r.id, name: r.name, status: r.status, fieldSize: r.field_size, totalPokemon: r.total_pokemon,
     participantCount: JSON.parse(r.participants).length, registrationEnd: r.registration_end,
-    currentRound: r.current_round, winner: r.winner ?? undefined, fixedTeam: !!r.fixed_team,
+    currentRound: r.current_round, winner: r.winner ?? undefined, fixedTeam: !!r.fixed_team, publicTeams: !!r.public_teams,
+    prizes: JSON.parse(r.prizes || '{}'),
   }));
   return res.json({ tournaments: list });
 });
@@ -945,12 +1009,13 @@ app.get(`${BASE_PATH}/api/tournament/:id`, (req, res) => {
 });
 
 app.post(`${BASE_PATH}/api/admin/tournament/create`, (req, res) => {
-  const { name, fieldSize, totalPokemon, registrationMinutes, matchTimeLimit, fixedTeam } = req.body;
+  const { name, fieldSize, totalPokemon, registrationMinutes, matchTimeLimit, fixedTeam, publicTeams, prizes } = req.body;
   const id = uuidv4();
   const regEnd = Date.now() + (registrationMinutes ?? 10) * 60 * 1000;
+  const finalPrizes = prizes ?? DEFAULT_PRIZES;
   db.prepare(
-    'INSERT INTO tournaments (id, name, field_size, total_pokemon, registration_end, match_time_limit, fixed_team) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, name ?? 'Tournament', fieldSize ?? 1, totalPokemon ?? 3, regEnd, matchTimeLimit ?? 300, fixedTeam ? 1 : 0);
+    'INSERT INTO tournaments (id, name, field_size, total_pokemon, registration_end, match_time_limit, fixed_team, public_teams, prizes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, name ?? 'Tournament', fieldSize ?? 1, totalPokemon ?? 3, regEnd, matchTimeLimit ?? 300, fixedTeam ? 1 : 0, publicTeams ? 1 : 0, JSON.stringify(finalPrizes));
   const t = loadTournament(id)!;
   // Broadcast to all connected players
   io.emit('tournament:created', { id: t.id, name: t.name, registrationEnd: t.registrationEnd, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon });

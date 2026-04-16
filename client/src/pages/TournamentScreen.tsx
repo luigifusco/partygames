@@ -262,6 +262,14 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
             {t.fixedTeam && <span className="tournament-fixed-badge">🔒 Fixed Team</span>}
           </div>
 
+          {t.prizes?.first && (
+            <div className="tournament-prizes-bar">
+              <span>🥇 {t.prizes.first.essence}✦{t.prizes.first.pack ? ' + ' + t.prizes.first.pack + ' pack' : ''}{t.prizes.first.pokemonIds?.length ? ' + ' + t.prizes.first.pokemonIds.length + ' pkm' : ''}</span>
+              <span>🥈 {t.prizes.second.essence}✦{t.prizes.second.pack ? ' + ' + t.prizes.second.pack + ' pack' : ''}</span>
+              <span>🏅 {t.prizes.participation.essence}✦</span>
+            </div>
+          )}
+
           {t.status === 'registration' && (
             <div className="tournament-reg-info">
               <div>Registration closes: {formatTime(t.registrationEnd)}</div>
@@ -389,6 +397,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
               <span>{t.participantCount} players</span>
             </div>
             {t.winner && <div className="tournament-card-winner">🏆 {t.winner}</div>}
+            {t.prizes?.first && <div className="tournament-card-prize">🥇 {t.prizes.first.essence}✦{t.prizes.first.pack ? ' + ' + t.prizes.first.pack : ''}</div>}
           </div>
         ))}
       </div>

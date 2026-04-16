@@ -112,8 +112,19 @@ export default function AdminPanel() {
   const [tournamentMatchTime, setTournamentMatchTime] = useState(300);
   const [tournamentFixedTeam, setTournamentFixedTeam] = useState(false);
   const [tournamentPublicTeams, setTournamentPublicTeams] = useState(false);
+  const [prize1stEssence, setPrize1stEssence] = useState(2000);
+  const [prize1stPack, setPrize1stPack] = useState('legendary');
+  const [prize1stPokemon, setPrize1stPokemon] = useState('');
+  const [prize2ndEssence, setPrize2ndEssence] = useState(1000);
+  const [prize2ndPack, setPrize2ndPack] = useState('rare');
+  const [prizePartEssence, setPrizePartEssence] = useState(200);
 
   const createTournament = async () => {
+    const prizes = {
+      first: { essence: prize1stEssence, pack: prize1stPack || undefined, pokemonIds: prize1stPokemon ? prize1stPokemon.split(',').map(Number).filter(Boolean) : undefined },
+      second: { essence: prize2ndEssence, pack: prize2ndPack || undefined },
+      participation: { essence: prizePartEssence },
+    };
     await fetch(`${API}/api/admin/tournament/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -125,6 +136,7 @@ export default function AdminPanel() {
         matchTimeLimit: tournamentMatchTime,
         fixedTeam: tournamentFixedTeam,
         publicTeams: tournamentPublicTeams,
+        prizes,
       }),
     });
     alert('Tournament created!');
@@ -190,6 +202,45 @@ export default function AdminPanel() {
               <input type="checkbox" checked={tournamentPublicTeams} onChange={e => setTournamentPublicTeams(e.target.checked)} />
               <span className="admin-toggle-slider" />
             </label>
+          </div>
+          <p className="admin-hint" style={{ marginTop: 8 }}>Prizes</p>
+          <div className="admin-weight-row">
+            <label className="admin-weight-label">1st Essence</label>
+            <input type="number" min={0} value={prize1stEssence} onChange={e => setPrize1stEssence(Number(e.target.value))} />
+          </div>
+          <div className="admin-weight-row">
+            <label className="admin-weight-label">1st Pack</label>
+            <select value={prize1stPack} onChange={e => setPrize1stPack(e.target.value)}>
+              <option value="">None</option>
+              <option value="common">Common</option>
+              <option value="uncommon">Uncommon</option>
+              <option value="rare">Rare</option>
+              <option value="epic">Epic</option>
+              <option value="legendary">Legendary</option>
+            </select>
+          </div>
+          <div className="admin-weight-row">
+            <label className="admin-weight-label">1st Pokémon IDs</label>
+            <input type="text" placeholder="e.g. 150,151" value={prize1stPokemon} onChange={e => setPrize1stPokemon(e.target.value)} style={{ flex: 1 }} />
+          </div>
+          <div className="admin-weight-row">
+            <label className="admin-weight-label">2nd Essence</label>
+            <input type="number" min={0} value={prize2ndEssence} onChange={e => setPrize2ndEssence(Number(e.target.value))} />
+          </div>
+          <div className="admin-weight-row">
+            <label className="admin-weight-label">2nd Pack</label>
+            <select value={prize2ndPack} onChange={e => setPrize2ndPack(e.target.value)}>
+              <option value="">None</option>
+              <option value="common">Common</option>
+              <option value="uncommon">Uncommon</option>
+              <option value="rare">Rare</option>
+              <option value="epic">Epic</option>
+              <option value="legendary">Legendary</option>
+            </select>
+          </div>
+          <div className="admin-weight-row">
+            <label className="admin-weight-label">Participation</label>
+            <input type="number" min={0} value={prizePartEssence} onChange={e => setPrizePartEssence(Number(e.target.value))} />
           </div>
           <button className="admin-save-btn" onClick={createTournament}>🏆 Create Tournament</button>
         </div>

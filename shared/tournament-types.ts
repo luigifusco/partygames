@@ -20,6 +20,24 @@ export interface FrozenPokemon {
   ability: string | null;
 }
 
+export interface TournamentPrize {
+  essence: number;
+  pack?: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  pokemonIds?: number[];
+}
+
+export interface TournamentPrizes {
+  first: TournamentPrize;
+  second: TournamentPrize;
+  participation: TournamentPrize;
+}
+
+export const DEFAULT_PRIZES: TournamentPrizes = {
+  first: { essence: 2000, pack: 'legendary' },
+  second: { essence: 1000, pack: 'rare' },
+  participation: { essence: 200 },
+};
+
 export interface Tournament {
   id: string;
   name: string;
@@ -32,9 +50,12 @@ export interface Tournament {
   bracket: TournamentMatch[];
   currentRound: number;
   winner?: string;
+  runnerUp?: string;
   createdAt: number;
   fixedTeam: boolean;
+  publicTeams: boolean;
   frozenTeams: Record<string, FrozenPokemon[]>;
+  prizes: TournamentPrizes;
 }
 
 export interface TournamentSummary {
@@ -48,4 +69,6 @@ export interface TournamentSummary {
   currentRound: number;
   winner?: string;
   fixedTeam: boolean;
+  publicTeams: boolean;
+  prizes: TournamentPrizes;
 }

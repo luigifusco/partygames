@@ -413,3 +413,23 @@
   font-size: 11px;
   color: #888;
 }
+
+/* Prizes */
+.tournament-prizes-bar {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #aaa;
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+
+.tournament-prizes-bar span:first-child { color: #ffd700; }
+.tournament-prizes-bar span:nth-child(2) { color: #c0c0c0; }
+.tournament-prizes-bar span:nth-child(3) { color: #cd7f32; }
+
+.tournament-card-prize {
+  font-size: 11px;
+  color: #ffd700;
+  margin-top: 2px;
+}
