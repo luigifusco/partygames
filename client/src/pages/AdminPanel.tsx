@@ -41,6 +41,7 @@ export default function AdminPanel() {
   const [weightsDirty, setWeightsDirty] = useState(false);
   const [tmShopEnabled, setTmShopEnabled] = useState(false);
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
+  const [loginDisabled, setLoginDisabled] = useState(false);
 
   const refresh = useCallback(async () => {
     const [pRes, sRes, wRes] = await Promise.all([
@@ -56,6 +57,7 @@ export default function AdminPanel() {
     }
     setTmShopEnabled(settings.tm_shop_enabled ?? false);
     setAiBattleEnabled(settings.ai_battle_enabled ?? false);
+    setLoginDisabled(settings.login_disabled ?? false);
     setWeightsDirty(false);
   }, []);
 
@@ -309,6 +311,21 @@ export default function AdminPanel() {
                 body: JSON.stringify({ key: 'ai_battle_enabled', value: next }),
               });
               setAiBattleEnabled(next);
+            }} />
+            <span className="admin-toggle-slider" />
+          </label>
+        </div>
+        <div className="admin-weight-row">
+          <label className="admin-weight-label">Disable Login</label>
+          <label className="admin-toggle">
+            <input type="checkbox" checked={loginDisabled} onChange={async (e) => {
+              const next = e.target.checked;
+              await fetch(`${API}/api/admin/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'login_disabled', value: next }),
+              });
+              setLoginDisabled(next);
             }} />
             <span className="admin-toggle-slider" />
           </label>

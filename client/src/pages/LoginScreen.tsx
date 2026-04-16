@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
 import './LoginScreen.css';
@@ -23,6 +23,15 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [name, setName] = useState(() => localStorage.getItem(LAST_PLAYER_KEY) ?? '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginDisabled, setLoginDisabled] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+
+  useEffect(() => {
+    fetch(API_BASE + '/api/settings/features')
+      .then(r => r.json())
+      .then(data => { setLoginDisabled(data.loginDisabled ?? false); setCheckingStatus(false); })
+      .catch(() => setCheckingStatus(false));
+  }, []);
 
   const handleRegister = async () => {
     if (!name.trim()) return;
@@ -81,6 +90,29 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleLogin();
   };
+
+  if (checkingStatus) {
+    return <div className="login-screen"><div className="login-loading">Loading...</div></div>;
+  }
+
+  if (loginDisabled) {
+    return (
+      <div className="login-screen splash-screen">
+        <div className="splash-glow" />
+        <div className="splash-content">
+          <div className="splash-icon">⚡</div>
+          <h1 className="splash-title">Pokémon Party</h1>
+          <div className="splash-subtitle">The party is about to begin</div>
+          <div className="splash-dots">
+            <span className="splash-dot" />
+            <span className="splash-dot" />
+            <span className="splash-dot" />
+          </div>
+          <div className="splash-hint">Get ready, trainers!</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-screen">

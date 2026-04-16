@@ -621,12 +621,13 @@ app.get(`${BASE_PATH}/api/settings/rarity-weights`, (_req, res) => {
 
 // Public endpoint for feature flags
 app.get(`${BASE_PATH}/api/settings/features`, (_req, res) => {
-  const rows = db.prepare("SELECT key, value FROM game_settings WHERE key IN ('tm_shop_enabled', 'ai_battle_enabled')").all() as any[];
-  const flags: Record<string, boolean> = { tmShopEnabled: false, aiBattleEnabled: false };
+  const rows = db.prepare("SELECT key, value FROM game_settings WHERE key IN ('tm_shop_enabled', 'ai_battle_enabled', 'login_disabled')").all() as any[];
+  const flags: Record<string, boolean> = { tmShopEnabled: false, aiBattleEnabled: false, loginDisabled: false };
   for (const row of rows) {
     try {
       if (row.key === 'tm_shop_enabled') flags.tmShopEnabled = JSON.parse(row.value);
       if (row.key === 'ai_battle_enabled') flags.aiBattleEnabled = JSON.parse(row.value);
+      if (row.key === 'login_disabled') flags.loginDisabled = JSON.parse(row.value);
     } catch {}
   }
   return res.json(flags);
