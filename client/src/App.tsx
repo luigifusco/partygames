@@ -31,6 +31,7 @@ import { getEffectiveMoves } from '@shared/types';
 interface PlayerState {
   id: string;
   name: string;
+  picture: string | null;
 }
 
 export default function App() {
@@ -276,8 +277,8 @@ export default function App() {
     navigate(routes[notification.type], { state: { autoChallenge: notification.from } });
   }, [navigate]);
 
-  const handleLogin = async (playerData: { id: string; name: string; essence: number; elo: number }, pokemonRows: any[], itemRows: any[], recentPokemon?: number[]) => {
-    setPlayer({ id: playerData.id, name: playerData.name });
+  const handleLogin = async (playerData: { id: string; name: string; essence: number; elo: number; picture?: string | null }, pokemonRows: any[], itemRows: any[], recentPokemon?: number[]) => {
+    setPlayer({ id: playerData.id, name: playerData.name, picture: playerData.picture ?? null });
     setEssence(playerData.essence);
     setElo(playerData.elo ?? STARTING_ELO);
     setCollection(pokemonRows.map(buildInstance).filter(Boolean) as PokemonInstance[]);
@@ -307,7 +308,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/play" element={<MenuScreen playerName={player.name} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} />} />
+      <Route path="/play" element={<MenuScreen playerName={player.name} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} />} />
       <Route path="/admin" element={<AdminPanel />} />
       <Route path="/notifications" element={<NotificationsScreen notifications={notifications} onAccept={handleAcceptNotification} onDismiss={dismissNotification} />} />
       <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} />} />

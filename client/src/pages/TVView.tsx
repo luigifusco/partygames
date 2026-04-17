@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { BASE_PATH } from '../config';
+import Avatar from '../components/Avatar';
 import './TVView.css';
 
 interface LeaderboardEntry {
   name: string;
   elo: number;
   essence: number;
+  picture: string | null;
   topPokemon: number[];
 }
 
@@ -48,6 +50,7 @@ function PodiumCard({
         <span className="tv-podium-icon">{icons[rank]}</span>
         <span className="tv-podium-num">#{rank}</span>
       </div>
+      <Avatar name={entry.name} picture={entry.picture} className="tv-podium-avatar" />
       <div className="tv-podium-name">{entry.name}</div>
       <PokemonRow ids={entry.topPokemon} size="xl" />
       <div className="tv-podium-stats">
@@ -68,6 +71,7 @@ function RankCard({ entry, rank }: { entry: LeaderboardEntry; rank: number }) {
   return (
     <div className="tv-card">
       <div className="tv-card-rank">#{rank}</div>
+      <Avatar name={entry.name} picture={entry.picture} className="tv-card-avatar" />
       <div className="tv-card-body">
         <div className="tv-card-name">{entry.name}</div>
         <PokemonRow ids={entry.topPokemon} size="sm" />

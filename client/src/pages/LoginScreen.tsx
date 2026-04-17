@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
 import './LoginScreen.css';
@@ -8,6 +8,7 @@ interface PlayerData {
   name: string;
   essence: number;
   elo: number;
+  picture?: string | null;
 }
 
 interface LoginScreenProps {
@@ -17,6 +18,23 @@ interface LoginScreenProps {
 const API_BASE = BASE_PATH;
 
 const LAST_PLAYER_KEY = 'lastPlayerName';
+const PICTURE_MAX_SIZE = 256;
+const PICTURE_QUALITY = 0.82;
+
+/** Downscale a File to a square JPEG data URL (cover crop). */
+async function fileToAvatarDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const sx = (bitmap.width - side) / 2;
+  const sy = (bitmap.height - side) / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = PICTURE_MAX_SIZE;
+  canvas.height = PICTURE_MAX_SIZE;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, PICTURE_MAX_SIZE, PICTURE_MAX_SIZE);
+  bitmap.close?.();
+  return canvas.toDataURL('image/jpeg', PICTURE_QUALITY);
+}
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const navigate = useNavigate();
@@ -25,6 +43,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [loading, setLoading] = useState(false);
   const [loginDisabled, setLoginDisabled] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
+  const [step, setStep] = useState<'form' | 'picture'>('form');
+  const [picture, setPicture] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch(API_BASE + '/api/settings/features')
@@ -33,8 +55,22 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       .catch(() => setCheckingStatus(false));
   }, []);
 
+  const handlePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError('');
+    try {
+      const dataUrl = await fileToAvatarDataUrl(file);
+      setPicture(dataUrl);
+    } catch {
+      setError('Could not read that image — try another.');
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   const handleRegister = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !picture) return;
     setLoading(true);
     setError('');
 
@@ -42,7 +78,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const res = await fetch(`${API_BASE}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), picture }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -114,6 +150,63 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     );
   }
 
+  if (step === 'picture') {
+    return (
+      <div className="login-screen">
+        <h1>⚡ Pokémon Party</h1>
+        <div className="register-step">
+          <div className="register-step-title">Add your trainer photo</div>
+          <div className="register-step-hint">
+            Your face shows up on the leaderboard, in battles, and in trades.<br />
+            A picture is required to register.
+          </div>
+
+          <div className={`register-pic-frame ${picture ? 'has-picture' : ''}`}>
+            {picture ? <img src={picture} alt="Your picture" /> : <span className="register-pic-placeholder">📷</span>}
+          </div>
+
+          <input
+            ref={cameraInputRef}
+            className="register-hidden-input"
+            type="file"
+            accept="image/*"
+            capture="user"
+            onChange={handlePictureChange}
+          />
+          <input
+            ref={fileInputRef}
+            className="register-hidden-input"
+            type="file"
+            accept="image/*"
+            onChange={handlePictureChange}
+          />
+
+          <div className="register-pic-buttons">
+            <button className="ds-btn ds-btn-primary" onClick={() => cameraInputRef.current?.click()} disabled={loading}>
+              📸 Take photo
+            </button>
+            <button className="ds-btn" onClick={() => fileInputRef.current?.click()} disabled={loading}>
+              🖼️ Choose from library
+            </button>
+            <button
+              className="ds-btn ds-btn-primary ds-btn-block"
+              onClick={handleRegister}
+              disabled={!picture || loading}
+              style={{ marginTop: 'var(--space-2)' }}
+            >
+              {loading ? 'Registering…' : '✨ Finish registration'}
+            </button>
+            <button className="ds-btn ds-btn-ghost" onClick={() => { setStep('form'); setPicture(null); setError(''); }} disabled={loading}>
+              ← Back
+            </button>
+          </div>
+
+          {error && <div className="login-error">{error}</div>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="login-screen">
       <h1>⚡ Pokémon Party</h1>
@@ -139,14 +232,14 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           </button>
           <button
             className="ds-btn"
-            onClick={handleRegister}
+            onClick={() => { setError(''); setStep('picture'); }}
             disabled={!name.trim() || loading}
           >
             Register
           </button>
         </div>
         {error && <div className="login-error">{error}</div>}
-        <div className="login-info">No password needed — just pick a name!</div>
+        <div className="login-info">No password needed — just pick a name and snap a photo!</div>
       </div>
     </div>
   );

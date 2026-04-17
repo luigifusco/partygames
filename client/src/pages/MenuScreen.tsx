@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
+import Avatar from '../components/Avatar';
 import './MenuScreen.css';
 
 interface MenuScreenProps {
   playerName: string;
+  playerPicture?: string | null;
   essence: number;
   elo: number;
   collectionSize: number;
@@ -12,7 +14,7 @@ interface MenuScreenProps {
   notificationCount: number;
 }
 
-export default function MenuScreen({ playerName, essence, elo, collectionSize, itemCount, notificationCount }: MenuScreenProps) {
+export default function MenuScreen({ playerName, playerPicture, essence, elo, collectionSize, itemCount, notificationCount }: MenuScreenProps) {
   const navigate = useNavigate();
   const [tmShopEnabled, setTmShopEnabled] = useState(false);
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
@@ -30,6 +32,7 @@ export default function MenuScreen({ playerName, essence, elo, collectionSize, i
   return (
     <div className="menu-screen">
       <div className="menu-header">
+        <Avatar name={playerName} picture={playerPicture} size="lg" className="menu-avatar" />
         <div className="menu-header-info">
           <div className="menu-player-name">{playerName}</div>
           <div className="menu-player-stats">

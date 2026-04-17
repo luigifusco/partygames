@@ -44,7 +44,7 @@ const io = new Server(httpServer, {
   path: `${BASE_PATH}/socket.io`,
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 const db = initDb();
 
@@ -162,11 +162,17 @@ function getRecentPokemonIds(playerId: string): number[] {
   return rows.map((r: any) => r.pokemon_id);
 }
 
-// Register a new player
+// Register a new player (requires picture)
 app.post(`${BASE_PATH}/api/register`, (req, res) => {
-  const { name } = req.body;
+  const { name, picture } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Name is required' });
+  }
+  if (!picture || typeof picture !== 'string' || !picture.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'Profile picture is required' });
+  }
+  if (picture.length > 4_000_000) {
+    return res.status(413).json({ error: 'Picture is too large' });
   }
 
   const trimmed = name.trim();
@@ -176,10 +182,10 @@ app.post(`${BASE_PATH}/api/register`, (req, res) => {
   }
 
   const id = uuidv4();
-  db.prepare('INSERT INTO players (id, name, essence, elo) VALUES (?, ?, ?, ?)').run(id, trimmed, STARTING_ESSENCE, STARTING_ELO);
+  db.prepare('INSERT INTO players (id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?)').run(id, trimmed, STARTING_ESSENCE, STARTING_ELO, picture);
   playersRegistered.inc();
 
-  const player = db.prepare('SELECT id, name, essence, elo FROM players WHERE id = ?').get(id);
+  const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE id = ?').get(id);
   return res.json({ player });
 });
 
@@ -190,7 +196,7 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
     return res.status(400).json({ error: 'Name is required' });
   }
 
-  const player = db.prepare('SELECT id, name, essence, elo FROM players WHERE name = ?').get(name.trim()) as any;
+  const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE name = ?').get(name.trim()) as any;
   if (!player) {
     return res.status(404).json({ error: 'Player not found' });
   }
@@ -204,7 +210,7 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
 
 // Get player data
 app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
-  const player = db.prepare('SELECT id, name, essence, elo FROM players WHERE id = ?').get(req.params.id) as any;
+  const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE id = ?').get(req.params.id) as any;
   if (!player) {
     return res.status(404).json({ error: 'Player not found' });
   }
@@ -213,6 +219,20 @@ app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
   return res.json({ player, pokemon, items, recentPokemonIds });
+});
+
+// Update a player's picture (for legacy users without one, or changing it)
+app.put(`${BASE_PATH}/api/player/:id/picture`, (req, res) => {
+  const { picture } = req.body;
+  if (!picture || typeof picture !== 'string' || !picture.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'Invalid picture' });
+  }
+  if (picture.length > 4_000_000) {
+    return res.status(413).json({ error: 'Picture is too large' });
+  }
+  const result = db.prepare('UPDATE players SET picture = ? WHERE id = ?').run(picture, req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Player not found' });
+  return res.json({ ok: true });
 });
 
 // Update player essence
@@ -475,7 +495,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/take-item`, (req, res) => {
 
 // Get leaderboard (ranked by Elo)
 app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
-  const players = db.prepare('SELECT id, name, elo, essence FROM players ORDER BY elo DESC').all() as any[];
+  const players = db.prepare('SELECT id, name, elo, essence, picture FROM players ORDER BY elo DESC').all() as any[];
   const topPokemonStmt = db.prepare(
     'SELECT pokemon_id FROM battle_pokemon_usage WHERE player_id = ? ORDER BY times_used DESC LIMIT 3'
   );
@@ -483,15 +503,21 @@ app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
     name: p.name,
     elo: p.elo,
     essence: p.essence,
+    picture: p.picture ?? null,
     topPokemon: (topPokemonStmt.all(p.id) as any[]).map((r: any) => r.pokemon_id),
   }));
   return res.json({ players: result });
 });
 
-// Online players endpoint
+// Online players endpoint (returns name + picture for each connected player)
 app.get(`${BASE_PATH}/api/players/online`, (_req, res) => {
   const names = Array.from(connectedPlayers.keys());
-  return res.json({ players: names });
+  if (names.length === 0) return res.json({ players: [] });
+  const placeholders = names.map(() => '?').join(',');
+  const rows = db.prepare(`SELECT name, picture FROM players WHERE name IN (${placeholders})`).all(...names) as any[];
+  const pictureByName = new Map(rows.map(r => [r.name, r.picture ?? null]));
+  const result = names.map(n => ({ name: n, picture: pictureByName.get(n) ?? null }));
+  return res.json({ players: result });
 });
 
 // Prometheus metrics endpoint
@@ -537,7 +563,7 @@ app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
 
 app.get(`${BASE_PATH}/api/admin/players`, (_req, res) => {
   const players = db.prepare(`
-    SELECT p.id, p.name, p.essence, p.elo, p.created_at,
+    SELECT p.id, p.name, p.essence, p.elo, p.picture, p.created_at,
            (SELECT COUNT(*) FROM owned_pokemon op WHERE op.player_id = p.id) as pokemon_count
     FROM players p ORDER BY p.created_at DESC
   `).all();

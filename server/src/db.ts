@@ -84,6 +84,10 @@ export function initDb() {
   if (!cols.find((c: any) => c.name === 'elo')) {
     db.exec(`ALTER TABLE players ADD COLUMN elo INTEGER NOT NULL DEFAULT ${STARTING_ELO}`);
   }
+  // Add picture column (base64 data URL, ~256x256 JPEG). Nullable for legacy rows.
+  if (!cols.find((c: any) => c.name === 'picture')) {
+    db.exec(`ALTER TABLE players ADD COLUMN picture TEXT`);
+  }
   const battleCols = db.prepare("PRAGMA table_info(battles)").all() as any[];
   if (!battleCols.find((c: any) => c.name === 'winner_elo_delta')) {
     db.exec(`ALTER TABLE battles ADD COLUMN winner_elo_delta INTEGER NOT NULL DEFAULT 0`);

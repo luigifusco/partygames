@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { useOnlinePlayers } from '../useOnlinePlayers';
+import Avatar from '../components/Avatar';
 import type { PokemonInstance } from '@shared/types';
 import { randomNature, randomIVs } from '@shared/natures';
 import './TradeScreen.css';
@@ -279,9 +280,10 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
               <div className="online-players-section">
                 <div className="online-players-label">🟢 Online</div>
                 <div className="recent-trainers">
-                  {onlinePlayers.map((name) => (
-                    <button key={name} className="recent-trainer-btn" onClick={() => setTargetName(name)}>
-                      {name}
+                  {onlinePlayers.map((p) => (
+                    <button key={p.name} className="recent-trainer-btn online-player-btn" onClick={() => setTargetName(p.name)}>
+                      <Avatar name={p.name} picture={p.picture} size="sm" />
+                      <span className="online-player-name">{p.name}</span>
                     </button>
                   ))}
                 </div>

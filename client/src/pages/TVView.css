@@ -332,7 +332,7 @@
 
 .tv-card {
   display: grid;
-  grid-template-columns: 70px 1fr auto;
+  grid-template-columns: 70px auto 1fr auto;
   align-items: center;
   gap: 1rem;
   padding: 0.8rem 1.2rem;
@@ -406,4 +406,28 @@
   .tv-podium-1 .tv-podium-icon {
     animation: none;
   }
+}
+
+/* --- Leaderboard avatars --- */
+.tv-podium-avatar {
+  width: 112px !important;
+  height: 112px !important;
+  border-width: 3px !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55),
+              0 0 28px color-mix(in srgb, var(--color-gold) 20%, transparent);
+  margin-bottom: -6px;
+}
+.tv-podium-1 .tv-podium-avatar {
+  width: 140px !important;
+  height: 140px !important;
+  border-color: var(--color-gold) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55),
+              0 0 36px color-mix(in srgb, var(--color-gold) 35%, transparent);
+}
+
+.tv-card-avatar {
+  width: 56px !important;
+  height: 56px !important;
+  border-width: 2px !important;
+  flex-shrink: 0;
 }
