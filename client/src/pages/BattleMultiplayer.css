@@ -63,6 +63,8 @@
   overflow-y: auto;
 }
 
+.battle-mp-content > * { flex-shrink: 0; }
+
 /* Online players card */
 .online-players-section {
   background: var(--color-surface);

@@ -365,6 +365,8 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.trainer-list > * { flex-shrink: 0; }
+
 .trainer-card {
   display: flex;
   align-items: center;

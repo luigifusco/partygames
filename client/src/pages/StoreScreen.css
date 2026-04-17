@@ -24,6 +24,8 @@
   gap: var(--space-3);
 }
 
+.store-boxes > * { flex-shrink: 0; }
+
 .store-box {
   display: flex;
   align-items: center;

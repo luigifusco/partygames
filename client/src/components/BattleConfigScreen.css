@@ -59,6 +59,8 @@
   overflow-y: auto;
 }
 
+.bconfig-content > * { flex-shrink: 0; }
+
 .bconfig-group {
   width: 100%;
   background: var(--color-surface);

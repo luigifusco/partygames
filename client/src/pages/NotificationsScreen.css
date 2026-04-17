@@ -61,6 +61,8 @@
   gap: var(--space-3);
 }
 
+.notif-list > * { flex-shrink: 0; }
+
 .notif-empty {
   display: flex;
   flex-direction: column;

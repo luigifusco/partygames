@@ -67,6 +67,8 @@
   overflow-y: auto;
 }
 
+.trade-content > * { flex-shrink: 0; }
+
 /* --- Request form --- */
 .trade-input {
   padding: 12px 14px;

@@ -66,6 +66,8 @@
   gap: var(--space-3);
 }
 
+.story-hub > * { flex-shrink: 0; }
+
 .story-card {
   position: relative;
   display: flex;
