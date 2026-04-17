@@ -423,7 +423,7 @@
 .battle-log {
   flex: 1 1 40%;
   min-height: 0;
-  padding: 10px 14px 46px;
+  padding: 10px 14px 12px;
   overflow-y: auto;
   background: linear-gradient(180deg, rgba(10, 12, 26, 0.92) 0%, rgba(10, 12, 26, 0.98) 100%);
   font-size: 13px;
@@ -520,63 +520,58 @@
   to   { background-position: -14px 30px, 0 0; }
 }
 
-/* ───── Unified bottom controls bar ──────────────────────────── */
+/* ───── Bottom controls footer ───────────────────────────────── */
 
 .battle-controls-bar {
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
-  z-index: 100;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(10, 12, 26, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(10, 12, 26, 0.96) 0%, rgba(6, 8, 18, 1) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.45);
+  z-index: 50;
 }
 
 .battle-controls-sep {
   width: 1px;
-  height: 18px;
+  height: 20px;
   background: rgba(255, 255, 255, 0.16);
   margin: 0 4px;
+}
+
+.playback-counter {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 6px;
+  min-width: 38px;
+  text-align: center;
 }
 
 .playback-btn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 16px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 18px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 999px;
+  padding: 8px 12px;
+  border-radius: 10px;
   line-height: 1;
   transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
 .playback-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.10);
   color: #fff;
 }
 .playback-btn:active:not(:disabled) { transform: scale(0.92); }
 .playback-btn:disabled { opacity: 0.3; cursor: default; }
 
-.playback-btn-subtle { opacity: 0.5; }
+.playback-btn-subtle { opacity: 0.45; }
 .playback-btn-subtle:hover { opacity: 1; }
-
-.playback-counter {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.55);
-  font-variant-numeric: tabular-nums;
-  min-width: 40px;
-  text-align: center;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
 
 /* ───── Debug overlay (unchanged visual, modernized typography) ─ */
 

@@ -347,7 +347,7 @@
 
 .story-continue-btn {
   position: absolute;
-  bottom: var(--space-5);
+  bottom: calc(var(--space-5) + 64px);
   left: 50%;
   transform: translateX(-50%);
   padding: 14px 34px;
