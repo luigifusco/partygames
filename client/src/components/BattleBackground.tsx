@@ -30,91 +30,91 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   {
     id: 'twilight-meadow',
     label: 'Twilight Meadow',
-    palette: [hex('#0e1440'), hex('#5d3a8a'), hex('#f3b6c8')],
+    palette: [hex('#1a1f6b'), hex('#b561d4'), hex('#ffd8e8')],
     scale: 2.2,
     warp: 0.35,
-    contrast: 0.95,
+    contrast: 1.3,
     flow: [0.008, 0.004],
   },
   {
     id: 'misty-forest',
     label: 'Misty Forest',
-    palette: [hex('#0b241f'), hex('#2e7d6a'), hex('#e0f2a3')],
+    palette: [hex('#0d3a30'), hex('#4ec8a3'), hex('#eaf7b0')],
     scale: 2.6,
     warp: 0.45,
-    contrast: 0.9,
+    contrast: 1.25,
     flow: [-0.006, 0.003],
   },
   {
     id: 'ember-fields',
     label: 'Ember Fields',
-    palette: [hex('#2a0606'), hex('#a83220'), hex('#ffd27a')],
+    palette: [hex('#3a0a2a'), hex('#ff5a3c'), hex('#ffe17a')],
     scale: 2.4,
     warp: 0.6,
-    contrast: 1.1,
+    contrast: 1.35,
     flow: [0.004, -0.01],
   },
   {
     id: 'frozen-lake',
     label: 'Frozen Lake',
-    palette: [hex('#07132e'), hex('#3a7aa8'), hex('#d8f1ff')],
+    palette: [hex('#0b1b52'), hex('#4db8ff'), hex('#e8f7ff')],
     scale: 2.0,
     warp: 0.25,
-    contrast: 0.8,
+    contrast: 1.2,
     flow: [0.006, 0.002],
   },
   {
     id: 'dune-haze',
     label: 'Dune Haze',
-    palette: [hex('#3b270e'), hex('#c88a4b'), hex('#fde5b8')],
+    palette: [hex('#5a2e10'), hex('#ffb866'), hex('#fff1c2')],
     scale: 1.8,
     warp: 0.4,
-    contrast: 0.85,
+    contrast: 1.2,
     flow: [-0.009, 0.002],
   },
   {
     id: 'deep-cosmos',
     label: 'Deep Cosmos',
-    palette: [hex('#05020d'), hex('#4c268f'), hex('#6ed7ff')],
+    palette: [hex('#0a0520'), hex('#7b3eff'), hex('#7ee3ff')],
     scale: 3.0,
     warp: 0.6,
-    contrast: 1.05,
+    contrast: 1.35,
     flow: [0.003, 0.005],
   },
   {
     id: 'ocean-drift',
     label: 'Ocean Drift',
-    palette: [hex('#041a2e'), hex('#0e6b8a'), hex('#b4f0d8')],
+    palette: [hex('#042442'), hex('#19a4c2'), hex('#b8ffe6')],
     scale: 2.2,
     warp: 0.5,
-    contrast: 0.9,
+    contrast: 1.25,
     flow: [0.01, 0.002],
   },
   {
     id: 'blossom-mist',
     label: 'Blossom Mist',
-    palette: [hex('#2a0e1c'), hex('#a05175'), hex('#ffe1d0')],
+    palette: [hex('#3b0f35'), hex('#ff7aa8'), hex('#ffe8d8')],
     scale: 2.2,
     warp: 0.35,
-    contrast: 0.85,
+    contrast: 1.2,
     flow: [-0.005, -0.004],
   },
   {
     id: 'toxic-swamp',
     label: 'Toxic Swamp',
-    palette: [hex('#0d0a1a'), hex('#385a26'), hex('#c8ff72')],
+    palette: [hex('#100a2a'), hex('#5ea635'), hex('#e6ff7a')],
     scale: 2.5,
     warp: 0.7,
-    contrast: 1.0,
+    contrast: 1.3,
     flow: [0.007, -0.003],
   },
   {
     id: 'dusk-plains',
     label: 'Dusk Plains',
-    palette: [hex('#1d0b2c'), hex('#a04a6c'), hex('#ffc06e')],
+    palette: [hex('#2d0a4a'), hex('#ff6a8a'), hex('#ffd07a')],
     scale: 2.0,
     warp: 0.4,
-    contrast: 0.95,
+    contrast: 1.25,
     flow: [0.005, 0.003],
   },
 ];
@@ -187,16 +187,12 @@ void main(){
   v = clamp(v * u_contrast, -1.0, 1.0);
   v = v * 0.5 + 0.5;
 
-  vec3 col = mix(u_c1, u_c2, smoothstep(0.0, 0.5, v));
-  col = mix(col, u_c3, smoothstep(0.5, 1.0, v));
+  vec3 col = mix(u_c1, u_c2, smoothstep(0.1, 0.55, v));
+  col = mix(col, u_c3, smoothstep(0.55, 0.95, v));
 
   /* subtle horizontal bands like an old CRT scanline pass */
   float scan = 0.5 + 0.5 * sin(gl_FragCoord.y * 0.8);
-  col *= 0.97 + 0.03 * scan;
-
-  /* soft vignette so sprites always pop */
-  float vig = smoothstep(1.25, 0.35, length(uv - 0.5));
-  col *= 0.55 + 0.45 * vig;
+  col *= 0.98 + 0.02 * scan;
 
   gl_FragColor = vec4(col, 1.0);
 }
