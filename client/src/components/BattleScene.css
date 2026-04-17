@@ -370,15 +370,17 @@
 /* ───── Action banner (live move commentary) ─────────────────── */
 
 .battle-action-banner {
-  min-height: 38px;
+  flex: 0 0 auto;
+  height: 58px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 14px;
+  padding: 6px 14px;
   background: linear-gradient(180deg, rgba(10, 12, 26, 0.95) 0%, rgba(20, 24, 46, 0.95) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.10);
   border-bottom: 1px solid rgba(255, 255, 255, 0.10);
   font-size: 14px;
+  line-height: 1.35;
   font-weight: 700;
   text-align: center;
   color: #ffe38a;
@@ -389,6 +391,10 @@
 }
 
 .battle-action-banner span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   animation: actionFadeIn 0.25s var(--ease-out, ease-out);
 }
 
