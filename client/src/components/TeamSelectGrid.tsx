@@ -54,7 +54,7 @@ export default function TeamSelectGrid({
 
       {!disabled && (
         <>
-          <div className="team-select-chosen" style={{ padding: '4px 8px' }}>
+          <div className="team-select-chosen">
             {selected.map((idx) => {
               const p = instances[idx].pokemon;
               return (
@@ -70,7 +70,7 @@ export default function TeamSelectGrid({
             ))}
           </div>
           {onSubmit && (
-            <div style={{ textAlign: 'center', padding: '4px' }}>
+            <div style={{ textAlign: 'center', padding: '8px 12px 4px' }}>
               <button className="team-select-go" onClick={onSubmit}>{submitLabel}</button>
             </div>
           )}

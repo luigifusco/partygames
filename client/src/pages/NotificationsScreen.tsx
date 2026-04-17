@@ -40,7 +40,10 @@ export default function NotificationsScreen({ notifications, onAccept, onDismiss
       </div>
       <div className="notif-list">
         {notifications.length === 0 && (
-          <div className="notif-empty">No notifications</div>
+          <div className="notif-empty">
+            <div className="notif-empty-icon">🔔</div>
+            <div>No notifications</div>
+          </div>
         )}
         {notifications.map((n) => {
           const { icon, label } = TYPE_LABELS[n.type];
@@ -54,8 +57,8 @@ export default function NotificationsScreen({ notifications, onAccept, onDismiss
                 <div className="notif-card-time">{timeAgo(n.timestamp)}</div>
               </div>
               <div className="notif-card-actions">
-                <button className="notif-accept" onClick={() => onAccept(n)}>Accept</button>
-                <button className="notif-dismiss" onClick={() => onDismiss(n.id)}>✕</button>
+                <button className="ds-btn ds-btn-primary ds-btn-sm" onClick={() => onAccept(n)}>Accept</button>
+                <button className="ds-btn ds-btn-ghost ds-btn-sm ds-btn-icon" aria-label="Dismiss" onClick={() => onDismiss(n.id)}>✕</button>
               </div>
             </div>
           );

@@ -23,6 +23,7 @@ export default function PokedexScreen({ discovered }: PokedexScreenProps) {
           const isDiscovered = discovered.has(p.id);
           return (
             <div key={p.id} className={`pkmn-card ${isDiscovered ? '' : 'undiscovered'}`}>
+              <span className="pokedex-dex-num">#{String(p.id).padStart(3, '0')}</span>
               <img
                 src={p.sprite}
                 alt={isDiscovered ? p.name : '???'}

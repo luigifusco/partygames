@@ -92,7 +92,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   if (checkingStatus) {
-    return <div className="login-screen"><div className="login-loading">Loading...</div></div>;
+    return <div className="login-screen"><div className="ds-spinner" aria-label="Loading" /></div>;
   }
 
   if (loginDisabled) {
@@ -119,7 +119,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       <h1>⚡ Pokémon Party</h1>
       <div className="login-form">
         <input
-          className="login-input"
+          className="ds-input login-input"
           type="text"
           placeholder="Your name"
           value={name}
@@ -131,14 +131,14 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         />
         <div className="login-buttons">
           <button
-            className="login-btn primary"
+            className="ds-btn ds-btn-primary"
             onClick={handleLogin}
             disabled={!name.trim() || loading}
           >
             Login
           </button>
           <button
-            className="login-btn"
+            className="ds-btn"
             onClick={handleRegister}
             disabled={!name.trim() || loading}
           >

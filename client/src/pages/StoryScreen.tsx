@@ -280,6 +280,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
       <div className="story-screen">
         <div className="story-dialogue">
           <div className="story-dialogue-name">Choose your team!</div>
+          <div className="story-dialogue-title-text">Pick a regional starter trio</div>
           <div className="story-team-choices">
             {activeStoryline.teamChoices.map((choice, i) => (
               <button key={i} className="story-team-choice" onClick={() => handleTeamChoice(choice)}>

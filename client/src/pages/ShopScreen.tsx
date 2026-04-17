@@ -78,15 +78,23 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
 
   return (
     <div className="shop-screen">
-      <div className="shop-header">
-        <button className="shop-back" onClick={() => navigate('/play')}>← Back</button>
-        <h2>🛒 Shop</h2>
-        <div className="shop-essence">✦ {essence}</div>
+      <div className="ds-topbar">
+        <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => navigate('/play')}>← Back</button>
+        <div className="ds-topbar-title">🛒 Shop</div>
+        <div className="ds-stat ds-stat-essence"><span className="ds-stat-icon">✦</span>{essence}</div>
       </div>
 
-      <div className="shop-tabs">
-        <button className={`shop-tab ${tab === 'tms' ? 'active' : ''}`} onClick={() => setTab('tms')}>TMs</button>
-        <button className={`shop-tab ${tab === 'held' ? 'active' : ''}`} onClick={() => setTab('held')}>Held Items</button>
+      <div className="shop-tabs-wrap">
+        <div className="ds-tabs" role="tablist">
+          <button
+            className={`ds-tab ${tab === 'tms' ? 'ds-tab-active' : ''}`}
+            onClick={() => setTab('tms')}
+          >TMs</button>
+          <button
+            className={`ds-tab ${tab === 'held' ? 'ds-tab-active' : ''}`}
+            onClick={() => setTab('held')}
+          >Held Items</button>
+        </div>
       </div>
 
       {tab === 'tms' && (
@@ -155,8 +163,8 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
         const statEffect = STAT_MOVES[moveName];
 
         return (
-          <div className="shop-detail-overlay" onClick={(e) => e.target === e.currentTarget && setSelected(null)}>
-            <div className="shop-detail-card">
+          <div className="ds-overlay" onClick={(e) => e.target === e.currentTarget && setSelected(null)}>
+            <div className="ds-modal shop-detail-card">
               <img src={getTMSprite(moveName)} alt={moveName} className="shop-detail-img" />
               <h3 className="shop-detail-name">{moveName}</h3>
               <div className="shop-detail-badges">
@@ -181,9 +189,9 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
               <p className="shop-detail-desc">{info.description}</p>
               <div className="shop-detail-price">✦ {price}</div>
               <div className="shop-detail-actions">
-                <button className="shop-detail-btn cancel" onClick={() => setSelected(null)}>Back</button>
+                <button className="ds-btn ds-btn-ghost ds-btn-block" onClick={() => setSelected(null)}>Back</button>
                 <button
-                  className={`shop-detail-btn buy ${canAfford ? '' : 'disabled'}`}
+                  className="ds-btn ds-btn-gold ds-btn-block"
                   onClick={() => canAfford && handleBuy(moveName)}
                   disabled={!canAfford}
                 >
@@ -225,8 +233,8 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
         const item = selectedHeldItem;
         const canAfford = essence >= item.price;
         return (
-          <div className="shop-detail-overlay" onClick={(e) => e.target === e.currentTarget && setSelectedHeldItem(null)}>
-            <div className="shop-detail-card">
+          <div className="ds-overlay" onClick={(e) => e.target === e.currentTarget && setSelectedHeldItem(null)}>
+            <div className="ds-modal shop-detail-card">
               <img src={item.sprite} alt={item.name} className="shop-detail-img" style={{ imageRendering: 'pixelated' }} />
               <h3 className="shop-detail-name">{item.name}</h3>
               <div className="shop-detail-badges">
@@ -235,9 +243,9 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
               <p className="shop-detail-desc">{item.description}</p>
               <div className="shop-detail-price">✦ {item.price}</div>
               <div className="shop-detail-actions">
-                <button className="shop-detail-btn cancel" onClick={() => setSelectedHeldItem(null)}>Back</button>
+                <button className="ds-btn ds-btn-ghost ds-btn-block" onClick={() => setSelectedHeldItem(null)}>Back</button>
                 <button
-                  className={`shop-detail-btn buy ${canAfford ? '' : 'disabled'}`}
+                  className="ds-btn ds-btn-gold ds-btn-block"
                   onClick={() => canAfford && handleBuyHeldItem(item)}
                   disabled={!canAfford}
                 >

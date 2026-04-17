@@ -1,26 +1,57 @@
+/* Shared Pokémon card — used in Collection + Pokédex grids */
+
 .pkmn-card {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid transparent;
-  color: #eee;
-  font-family: 'Courier New', monospace;
+  padding: 6px 6px 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
+
+.pkmn-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--type-grad, linear-gradient(160deg,
+              rgba(122, 167, 255, 0.18) 0%,
+              rgba(169, 107, 255, 0.10) 55%,
+              transparent 100%));
+  opacity: 0.55;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.pkmn-card[style*="cursor"]:hover,
+.pkmn-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-border-strong);
+}
+
+.pkmn-card:hover::before { opacity: 0.85; }
 
 .pkmn-card img {
   width: 100%;
   aspect-ratio: 1;
   object-fit: scale-down;
   image-rendering: pixelated;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
 }
 
 .pkmn-card-name {
-  font-size: 11px;
-  margin-top: -14px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  margin-top: -10px;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -28,34 +59,57 @@
   width: 100%;
   position: relative;
   z-index: 1;
-  text-shadow: 0 0 4px #000, 0 0 4px #000;
-  padding: 0 2px;
-  box-sizing: border-box;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.65);
+  padding: 0 4px;
 }
 
 .pkmn-card-tier {
+  margin-top: 4px;
+  padding: 2px 8px;
   font-size: 9px;
-  padding: 1px 6px;
-  border-radius: 6px;
-  margin-top: 0px;
-  margin-bottom: 2px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--color-text-dim);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
-.pkmn-card-tier.tier-common { background: #555; color: #ccc; }
-.pkmn-card-tier.tier-uncommon { background: #2e7d32; color: #c8e6c9; }
-.pkmn-card-tier.tier-rare { background: #1565c0; color: #bbdefb; }
-.pkmn-card-tier.tier-epic { background: #7b1fa2; color: #e1bee7; }
-.pkmn-card-tier.tier-legendary { background: #e65100; color: #ffe0b2; }
+.pkmn-card-tier.tier-common    { color: var(--color-common);    background: rgba(197, 201, 222, 0.15); }
+.pkmn-card-tier.tier-uncommon  { color: var(--color-uncommon);  background: rgba(110, 211, 140, 0.18); }
+.pkmn-card-tier.tier-rare      { color: var(--color-rare);      background: rgba(122, 167, 255, 0.20); }
+.pkmn-card-tier.tier-epic      { color: var(--color-epic);      background: rgba(197, 123, 255, 0.20); }
+.pkmn-card-tier.tier-legendary { color: var(--color-legendary); background: rgba(255, 179, 71, 0.22); }
 
 .pkmn-card-count {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #ffd700;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--color-gold);
   font-size: 10px;
-  font-weight: bold;
-  padding: 1px 5px;
-  border-radius: 8px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
   z-index: 2;
+  letter-spacing: 0.03em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Rarity variants: broader glow for display in grids */
+.pkmn-card.ds-rarity-common,
+.pkmn-card.ds-rarity-uncommon,
+.pkmn-card.ds-rarity-rare,
+.pkmn-card.ds-rarity-epic,
+.pkmn-card.ds-rarity-legendary {
+  border-color: color-mix(in srgb, var(--rarity-color) 45%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--rarity-color) 14%, transparent);
+}
+
+.pkmn-card.ds-rarity-legendary,
+.pkmn-card.ds-rarity-epic {
+  box-shadow: 0 0 22px color-mix(in srgb, var(--rarity-color) 22%, transparent);
 }

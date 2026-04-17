@@ -339,16 +339,16 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         headerCenter={<h2>⚡ Draft ({selected.length} / {teamSize})</h2>}
         aboveGrid={
           <>
-            <div className="draft-turn-banner" style={{ textAlign: 'center', padding: '8px', fontSize: '14px', color: isMyDraftTurn ? '#6fdb73' : '#aaa' }}>
+            <div className="draft-turn-banner" style={{ textAlign: 'center', padding: '8px 14px', color: isMyDraftTurn ? 'var(--color-teal)' : 'var(--color-text-muted)' }}>
               {draftDone ? '⏳ Starting battle...' : isMyDraftTurn ? `Your pick (${neededPicks})` : `AI is picking...`}
             </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', padding: '0 8px 4px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ fontSize: '11px', color: '#aaa' }}>AI:</div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', padding: '8px 12px 4px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>AI:</div>
               {aiTeam.map((p) => (
                 <PokemonIcon key={p.id} pokemonId={p.id} size={28} />
               ))}
               {Array.from({ length: teamSize - aiTeam.length }).map((_, i) => (
-                <span key={`ae-${i}`} style={{ width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: 4, fontSize: 12, color: '#555' }}>?</span>
+                <span key={`ae-${i}`} style={{ width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--color-border-strong)', borderRadius: 6, fontSize: 12, color: 'var(--color-text-faint)' }}>?</span>
               ))}
             </div>
           </>

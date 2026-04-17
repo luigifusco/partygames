@@ -154,24 +154,34 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
     }, 250);
   }, [phase, swiping, cards, revealIndex, swipeX]);
 
+  // Map pack cost to a rarity tier for visual treatment.
+  const getPackRarity = (cost: number): 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' => {
+    if (cost <= 80) return 'common';
+    if (cost <= 100) return 'uncommon';
+    if (cost <= 120) return 'rare';
+    if (cost <= 140) return 'epic';
+    return 'legendary';
+  };
+
   const currentCard = cards?.[revealIndex];
   const remaining = cards ? cards.length - revealIndex : 0;
 
   return (
     <div className="store-screen">
-      <div className="store-header">
-        <button className="store-back" onClick={() => navigate('/play')}>← Back</button>
-        <h2>Expansion Shop</h2>
-        <div className="store-essence">✦ {essence}</div>
+      <div className="ds-topbar">
+        <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => navigate('/play')}>← Back</button>
+        <div className="ds-topbar-title">Expansion Shop</div>
+        <div className="ds-stat ds-stat-essence"><span className="ds-stat-icon">✦</span>{essence}</div>
       </div>
       <div className="store-boxes">
         {PACKS.map((pack) => {
           const canAfford = essence >= pack.cost;
           const poolSize = getPackPoolSize(pack.id);
+          const rarity = getPackRarity(pack.cost);
           return (
             <div
               key={pack.id}
-              className={`store-box ${canAfford ? '' : 'disabled'}`}
+              className={`store-box ds-rarity-${rarity} ${canAfford ? '' : 'disabled'}`}
               onClick={() => canAfford && handleBuy(pack.id, pack.cost)}
             >
               <div className="store-box-icon">{pack.icon}</div>

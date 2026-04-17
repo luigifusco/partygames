@@ -188,12 +188,14 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
   // ─── Waiting for Opponent ───
   if (phase === 'waitingOpponent') {
     return (
-      <div className="tournament-screen">
-        <div className="tournament-header">
-          <button className="tournament-back" onClick={() => setPhase('detail')}>← Back</button>
-          <h2>⏳ Waiting for opponent...</h2>
+      <div className="ds-screen">
+        <div className="ds-topbar">
+          <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => setPhase('detail')}>← Back</button>
+          <div className="ds-topbar-title">⏳ Waiting for opponent…</div>
         </div>
-        <div className="tournament-waiting">Your team is locked in. Waiting for your opponent to submit their team.</div>
+        <div className="tournament-waiting">
+          Your team is locked in. Waiting for your opponent to submit their team.
+        </div>
       </div>
     );
   }
@@ -248,18 +250,19 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
     const maxRound = Math.max(...t.bracket.map(m => m.round), 0);
 
     return (
-      <div className="tournament-screen">
-        <div className="tournament-header">
-          <button className="tournament-back" onClick={() => { setPhase('list'); setActiveTournament(null); }}>← Back</button>
-          <h2>🏆 {t.name}</h2>
+      <div className="ds-screen">
+        <div className="ds-topbar">
+          <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => { setPhase('list'); setActiveTournament(null); }}>← Back</button>
+          <div className="ds-topbar-title">🏆 {t.name}</div>
         </div>
 
-        <div className="tournament-detail-scroll">
+        <div className="ds-screen-scroll">
           <div className="tournament-info-bar">
             <span className={'tournament-status-badge status-' + t.status}>{t.status}</span>
             <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
             <span>{t.participants.length} players</span>
-            {t.fixedTeam && <span className="tournament-fixed-badge">🔒 Fixed Team</span>}
+            {t.fixedTeam && <span className="ds-badge ds-badge-gold">🔒 Fixed Team</span>}
+            {t.publicTeams && <span className="ds-badge ds-badge-accent">👁 Public Teams</span>}
           </div>
 
           {t.prizes && Array.isArray(t.prizes) && t.prizes.length > 0 && (
@@ -267,8 +270,11 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
               {t.prizes.map((p, i) => {
                 const isLast = i === t.prizes.length - 1;
                 const icon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : isLast ? '🏅' : '#' + (i + 1);
+                const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
                 return (
-                  <span key={i}>{icon} {p.essence}✦{p.pack ? ' + ' + p.pack : ''}{p.pokemonIds?.length ? ' + ' + p.pokemonIds.length + 'pkm' : ''}</span>
+                  <span key={i} className={'tournament-prize-chip ' + rankClass}>
+                    {icon} {p.essence}✦{p.pack ? ' + ' + p.pack : ''}{p.pokemonIds?.length ? ' + ' + p.pokemonIds.length + 'pkm' : ''}
+                  </span>
                 );
               })}
             </div>
@@ -276,13 +282,17 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
 
           {t.status === 'registration' && (
             <div className="tournament-reg-info">
-              <div>Registration closes: {formatTime(t.registrationEnd)}</div>
+              <div className="tournament-reg-deadline">
+                Registration closes: <strong>{formatTime(t.registrationEnd)}</strong>
+              </div>
               {!isParticipant ? (
-                <button className="tournament-join-btn" onClick={() => joinTournament(t.id)}>Join Tournament</button>
+                <button className="ds-btn ds-btn-primary ds-btn-block" onClick={() => joinTournament(t.id)}>
+                  Join Tournament
+                </button>
               ) : (
                 <>
                   {t.fixedTeam && !t.frozenTeams[playerName] && (
-                    <button className="tournament-fight-btn" onClick={() => { setSelected([]); setPhase('lockTeam'); }}>
+                    <button className="ds-btn ds-btn-gold ds-btn-block" onClick={() => { setSelected([]); setPhase('lockTeam'); }}>
                       🔒 Lock Your Team
                     </button>
                   )}
@@ -291,9 +301,10 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
                       ✅ Team locked: {t.frozenTeams[playerName].map(f => f.name).join(', ')}
                     </div>
                   )}
-                  <button className="tournament-leave-btn" onClick={() => leaveTournament(t.id)}>Leave</button>
+                  <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => leaveTournament(t.id)}>Leave</button>
                 </>
               )}
+              <div className="ds-section-title">Participants</div>
               <div className="tournament-participants">
                 {t.participants.map(p => (
                   <span key={p} className={'tournament-participant' + (t.fixedTeam && t.frozenTeams[p] ? ' team-ready' : '')}>
@@ -316,11 +327,11 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
                 {t.publicTeams && (() => {
                   const opp = myMatch.player1 === playerName ? myMatch.player2 : myMatch.player1;
                   return opp && t.frozenTeams[opp] ? (
-                    <button className="tournament-view-team-btn" onClick={() => setViewingTeamOf(opp)}>👁 View Team</button>
+                    <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => setViewingTeamOf(opp)}>👁 View Team</button>
                   ) : null;
                 })()}
               </div>
-              <button className="tournament-fight-btn" onClick={() => startTeamSelect(myMatch.id)}>
+              <button className="ds-btn ds-btn-primary ds-btn-block" onClick={() => startTeamSelect(myMatch.id)}>
                 Choose Team & Fight!
               </button>
             </div>
@@ -331,35 +342,38 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
           )}
 
           {t.bracket.length > 0 && (
-            <div className="tournament-bracket">
-              {Array.from({ length: maxRound }, (_, i) => i + 1).map(round => (
-                <div key={round} className="tournament-round">
-                  <div className="tournament-round-title">
-                    {round === maxRound ? 'Final' : round === maxRound - 1 ? 'Semifinal' : 'Round ' + round}
-                  </div>
-                  {t.bracket.filter(m => m.round === round).map(match => (
-                    <div key={match.id} className={'tournament-match-card status-' + match.status}>
-                      <div className={'tournament-match-player' + (match.winner === match.player1 ? ' winner' : '')}>
-                        {match.player1 ?? 'TBD'}
-                      </div>
-                      <div className="tournament-match-vs">vs</div>
-                      <div className={'tournament-match-player' + (match.winner === match.player2 ? ' winner' : '')}>
-                        {match.player2 ?? 'TBD'}
-                      </div>
+            <>
+              <div className="ds-section-title">Bracket</div>
+              <div className="tournament-bracket">
+                {Array.from({ length: maxRound }, (_, i) => i + 1).map(round => (
+                  <div key={round} className="tournament-round">
+                    <div className="tournament-round-title">
+                      {round === maxRound ? 'Final' : round === maxRound - 1 ? 'Semifinal' : 'Round ' + round}
                     </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+                    {t.bracket.filter(m => m.round === round).map(match => (
+                      <div key={match.id} className={'tournament-match-card status-' + match.status}>
+                        <div className={'tournament-match-player' + (match.winner === match.player1 ? ' winner' : '')}>
+                          <span className="tournament-match-player-name">{match.player1 ?? 'TBD'}</span>
+                        </div>
+                        <div className="tournament-match-vs">vs</div>
+                        <div className={'tournament-match-player' + (match.winner === match.player2 ? ' winner' : '')}>
+                          <span className="tournament-match-player-name">{match.player2 ?? 'TBD'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
         {viewingTeamOf && t.frozenTeams[viewingTeamOf] && (
-          <div className="tournament-team-overlay" onClick={(e) => e.target === e.currentTarget && setViewingTeamOf(null)}>
-            <div className="tournament-team-modal">
+          <div className="ds-overlay" onClick={(e) => e.target === e.currentTarget && setViewingTeamOf(null)}>
+            <div className="ds-modal">
               <div className="tournament-team-modal-header">
-                <span>{viewingTeamOf}'s Team</span>
-                <button onClick={() => setViewingTeamOf(null)}>✕</button>
+                <span className="tournament-team-modal-header-title">{viewingTeamOf}'s Team</span>
+                <button className="tournament-team-modal-close" onClick={() => setViewingTeamOf(null)}>✕</button>
               </div>
               <div className="tournament-team-modal-list">
                 {t.frozenTeams[viewingTeamOf].map((fp, i) => (
@@ -383,27 +397,36 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
 
   // ─── Tournament List ───
   return (
-    <div className="tournament-screen">
-      <div className="tournament-header">
-        <button className="tournament-back" onClick={() => navigate('/play')}>← Back</button>
-        <h2>🏆 Tournaments</h2>
+    <div className="ds-screen">
+      <div className="ds-topbar">
+        <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => navigate('/play')}>← Back</button>
+        <div className="ds-topbar-title">🏆 Tournaments</div>
       </div>
-      <div className="tournament-list">
-        {tournaments.length === 0 && (
-          <div className="tournament-empty">No tournaments right now. Check back later!</div>
-        )}
-        {tournaments.map(t => (
-          <div key={t.id} className="tournament-card" onClick={() => openDetail(t.id)}>
-            <div className="tournament-card-name">{t.name}</div>
-            <div className="tournament-card-meta">
-              <span className={'tournament-status-badge status-' + t.status}>{t.status}</span>
-              <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
-              <span>{t.participantCount} players</span>
-            </div>
-            {t.winner && <div className="tournament-card-winner">🏆 {t.winner}</div>}
-            {t.prizes && Array.isArray(t.prizes) && t.prizes[0] && <div className="tournament-card-prize">🥇 {t.prizes[0].essence}✦{t.prizes[0].pack ? ' + ' + t.prizes[0].pack : ''}</div>}
+      <div className="ds-screen-scroll">
+        {tournaments.length === 0 ? (
+          <div className="ds-empty">
+            <div className="ds-empty-icon">🏆</div>
+            <div className="ds-empty-text">No tournaments right now.<br />Check back later!</div>
           </div>
-        ))}
+        ) : (
+          <div className="tournament-list">
+            {tournaments.map(t => (
+              <div key={t.id} className="ds-card ds-card-interactive" onClick={() => openDetail(t.id)}>
+                <div className="tournament-card-name">{t.name}</div>
+                <div className="tournament-card-meta">
+                  <span className={'tournament-status-badge status-' + t.status}>{t.status}</span>
+                  <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
+                  <span>· {t.participantCount} players</span>
+                  {t.fixedTeam && <span className="ds-badge ds-badge-gold">🔒</span>}
+                </div>
+                {t.winner && <div className="tournament-card-winner">🏆 {t.winner}</div>}
+                {t.prizes && Array.isArray(t.prizes) && t.prizes[0] && (
+                  <div className="tournament-card-prize">🥇 {t.prizes[0].essence}✦{t.prizes[0].pack ? ' + ' + t.prizes[0].pack : ''}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

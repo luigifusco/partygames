@@ -1,67 +1,113 @@
+/* ─── NotificationsScreen ────────────────────────────────────── */
+
 .notif-screen {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  background: #1a1a2e;
-  color: #eee;
-  font-family: 'Courier New', monospace;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
 }
 
 .notif-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(15, 15, 30, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   flex-shrink: 0;
+  min-height: 56px;
 }
 
 .notif-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  flex: 1;
 }
 
 .notif-back {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-dim);
+  font-size: var(--text-sm);
+  font-weight: 600;
   font-family: inherit;
+  padding: 8px 14px;
   cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
 }
 
 .notif-back:hover {
-  color: #fff;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: var(--color-border-focus);
 }
 
 .notif-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 16px 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 .notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-5);
   text-align: center;
-  color: #666;
-  padding: 40px 0;
-  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.notif-empty-icon {
+  font-size: 3rem;
+  opacity: 0.55;
 }
 
 .notif-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+
+.notif-card:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
 }
 
 .notif-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 24px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
@@ -71,52 +117,25 @@
 }
 
 .notif-card-text {
-  font-size: 14px;
-  line-height: 1.3;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.notif-card-text strong {
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .notif-card-time {
-  font-size: 11px;
-  color: #888;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
   margin-top: 2px;
+  letter-spacing: 0.02em;
 }
 
 .notif-card-actions {
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
   flex-shrink: 0;
-}
-
-.notif-accept {
-  padding: 6px 14px;
-  font-size: 13px;
-  font-family: inherit;
-  font-weight: bold;
-  border: 1px solid #4caf50;
-  border-radius: 6px;
-  background: rgba(76, 175, 80, 0.15);
-  color: #6fdb73;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.notif-accept:hover {
-  background: rgba(76, 175, 80, 0.3);
-}
-
-.notif-dismiss {
-  padding: 6px 10px;
-  font-size: 13px;
-  font-family: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #aaa;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.notif-dismiss:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
 }

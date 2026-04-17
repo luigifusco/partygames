@@ -1,116 +1,160 @@
+/* Battle Config — uses design-system tokens */
+
 .bconfig-screen {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  background: #1a1a2e;
-  color: #eee;
-  font-family: 'Courier New', monospace;
+  color: var(--color-text);
+  background: var(--color-bg);
+  background-image: var(--grad-aurora);
 }
 
 .bconfig-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(15, 15, 30, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   flex-shrink: 0;
+  min-height: 56px;
 }
 
 .bconfig-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  flex: 1;
 }
 
 .bconfig-back {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 16px;
-  font-family: inherit;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-dim);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 6px 12px;
   cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
 }
 
 .bconfig-back:hover {
-  color: #fff;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
 }
 
 .bconfig-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  padding: 16px;
-  max-width: 360px;
-  margin: 0 auto;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-4);
   width: 100%;
+  overflow-y: auto;
 }
 
 .bconfig-group {
   width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .bconfig-label {
-  font-size: 13px;
-  color: #aaa;
-  margin-bottom: 8px;
-  text-align: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+  text-align: left;
 }
 
 .bconfig-options {
   display: flex;
-  gap: 8px;
-  justify-content: center;
+  gap: var(--space-2);
+  justify-content: stretch;
   flex-wrap: wrap;
 }
 
 .bconfig-option {
-  padding: 10px 16px;
-  font-size: 15px;
+  flex: 1;
+  min-width: 72px;
+  padding: 12px 14px;
+  font-size: var(--text-base);
   font-family: inherit;
-  font-weight: bold;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #aaa;
+  font-weight: 700;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-dim);
   cursor: pointer;
-  transition: all 0.15s;
-  min-width: 48px;
   text-align: center;
+  transition: transform var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.bconfig-option:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #eee;
+.bconfig-option:hover:not(.disabled) {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-focus);
+  color: var(--color-text);
 }
 
 .bconfig-option.active {
-  border-color: #6fdb73;
-  background: rgba(76, 175, 80, 0.15);
-  color: #6fdb73;
+  background: var(--grad-primary);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(122, 167, 255, 0.35);
+}
+
+.bconfig-option.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .bconfig-hint {
-  font-size: 11px;
-  color: #888;
-  text-align: center;
-  margin-top: 6px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: left;
+  margin-top: var(--space-3);
+  line-height: 1.4;
 }
 
 .bconfig-start {
-  margin-top: 16px;
-  padding: 14px 32px;
-  font-size: 16px;
+  margin-top: var(--space-2);
+  padding: 14px 26px;
+  font-size: var(--text-lg);
   font-family: inherit;
-  font-weight: bold;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #eee;
+  font-weight: 800;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--grad-primary);
+  color: #fff;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  box-shadow: 0 6px 22px rgba(122, 167, 255, 0.4);
+  transition: transform var(--duration-fast) var(--ease-out),
+              filter var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .bconfig-start:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.4);
+  filter: brightness(1.08);
+  box-shadow: 0 8px 28px rgba(122, 167, 255, 0.55);
+}
+
+.bconfig-start:active {
+  transform: translateY(1px);
 }

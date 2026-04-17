@@ -99,7 +99,12 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
       )}
 
       <div className="detail-scroll">
-        <div className="detail-sprite-section">
+        <div
+          className="detail-sprite-section"
+          style={{
+            ['--type-grad' as string]: `radial-gradient(ellipse 70% 55% at 50% 40%, ${TYPE_COLORS[pokemon.types[0]] ?? '#7aa7ff'}55, transparent 70%), radial-gradient(ellipse 60% 50% at 70% 70%, ${TYPE_COLORS[pokemon.types[1] ?? pokemon.types[0]] ?? '#a96bff'}33, transparent 70%)`,
+          }}
+        >
           {index > 0 && (
             <button className="detail-nav detail-nav-prev" onClick={() => navigate(`/pokemon/${index - 1}`, { replace: true })}>‹</button>
           )}

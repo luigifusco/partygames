@@ -60,6 +60,7 @@ export default function ItemsScreen({ items, collection, onTeachTM, onUseBoost, 
   const [heldItemPhase, setHeldItemPhase] = useState<HeldItemPhase | null>(null);
   const [boostPhase, setBoostPhase] = useState<BoostPhase | null>(null);
   const [successAnim, setSuccessAnim] = useState<{ icon: string; text: string; pokemonSprite: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'tms' | 'boosts' | 'held' | 'tokens'>('tms');
 
   const showSuccess = (icon: string, text: string, pokemonSprite: string) => {
     setSuccessAnim({ icon, text, pokemonSprite });
@@ -169,122 +170,154 @@ export default function ItemsScreen({ items, collection, onTeachTM, onUseBoost, 
 
   return (
     <div className="items-screen">
-      <div className="items-header">
-        <button className="items-back" onClick={() => navigate('/play')}>← Back</button>
-        <h2>Items</h2>
-        <div className="items-count">{items.length} total</div>
+      <div className="ds-topbar">
+        <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => navigate('/play')}>← Back</button>
+        <div className="ds-topbar-title">Items</div>
+        <div className="ds-stat"><span className="ds-stat-label">Total</span>{items.length}</div>
       </div>
 
       {!hasItems ? (
-        <div className="items-empty">No items yet. Buy packs to get TMs!</div>
+        <div className="items-empty">
+          <div className="items-empty-icon">🎁</div>
+          <div>No items yet. Buy packs to get TMs!</div>
+        </div>
       ) : (
-        <div className="items-scroll">
-          {tokenGroups.length > 0 && (
-            <>
-              <div className="items-section-title">Tokens</div>
-              <div className="items-grid">
-                {tokenGroups.map(({ pokemonId, pokemonName, count }) => (
-                  <div key={`token-${pokemonId}`} className="item-card token-card">
-                    <div className="token-icon-wrapper">
-                      <PokemonIcon pokemonId={pokemonId} />
-                    </div>
-                    {count > 1 && <div className="item-count">×{count}</div>}
-                    <div className="item-name">{pokemonName}</div>
-                    <div className="item-type token-badge">Token</div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+        <>
+          <div className="items-tabs-wrap">
+            <div className="ds-tabs" role="tablist">
+              <button
+                className={`ds-tab ${activeTab === 'tms' ? 'ds-tab-active' : ''}`}
+                onClick={() => setActiveTab('tms')}
+              >TMs{tmGroups.length > 0 ? ` · ${tmGroups.length}` : ''}</button>
+              <button
+                className={`ds-tab ${activeTab === 'boosts' ? 'ds-tab-active' : ''}`}
+                onClick={() => setActiveTab('boosts')}
+              >Boosts{boostGroups.length > 0 ? ` · ${boostGroups.length}` : ''}</button>
+              <button
+                className={`ds-tab ${activeTab === 'held' ? 'ds-tab-active' : ''}`}
+                onClick={() => setActiveTab('held')}
+              >Held{(heldItemGroups.length + pokemonWithItems.length) > 0 ? ` · ${heldItemGroups.length + pokemonWithItems.length}` : ''}</button>
+              <button
+                className={`ds-tab ${activeTab === 'tokens' ? 'ds-tab-active' : ''}`}
+                onClick={() => setActiveTab('tokens')}
+              >Tokens{tokenGroups.length > 0 ? ` · ${tokenGroups.length}` : ''}</button>
+            </div>
+          </div>
 
-          {tmGroups.length > 0 && (
-            <>
-              <div className="items-section-title">TMs</div>
-              <div className="items-grid">
-                {tmGroups.map(({ moveName, count }) => {
-                  const moveType = getMoveType(moveName);
-                  return (
-                    <div key={moveName} className={`item-card type-bg-${moveType} tm-usable`} onClick={() => handleUseTM(moveName)}>
-                      <img
-                        className="item-sprite"
-                        src={getTMSprite(moveName)}
-                        alt={`TM ${moveName}`}
-                      />
-                      {count > 1 && <div className="item-count">×{count}</div>}
-                      <div className="item-name">{moveName}</div>
-                      <div className={`item-type type-${moveType}`}>{moveType}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {boostGroups.length > 0 && (
-            <>
-              <div className="items-section-title">Boosts</div>
-              <div className="items-grid">
-                {boostGroups.map(({ stat, name, count }) => (
-                  <div key={`boost-${stat}`} className="item-card boost-card boost-usable" onClick={() => handleUseBoost(stat)}>
-                    <img
-                      className="item-sprite boost-sprite"
-                      src={getBoostSprite(stat)}
-                      alt={name}
-                    />
-                    {count > 1 && <div className="item-count">×{count}</div>}
-                    <div className="item-name">{name}</div>
-                    <div className="item-type boost-badge">{STAT_LABELS[stat]}</div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {(heldItemGroups.length > 0 || pokemonWithItems.length > 0) && (
-            <>
-              <div className="items-section-title">Held Items</div>
-              {heldItemGroups.length > 0 && (
+          <div className="items-scroll">
+            {activeTab === 'tokens' && (
+              tokenGroups.length > 0 ? (
                 <div className="items-grid">
-                  {heldItemGroups.map(({ itemId, name, count }) => (
-                    <div key={`held-${itemId}`} className="item-card held-item-card held-usable" onClick={() => handleGiveHeldItem(itemId)}>
+                  {tokenGroups.map(({ pokemonId, pokemonName, count }) => (
+                    <div key={`token-${pokemonId}`} className="item-card token-card">
+                      <div className="token-icon-wrapper">
+                        <PokemonIcon pokemonId={pokemonId} />
+                      </div>
+                      {count > 1 && <div className="item-count">×{count}</div>}
+                      <div className="item-name">{pokemonName}</div>
+                      <div className="item-type token-badge">Token</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="items-empty"><div className="items-empty-icon">🪙</div><div>No tokens yet</div></div>
+              )
+            )}
+
+            {activeTab === 'tms' && (
+              tmGroups.length > 0 ? (
+                <div className="items-grid">
+                  {tmGroups.map(({ moveName, count }) => {
+                    const moveType = getMoveType(moveName);
+                    return (
+                      <div key={moveName} className={`item-card type-bg-${moveType} tm-usable`} onClick={() => handleUseTM(moveName)}>
+                        <img
+                          className="item-sprite"
+                          src={getTMSprite(moveName)}
+                          alt={`TM ${moveName}`}
+                        />
+                        {count > 1 && <div className="item-count">×{count}</div>}
+                        <div className="item-name">{moveName}</div>
+                        <div className={`item-type type-${moveType}`}>{moveType}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="items-empty"><div className="items-empty-icon">💿</div><div>No TMs yet</div></div>
+              )
+            )}
+
+            {activeTab === 'boosts' && (
+              boostGroups.length > 0 ? (
+                <div className="items-grid">
+                  {boostGroups.map(({ stat, name, count }) => (
+                    <div key={`boost-${stat}`} className="item-card boost-card boost-usable" onClick={() => handleUseBoost(stat)}>
                       <img
-                        className="item-sprite"
-                        src={getHeldItemSprite(itemId)}
+                        className="item-sprite boost-sprite"
+                        src={getBoostSprite(stat)}
                         alt={name}
                       />
                       {count > 1 && <div className="item-count">×{count}</div>}
                       <div className="item-name">{name}</div>
-                      <div className="item-type held-badge">Give</div>
+                      <div className="item-type boost-badge">{STAT_LABELS[stat]}</div>
                     </div>
                   ))}
                 </div>
-              )}
-              {pokemonWithItems.length > 0 && (
+              ) : (
+                <div className="items-empty"><div className="items-empty-icon">💪</div><div>No boosts yet</div></div>
+              )
+            )}
+
+            {activeTab === 'held' && (
+              (heldItemGroups.length > 0 || pokemonWithItems.length > 0) ? (
                 <>
-                  <div className="items-subsection-title">Held by Pokémon</div>
-                  <div className="items-grid">
-                    {pokemonWithItems.map((inst) => (
-                      <div key={inst.instanceId} className="item-card held-pokemon-card" onClick={() => onTakeHeldItem(inst)}>
-                        <img
-                          className="item-sprite"
-                          src={inst.pokemon.sprite}
-                          alt={inst.pokemon.name}
-                          style={{ imageRendering: 'pixelated' }}
-                        />
-                        <div className="item-name">{inst.pokemon.name}</div>
-                        <div className="held-item-badge">
-                          <img src={getHeldItemSprite(inst.heldItem!)} alt="" className="held-item-mini" />
-                          <span>{getHeldItemName(inst.heldItem!)}</span>
+                  {heldItemGroups.length > 0 && (
+                    <div className="items-grid">
+                      {heldItemGroups.map(({ itemId, name, count }) => (
+                        <div key={`held-${itemId}`} className="item-card held-item-card held-usable" onClick={() => handleGiveHeldItem(itemId)}>
+                          <img
+                            className="item-sprite"
+                            src={getHeldItemSprite(itemId)}
+                            alt={name}
+                          />
+                          {count > 1 && <div className="item-count">×{count}</div>}
+                          <div className="item-name">{name}</div>
+                          <div className="item-type held-badge">Give</div>
                         </div>
-                        <div className="item-type take-badge">Take</div>
+                      ))}
+                    </div>
+                  )}
+                  {pokemonWithItems.length > 0 && (
+                    <>
+                      <div className="items-subsection-title">Held by Pokémon</div>
+                      <div className="items-grid">
+                        {pokemonWithItems.map((inst) => (
+                          <div key={inst.instanceId} className="item-card held-pokemon-card" onClick={() => onTakeHeldItem(inst)}>
+                            <img
+                              className="item-sprite"
+                              src={inst.pokemon.sprite}
+                              alt={inst.pokemon.name}
+                              style={{ imageRendering: 'pixelated' }}
+                            />
+                            <div className="item-name">{inst.pokemon.name}</div>
+                            <div className="held-item-badge">
+                              <img src={getHeldItemSprite(inst.heldItem!)} alt="" className="held-item-mini" />
+                              <span>{getHeldItemName(inst.heldItem!)}</span>
+                            </div>
+                            <div className="item-type take-badge">Take</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </>
+                  )}
                 </>
-              )}
-            </>
-          )}
-        </div>
+              ) : (
+                <div className="items-empty"><div className="items-empty-icon">🎁</div><div>No held items yet</div></div>
+              )
+            )}
+          </div>
+        </>
       )}
 
       {/* Step 1: Pick a pokemon to teach the TM to */}
