@@ -84,6 +84,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [opponentTeam, setOpponentTeam] = useState<Pokemon[]>([]);
   const [rewarded, setRewarded] = useState(false);
+  const [battleFinished, setBattleFinished] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Draft state
@@ -277,10 +278,12 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
     }
     return (
       <div className="battle-demo-wrapper">
-        <BattleScene snapshot={snapshot} turnDelayMs={2000} essenceGained={essenceGained} trainerId={trainer?.id} />
-        <button className="battle-demo-back" onClick={() => { setSnapshot(null); setSelected([]); setAiTeam([]); setOpponentTeam([]); setRewarded(false); setConfig(null); setTrainer(null); setDraftSchedule([]); setDraftPhase(0); setAllPickedIndices(new Set()); setAllPickedAiIds(new Set()); setDraftBattleStarted(false); }}>
-          ✕
-        </button>
+        <BattleScene snapshot={snapshot} turnDelayMs={2000} essenceGained={essenceGained} trainerId={trainer?.id} onFinished={() => setBattleFinished(true)} />
+        {battleFinished && (
+          <button className="battle-demo-back" onClick={() => { setSnapshot(null); setSelected([]); setAiTeam([]); setOpponentTeam([]); setRewarded(false); setBattleFinished(false); setConfig(null); setTrainer(null); setDraftSchedule([]); setDraftPhase(0); setAllPickedIndices(new Set()); setAllPickedAiIds(new Set()); setDraftBattleStarted(false); }}>
+            {snapshot.winner === 'left' ? '🏆 Claim Rewards' : '← Back'}
+          </button>
+        )}
       </div>
     );
   }

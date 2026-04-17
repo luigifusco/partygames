@@ -254,29 +254,32 @@
 }
 
 .battle-demo-back {
-  position: fixed;
-  bottom: 12px;
-  left: 12px;
+  position: absolute;
+  bottom: calc(var(--space-5) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 100;
-  padding: 8px 14px;
-  font-size: var(--text-sm);
+  padding: 14px 34px;
+  font-size: var(--text-lg);
   font-family: inherit;
-  font-weight: 600;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  background: rgba(15, 15, 30, 0.7);
-  color: var(--color-text-dim);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  font-weight: 800;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--grad-gold);
+  color: #1a1400;
   cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-out),
-              background var(--duration-fast) var(--ease-out);
+  box-shadow: 0 8px 28px rgba(255, 180, 70, 0.45), var(--shadow-gold-glow);
+  animation: ds-fade-in var(--duration-slow) var(--ease-out);
+  transition: filter var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
 }
 
 .battle-demo-back:hover {
-  color: var(--color-text);
-  background: rgba(15, 15, 30, 0.9);
+  filter: brightness(1.08);
+  color: #1a1400;
+  background: var(--grad-gold);
 }
+.battle-demo-back:active { transform: translateX(-50%) translateY(1px); }
 
 /* Sprite icons — always hidden, GIF sprites always shown */
 .team-select-sprite-icon {

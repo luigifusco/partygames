@@ -45,6 +45,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [opponentTeamIds, setOpponentTeamIds] = useState<number[]>([]);
   const [rewarded, setRewarded] = useState(false);
+  const [battleFinished, setBattleFinished] = useState(false);
 
   useEffect(() => {
     if (!socket.connected) {
@@ -190,10 +191,12 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
 
     return (
       <div className="battle-demo-wrapper">
-        <BattleScene snapshot={snapshot} turnDelayMs={2000} essenceGained={essenceGained} />
-        <button className="battle-demo-back" onClick={() => navigate('/play')}>
-          ← Back to Menu
-        </button>
+        <BattleScene snapshot={snapshot} turnDelayMs={2000} essenceGained={essenceGained} onFinished={() => setBattleFinished(true)} />
+        {battleFinished && (
+          <button className="battle-demo-back" onClick={() => navigate('/play')}>
+            {snapshot.winner === 'left' ? '🏆 Claim Rewards' : '← Back to Menu'}
+          </button>
+        )}
       </div>
     );
   }
