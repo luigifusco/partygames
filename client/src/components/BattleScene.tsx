@@ -612,9 +612,13 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
   return (
     <div className="battle-scene">
-      <div className="battle-arena" ref={arenaRef} style={{ backgroundImage: `url(${arenaBg})` }}>
+      <div className="battle-arena" ref={arenaRef} data-field-size={fieldSize} style={{ backgroundImage: `url(${arenaBg})` }}>
+        <div className="battle-arena-vignette" aria-hidden="true" />
         {anim.activeWeather && (
           <div className={`weather-overlay weather-overlay-${anim.activeWeather}`} />
+        )}
+        {snapshot.round > 0 && !anim.finished && (
+          <div className="battle-round-badge">Round {snapshot.round}</div>
         )}
         <div className="battle-side left">
           {displayedLeft.map((p) => (
@@ -678,21 +682,21 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         <div ref={logEndRef} />
       </div>
 
-      <div className="battle-playback-controls">
+      <div className="battle-controls-bar">
         <button className="playback-btn" onClick={stepBackward} disabled={anim.currentLogIndex < 0} title="Step back">⏮</button>
         <button className="playback-btn" onClick={() => setPaused(!paused)} title={paused ? 'Play' : 'Pause'}>
           {paused ? '▶️' : '⏸'}
         </button>
         <button className="playback-btn" onClick={stepForward} disabled={anim.currentLogIndex >= snapshot.log.length - 1} title="Step forward">⏭</button>
         <span className="playback-counter">{anim.currentLogIndex + 1}/{snapshot.log.length}</span>
+        <div className="battle-controls-sep" />
+        <button className="playback-btn" onClick={() => { toggleBgmMute(); setMuted(isBgmMuted()); }} title={muted ? 'Unmute' : 'Mute'}>
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <button className="playback-btn playback-btn-subtle" onClick={() => setDebugView(!debugView)} title="Debug">
+          {debugView ? '✕' : '🐛'}
+        </button>
       </div>
-
-      <button className="battle-debug-toggle" onClick={() => { toggleBgmMute(); setMuted(isBgmMuted()); }}>
-        {muted ? '🔇' : '🔊'}
-      </button>
-      <button className="battle-debug-toggle battle-debug-toggle-2" onClick={() => setDebugView(!debugView)}>
-        {debugView ? '✕ Close Debug' : '🐛'}
-      </button>
 
       {debugView && (
         <div className="battle-debug-overlay">
