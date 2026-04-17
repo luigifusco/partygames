@@ -194,6 +194,25 @@
   overflow-y: auto;
 }
 
+/* Starter-selection phase (team choices): long content — align to top
+   with comfortable padding so the title is never clipped. */
+.story-dialogue:has(.story-team-choices) {
+  justify-content: flex-start;
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-8);
+}
+
+/* Pre-battle 'select' phase: opponent info sits above the TeamSelectGrid.
+   Don't let it steal the whole flex height — size it to content so the
+   grid below takes the remainder and nothing scrolls unnecessarily. */
+.story-screen > .story-dialogue:not(:only-child) {
+  flex: 0 0 auto;
+  overflow: visible;
+  justify-content: flex-start;
+  padding: var(--space-4);
+  gap: var(--space-2);
+}
+
 .story-dialogue-sprite {
   width: 160px;
   height: 160px;

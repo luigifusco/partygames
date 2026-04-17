@@ -12,6 +12,7 @@
   color: var(--color-text);
   overflow: hidden;
   isolation: isolate;
+  min-height: 140px;
   transition: transform var(--duration-base) var(--ease-out),
               border-color var(--duration-base) var(--ease-out),
               background var(--duration-base) var(--ease-out),
@@ -43,6 +44,7 @@
 .pkmn-card img {
   width: 100%;
   aspect-ratio: 1;
+  min-height: 88px;
   object-fit: scale-down;
   image-rendering: pixelated;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));

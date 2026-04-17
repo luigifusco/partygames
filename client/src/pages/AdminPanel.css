@@ -111,11 +111,22 @@
   flex-shrink: 0;
 }
 
-/* Narrow numeric input for weight rows */
-.admin-input-num {
+/* Narrow numeric input for weight rows (specificity bumped to win over .ds-input width:100%) */
+.admin-panel .admin-input-num,
+.ds-input.admin-input-num {
   width: 88px;
+  flex: 0 0 88px;
   text-align: center;
   padding: 8px 10px;
+}
+
+/* Selects inside admin field rows should size to content, not 100% */
+.admin-panel .ds-select.admin-field-control,
+.ds-select.admin-field-control {
+  width: auto;
+  flex: 0 0 auto;
+  min-width: 100px;
+  padding: 8px 32px 8px 12px;
 }
 
 /* --- Pack rarity tier chip --- */
