@@ -4,15 +4,8 @@ import { getMoveAnim } from '../data/moveAnimations';
 import { runMoveAnimation } from './BattleAnimationEngine';
 import { playSfx, getMoveSfxType, playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted } from './BattleSounds';
 import { getHeldItemSprite } from '@shared/held-item-data';
-import { BASE_PATH } from '../config';
+import BattleBackground, { pickPreset } from './BattleBackground';
 import './BattleScene.css';
-
-const BATTLE_BGS = [
-  'bg-aquacordetown', 'bg-beach', 'bg-city', 'bg-dampcave', 'bg-darkbeach',
-  'bg-darkcity', 'bg-darkmeadow', 'bg-deepsea', 'bg-desert', 'bg-earthycave',
-  'bg-elite4drake', 'bg-forest', 'bg-icecave', 'bg-leaderwallace', 'bg-library',
-  'bg-meadow', 'bg-orasdesert', 'bg-orassea', 'bg-skypillar',
-];
 
 interface BattleSceneProps {
   snapshot: BattleSnapshot;
@@ -225,10 +218,11 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
   const fieldSize = snapshot.fieldSize ?? snapshot.left.length;
 
-  const arenaBg = useMemo(() => {
-    const bg = BATTLE_BGS[Math.floor(Math.random() * BATTLE_BGS.length)];
-    return `${BASE_PATH}/bgs/${bg}.jpg`;
-  }, []);
+  const arenaBgPreset = useMemo(
+    () => pickPreset(snapshot.left.map(p => p.instanceId).concat(snapshot.right.map(p => p.instanceId)).join('|')),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   // Track which pokemon are currently displayed on the field
   const [displayedLeft, setDisplayedLeft] = useState<BattlePokemonState[]>(() => snapshot.left.slice(0, fieldSize));
@@ -612,7 +606,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
   return (
     <div className="battle-scene">
-      <div className="battle-arena" ref={arenaRef} data-field-size={fieldSize} style={{ backgroundImage: `url(${arenaBg})` }}>
+      <div className="battle-arena" ref={arenaRef} data-field-size={fieldSize}>
+        <BattleBackground preset={arenaBgPreset} />
         <div className="battle-arena-vignette" aria-hidden="true" />
         {anim.activeWeather && (
           <div className={`weather-overlay weather-overlay-${anim.activeWeather}`} />
