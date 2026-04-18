@@ -91,42 +91,22 @@ export const STORYLINES: Storyline[] = [
     completionReward: { essence: 150 },
   },
   {
-    id: 'brock-challenge', title: "Brock's Challenge", description: 'Prove yourself to the rock-solid gym leader.',
-    region: 'Kanto', difficulty: 'beginner', icon: '🪨', requires: ['bug-catcher', 'youngster-joey'],
+    id: 'may-rival', title: "May's Challenge", description: 'A Hoenn rival blocks the path with her starter!',
+    region: 'Hoenn', difficulty: 'beginner', icon: '🌿', requires: ['bug-catcher', 'youngster-joey'],
     steps: [
-      { type: 'dialogue', speaker: 'Brock', sprite: sp('brock'), lines: ["So you want to become a trainer?", "Show me you can handle rock-solid defense!"] },
-      { type: 'battle', trainerName: 'Brock', trainerTitle: 'Gym Leader', team: [74, 95], fieldSize: 1, essenceReward: 100 },
-      { type: 'dialogue', speaker: 'Brock', sprite: sp('brock'), lines: ["Not bad! You've got potential.", "Keep training and you'll go far."] },
+      { type: 'dialogue', speaker: 'May', sprite: sp('may'), lines: ["Hey, you're that new trainer Dad mentioned!", "I'm May — let's see what you've got!"] },
+      { type: 'battle', trainerName: 'May', trainerTitle: 'Hoenn Rival', team: [255, 261, 273], fieldSize: 1, essenceReward: 100 },
+      { type: 'dialogue', speaker: 'May', sprite: sp('may'), lines: ["Whoa, you're really good!", "Next time I'll bring a stronger team — promise!"] },
     ],
     completionReward: { essence: 200 },
   },
   {
-    id: 'misty-trial', title: "Misty's Trial", description: 'Face the power of water at Cerulean Gym.',
-    region: 'Kanto', difficulty: 'beginner', icon: '🌊', requires: ['bug-catcher', 'youngster-joey'],
+    id: 'barry-rival', title: "Barry's Rush", description: "Sinnoh's hyper rival has no time to lose!",
+    region: 'Sinnoh', difficulty: 'beginner', icon: '⚡', requires: ['bug-catcher', 'youngster-joey'],
     steps: [
-      { type: 'dialogue', speaker: 'Misty', sprite: sp('misty'), lines: ["Think you can handle the power of water?", "Let's find out!"] },
-      { type: 'battle', trainerName: 'Misty', trainerTitle: 'Gym Leader', team: [120, 121], fieldSize: 1, essenceReward: 100 },
-      { type: 'dialogue', speaker: 'Misty', sprite: sp('misty'), lines: ["Hmph... you got lucky.", "But I respect your skill."] },
-    ],
-    completionReward: { essence: 200 },
-  },
-  {
-    id: 'whitney-fury', title: "Whitney's Fury", description: "Whitney won't let anyone call her weak!",
-    region: 'Johto', difficulty: 'beginner', icon: '🐄', requires: ['bug-catcher', 'youngster-joey'],
-    steps: [
-      { type: 'dialogue', speaker: 'Whitney', sprite: sp('whitney'), lines: ["Everyone thinks I'm just a crybaby!", "I'll show you how strong I really am!"] },
-      { type: 'battle', trainerName: 'Whitney', trainerTitle: 'Gym Leader', team: [35, 241], fieldSize: 1, essenceReward: 100 },
-      { type: 'dialogue', speaker: 'Whitney', sprite: sp('whitney'), lines: ["*sniff*... Okay, you win.", "But next time I won't go easy!"] },
-    ],
-    completionReward: { essence: 200 },
-  },
-  {
-    id: 'roxanne-lesson', title: "Roxanne's Lesson", description: 'A studious battle with the Hoenn professor.',
-    region: 'Hoenn', difficulty: 'beginner', icon: '📖', requires: ['bug-catcher', 'youngster-joey'],
-    steps: [
-      { type: 'dialogue', speaker: 'Roxanne', sprite: sp('roxanne'), lines: ["Type matchups are the foundation of strategy.", "Allow me to demonstrate!"] },
-      { type: 'battle', trainerName: 'Roxanne', trainerTitle: 'Gym Leader', team: [74, 299], fieldSize: 1, essenceReward: 100 },
-      { type: 'dialogue', speaker: 'Roxanne', sprite: sp('roxanne'), lines: ["Excellent application of type advantages!", "You learn fast."] },
+      { type: 'dialogue', speaker: 'Barry', sprite: sp('barry'), lines: ["Hey hey hey! Took you long enough!", "I'm gonna fine you a million if you don't battle me right now!"] },
+      { type: 'battle', trainerName: 'Barry', trainerTitle: 'Sinnoh Rival', team: [390, 396, 399], fieldSize: 1, essenceReward: 100 },
+      { type: 'dialogue', speaker: 'Barry', sprite: sp('barry'), lines: ["Aw man! How'd you get so strong already?!", "Fine, fine — I'll train harder. See ya later!"] },
     ],
     completionReward: { essence: 200 },
   },
@@ -135,7 +115,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'kanto-gyms', title: 'Kanto Gym Circuit', description: 'Challenge the Kanto gym leaders in sequence.',
     region: 'Kanto', difficulty: 'intermediate', icon: '🏛️',
-    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
+    requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Brock', sprite: sp('brock'), lines: ["Ready for the real challenge?", "The Kanto gyms await — and I'm your first opponent again!"] },
       { type: 'battle', trainerName: 'Brock', trainerTitle: 'Pewter Gym Leader', team: [95, 76, 141], fieldSize: 1, essenceReward: 150 },
@@ -158,7 +138,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'johto-gyms', title: 'Johto Gym Circuit', description: 'Challenge the Johto gym leaders.',
     region: 'Johto', difficulty: 'intermediate', icon: '🏛️',
-    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
+    requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Falkner', sprite: sp('falkner'), lines: ["Johto's gym leaders are no pushovers.", "I, Falkner, am the first wall you must break."] },
       { type: 'battle', trainerName: 'Falkner', trainerTitle: 'Violet Gym Leader', team: [22, 164], fieldSize: 1, essenceReward: 100 },
@@ -184,7 +164,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'hoenn-gyms', title: 'Hoenn Gym Circuit', description: 'Challenge the Hoenn gym leaders.',
     region: 'Hoenn', difficulty: 'intermediate', icon: '🏛️',
-    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
+    requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Roxanne', sprite: sp('roxanne'), lines: ["Welcome to Rustboro Gym.", "I'll teach you that rock-types aren't to be underestimated."] },
       { type: 'battle', trainerName: 'Roxanne', trainerTitle: 'Rustboro Gym Leader', team: [76, 299, 306], fieldSize: 1, essenceReward: 150 },
@@ -210,7 +190,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'sinnoh-gyms', title: 'Sinnoh Gym Circuit', description: 'Challenge the Sinnoh gym leaders.',
     region: 'Sinnoh', difficulty: 'intermediate', icon: '🏛️',
-    requires: ['brock-challenge', 'misty-trial', 'whitney-fury', 'roxanne-lesson', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
+    requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Maylene', sprite: sp('maylene'), lines: ["I'm the Veilstone Gym Leader, Maylene.", "Don't hold back — I won't!"] },
       { type: 'battle', trainerName: 'Maylene', trainerTitle: 'Veilstone Gym Leader', team: [308, 448, 214], fieldSize: 1, essenceReward: 150 },
