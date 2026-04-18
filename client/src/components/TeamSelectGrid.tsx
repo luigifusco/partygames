@@ -164,7 +164,7 @@ export default function TeamSelectGrid({
             ))}
           </div>
           {onSubmit && (
-            <div style={{ textAlign: 'center', padding: '8px 12px 4px' }}>
+            <div className="tsg-submit-float">
               <button className="team-select-go" onClick={onSubmit}>{submitLabel}</button>
             </div>
           )}
