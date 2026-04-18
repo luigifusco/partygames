@@ -751,6 +751,7 @@ function parseProtocol(
       }
 
       case '-heal': {
+        flushPendingMove();
         const healIdent = parts[2];
         const hpStr = parts[3];
         const { hp, maxHp } = parseHPString(hpStr);
@@ -1017,6 +1018,7 @@ function parseProtocol(
 
       case '-item':
       case '-enditem': {
+        flushPendingMove();
         const itemIdent = parts[2];
         const itemName = parts[3];
         const itemParsed = parsePokemonIdent(itemIdent);
