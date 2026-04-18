@@ -1,21 +1,30 @@
 .rarity-stars {
   display: inline-block;
   line-height: 1;
-  letter-spacing: 1px;
   user-select: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
   white-space: nowrap;
 }
 
-.rarity-stars-sm { font-size: 10px; }
-.rarity-stars-md { font-size: 13px; letter-spacing: 1.5px; }
-.rarity-stars-lg { font-size: 18px; letter-spacing: 2px; }
+.rarity-stars-sm { font-size: 12px; }
+.rarity-stars-md { font-size: 16px; }
+.rarity-stars-lg { font-size: 22px; }
 
-.rarity-stars-common    { color: var(--color-common); }
-.rarity-stars-uncommon  { color: var(--color-uncommon); }
-.rarity-stars-rare      { color: var(--color-rare); }
-.rarity-stars-epic      { color: var(--color-epic); }
+/* Shared neutral gold tint for common → epic */
+.rarity-stars-common,
+.rarity-stars-uncommon,
+.rarity-stars-rare,
+.rarity-stars-epic {
+  color: #ffd35a;
+}
+
+/* Legendary: the shining star keeps its colorful emoji glyph and pulses */
 .rarity-stars-legendary {
-  color: var(--color-legendary);
-  text-shadow: 0 0 4px rgba(255, 179, 71, 0.7), 0 1px 2px rgba(0, 0, 0, 0.85);
+  filter: drop-shadow(0 0 4px rgba(255, 200, 80, 0.85)) drop-shadow(0 0 8px rgba(255, 160, 60, 0.55));
+  animation: rarity-shine 2.2s ease-in-out infinite;
+}
+
+@keyframes rarity-shine {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(255, 200, 80, 0.75)) drop-shadow(0 0 6px rgba(255, 160, 60, 0.45)); }
+  50%      { filter: drop-shadow(0 0 6px rgba(255, 220, 120, 1))   drop-shadow(0 0 14px rgba(255, 180, 60, 0.9)); }
 }
