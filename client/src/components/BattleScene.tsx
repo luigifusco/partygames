@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { BattlePokemonState, BattleLogEntry, BattleSnapshot } from '@shared/battle-types';
 import { getMoveAnim } from '../data/moveAnimations';
-import { runMoveAnimation } from './BattleAnimationEngine';
-import { playSfx, getMoveSfxType, playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted } from './BattleSounds';
+import { runMoveAnimation, animateHit, animateStatChange, animateStatusInflict } from './BattleAnimationEngine';
+import { playSfx, playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, preloadStatSounds, playStatChangeSfx, playStatusSfx, unlockAudio, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted } from './BattleSounds';
 import { getHeldItemSprite } from '@shared/held-item-data';
 import BattleBackground, { pickPreset } from './BattleBackground';
 import './BattleScene.css';
@@ -369,6 +369,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     const allNames = [...snapshot.left, ...snapshot.right].map(p => p.name);
     preloadCries(allNames);
     preloadHitSounds();
+    preloadStatSounds();
+    unlockAudio();
     return () => stopBattleBgm();
   }, []);
 
@@ -484,6 +486,25 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           playSfx('faint');
           playCry(entry.targetName, 0.25, 0.6);
         }
+        // Standalone stat changes (e.g., Intimidate, Sticky Web) — animate
+        // them on the affected pokemon.
+        if (entry.boostChanges && arenaRef.current) {
+          const targetEl = cardRefs.current[entry.boostChanges.instanceId];
+          if (targetEl) {
+            const totalDelta = Object.values(entry.boostChanges.changes).reduce((a, b) => a + (b ?? 0), 0);
+            const dir: 'up' | 'down' = totalDelta >= 0 ? 'up' : 'down';
+            playStatChangeSfx(dir);
+            void animateStatChange(arenaRef.current, targetEl, dir, Math.abs(totalDelta) || 1);
+          }
+        }
+        // Standalone status changes — visual + sfx
+        if (entry.statusChange && arenaRef.current) {
+          const targetEl = cardRefs.current[entry.statusChange.instanceId];
+          if (targetEl && entry.statusChange.status) {
+            playStatusSfx(entry.statusChange.status);
+            void animateStatusInflict(arenaRef.current, targetEl, entry.statusChange.status);
+          }
+        }
         setAnim((prev) => ({ ...prev, actionText }));
         setAnim((prev) => {
           const newHp = entry.hpState ? { ...prev.pokemonHp, ...entry.hpState } : { ...prev.pokemonHp };
@@ -525,6 +546,29 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // 3. Play hit sound after animation, as HP bar starts draining
       if (entry.damage > 0) {
         playHitSound(entry.effectiveness);
+        if (defenderEl) {
+          animateHit(defenderEl, attackerEl, entry.effectiveness === 'super');
+        }
+      }
+
+      // 3b. Stat changes triggered by the move (Growl, Leer, secondary effects)
+      if (entry.boostChanges && arenaRef.current) {
+        const tEl = cardRefs.current[entry.boostChanges.instanceId];
+        if (tEl) {
+          const totalDelta = Object.values(entry.boostChanges.changes).reduce((a, b) => a + (b ?? 0), 0);
+          const dir: 'up' | 'down' = totalDelta >= 0 ? 'up' : 'down';
+          playStatChangeSfx(dir);
+          void animateStatChange(arenaRef.current, tEl, dir, Math.abs(totalDelta) || 1);
+        }
+      }
+
+      // 3c. Status conditions inflicted by the move (T-Wave, Will-O-Wisp, secondary burn/par/etc)
+      if (entry.statusChange && arenaRef.current && entry.statusChange.status) {
+        const tEl = cardRefs.current[entry.statusChange.instanceId];
+        if (tEl) {
+          playStatusSfx(entry.statusChange.status);
+          void animateStatusInflict(arenaRef.current, tEl, entry.statusChange.status);
+        }
       }
 
       // 3. Apply damage, boosts, status AFTER animation and show result

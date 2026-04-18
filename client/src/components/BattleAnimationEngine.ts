@@ -21,6 +21,7 @@ function getCenter(el: HTMLElement, arena: HTMLElement): Rect {
 function createFxImg(arena: HTMLElement, sprite: string, x: number, y: number, size = 40): HTMLImageElement {
   const img = document.createElement('img');
   img.src = `${BASE_PATH}/fx/${sprite}`;
+  img.className = 'fx-particle';
   img.style.cssText = `
     position: absolute;
     left: ${x - size / 2}px;
@@ -31,6 +32,8 @@ function createFxImg(arena: HTMLElement, sprite: string, x: number, y: number, s
     z-index: 10;
     opacity: 0;
     transition: all 0.3s ease-out;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.65));
+    will-change: transform, opacity, left, top;
   `;
   arena.appendChild(img);
   return img;
@@ -41,21 +44,35 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function animateProjectile(
-  arena: HTMLElement, sprite: string, from: Rect, to: Rect, count: number, duration = 300
+  arena: HTMLElement, sprite: string, from: Rect, to: Rect, count: number, duration = 320
 ) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
   for (let i = 0; i < count; i++) {
     const img = createFxImg(arena, sprite, from.x, from.y);
-    // Force reflow then animate
+    // Slight per-projectile spread + arc
+    const spread = (Math.random() - 0.5) * 24;
+    const arcLift = -Math.min(60, Math.abs(dx) * 0.18 + 24);
     void img.offsetWidth;
     img.style.opacity = '1';
-    img.style.transition = `all ${duration}ms ease-in`;
-    img.style.left = `${to.x - 20}px`;
-    img.style.top = `${to.y - 20}px`;
-    await sleep(duration * 0.6);
-    img.style.opacity = '0';
-    await sleep(duration * 0.5);
-    img.remove();
+    img.style.transition = `all ${duration}ms cubic-bezier(.45,.05,.55,.95), transform ${duration}ms linear`;
+    img.style.left = `${to.x - 20 + spread}px`;
+    img.style.top  = `${to.y - 20}px`;
+    img.style.transform = `rotate(${(dx >= 0 ? 1 : -1) * 540}deg)`;
+    // Mid-flight peak via a separate transition timing isn't available with
+    // top-only animation, so we cheat: temporarily lift to arcLift then drop.
+    setTimeout(() => { img.style.top = `${from.y + arcLift}px`; }, 10);
+    setTimeout(() => { img.style.top = `${to.y - 20}px`; }, duration * 0.5);
+    await sleep(Math.max(60, duration * 0.45));
   }
+  await sleep(duration * 0.4);
+  arena.querySelectorAll('img.fx-particle').forEach((el) => {
+    const e = el as HTMLElement;
+    e.style.opacity = '0';
+    e.style.transform += ' scale(0.6)';
+    setTimeout(() => el.remove(), 220);
+  });
+  await sleep(220);
 }
 
 async function animateContact(
@@ -178,6 +195,119 @@ function shakeElement(el: HTMLElement, intensity: number, duration = 400) {
     el.style.transform = `${baseTransform} translate(${dx}px, ${dy}px)`;
     i++;
   }, stepDuration);
+}
+
+/** Briefly flash the defender white (hit feedback) and apply a tiny knockback
+ *  in the direction of the attacker → defender vector. Crit makes both bigger. */
+export function animateHit(
+  defenderEl: HTMLElement,
+  attackerEl: HTMLElement | null,
+  crit = false,
+) {
+  if (!defenderEl) return;
+  const baseTransform = defenderEl.dataset.baseTransform || '';
+
+  // Direction vector (attacker → defender), normalised to ~1 unit
+  let dirX = 0, dirY = 0;
+  if (attackerEl) {
+    const a = attackerEl.getBoundingClientRect();
+    const d = defenderEl.getBoundingClientRect();
+    const vx = (d.left + d.width / 2) - (a.left + a.width / 2);
+    const vy = (d.top  + d.height / 2) - (a.top  + a.height / 2);
+    const len = Math.hypot(vx, vy) || 1;
+    dirX = vx / len;
+    dirY = vy / len;
+  }
+  const kick = crit ? 14 : 8;
+
+  // Apply hit-flash class for white tint + knockback
+  defenderEl.classList.add(crit ? 'fx-hit-flash-crit' : 'fx-hit-flash');
+  defenderEl.style.transition = 'transform 90ms ease-out';
+  defenderEl.style.transform = `${baseTransform} translate(${dirX * kick}px, ${dirY * kick}px)`;
+
+  setTimeout(() => {
+    defenderEl.style.transition = 'transform 180ms cubic-bezier(.34,1.56,.64,1)';
+    defenderEl.style.transform = baseTransform;
+  }, 110);
+  setTimeout(() => {
+    defenderEl.classList.remove('fx-hit-flash');
+    defenderEl.classList.remove('fx-hit-flash-crit');
+  }, 280);
+}
+
+/** Floating stat-change indicator: chevron arrows + glow ring around the
+ *  affected pokemon. Rises (up) or falls (down), scaled by stage count. */
+export async function animateStatChange(
+  arena: HTMLElement,
+  targetEl: HTMLElement,
+  direction: 'up' | 'down',
+  stages: number = 1,
+): Promise<void> {
+  if (!arena || !targetEl) return;
+  const center = getCenter(targetEl, arena);
+  const isUp = direction === 'up';
+  const cap = Math.min(3, Math.max(1, Math.abs(stages)));
+
+  // Glow ring underneath the pokemon
+  const ring = document.createElement('div');
+  ring.className = `fx-stat-ring fx-stat-ring-${isUp ? 'up' : 'down'}`;
+  ring.style.left = `${center.x - 60}px`;
+  ring.style.top  = `${center.y - 30}px`;
+  arena.appendChild(ring);
+
+  // Chevron arrows: more arrows = stronger boost
+  const arrows: HTMLElement[] = [];
+  const arrowCount = cap * 3;
+  for (let i = 0; i < arrowCount; i++) {
+    const a = document.createElement('div');
+    a.className = `fx-stat-arrow fx-stat-arrow-${isUp ? 'up' : 'down'}`;
+    a.textContent = isUp ? '▲' : '▼';
+    const offsetX = (Math.random() - 0.5) * 80;
+    a.style.left = `${center.x + offsetX - 8}px`;
+    a.style.top  = `${center.y - 4}px`;
+    a.style.animationDelay = `${i * 60}ms`;
+    a.style.fontSize = `${14 + cap * 4}px`;
+    arena.appendChild(a);
+    arrows.push(a);
+  }
+
+  await sleep(900);
+  ring.remove();
+  arrows.forEach((a) => a.remove());
+}
+
+/** Visual ring + particles when a status condition is inflicted. */
+export async function animateStatusInflict(
+  arena: HTMLElement,
+  targetEl: HTMLElement,
+  status: string,
+): Promise<void> {
+  if (!arena || !targetEl) return;
+  const center = getCenter(targetEl, arena);
+
+  const ring = document.createElement('div');
+  ring.className = `fx-status-ring fx-status-${status}`;
+  ring.style.left = `${center.x - 50}px`;
+  ring.style.top  = `${center.y - 50}px`;
+  arena.appendChild(ring);
+
+  // A few themed particles around the target
+  const particles: HTMLElement[] = [];
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = `fx-status-particle fx-status-particle-${status}`;
+    const angle = (i / 8) * Math.PI * 2;
+    const r = 35;
+    p.style.left = `${center.x + Math.cos(angle) * r - 6}px`;
+    p.style.top  = `${center.y + Math.sin(angle) * r - 6}px`;
+    p.style.animationDelay = `${i * 40}ms`;
+    arena.appendChild(p);
+    particles.push(p);
+  }
+
+  await sleep(800);
+  ring.remove();
+  particles.forEach((p) => p.remove());
 }
 
 export async function runMoveAnimation(

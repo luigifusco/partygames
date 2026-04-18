@@ -1,20 +1,128 @@
-// Battle sound effects using the Web Audio API.
-// Generates short synthesized SFX for moves + loads Pokémon cries from Showdown CDN.
-// Hit sounds use MP3 files keyed by effectiveness.
+// Battle sound effects.
+//
+// Cross-platform notes:
+// - iOS Safari + most mobile browsers require AudioContext.resume() AND a
+//   first sound to play during a real user gesture before any further audio
+//   will be heard. We therefore expose `unlockAudio()` to be called from
+//   the user's first click/touch (e.g., the "Start Battle" button), and we
+//   also auto-attach a one-shot pointerdown/touchstart/keydown listener as
+//   a safety net.
+// - We pool & cache HTMLAudioElement instances keyed by URL, and use
+//   .cloneNode(true) on each play so overlapping plays work without
+//   leaking elements or stalling on mobile.
+// - Every Audio() and AudioContext call is wrapped so missing files /
+//   blocked autoplay never throw past the public API.
 
 import { BASE_PATH } from '../config';
 
 const SHOWDOWN_CDN = 'https://play.pokemonshowdown.com';
 
-let ctx: AudioContext | null = null;
+// ─── Shared AudioContext + unlock ────────────────────────────────────────
 
-function getCtx(): AudioContext {
-  if (!ctx) ctx = new AudioContext();
-  if (ctx.state === 'suspended') ctx.resume();
+let ctx: AudioContext | null = null;
+let unlocked = false;
+
+function getCtx(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (!ctx) {
+    const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctor) return null;
+    try { ctx = new Ctor(); } catch { return null; }
+  }
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
   return ctx;
 }
 
-// --- Synthesized move SFX ---
+/** Call from the first real user gesture (click/touch) so subsequent
+ *  audio plays work on iOS Safari + Android Chrome strict autoplay policies.
+ *  Auto-called on first pointer/touch/key event as a safety net. */
+export function unlockAudio(): void {
+  if (unlocked) return;
+  unlocked = true;
+  const ac = getCtx();
+  if (ac) {
+    try {
+      const buf = ac.createBuffer(1, 1, 22050);
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.connect(ac.destination);
+      src.start(0);
+    } catch { /* noop */ }
+  }
+  try {
+    const a = new Audio();
+    a.muted = true;
+    a.src = `${BASE_PATH}/hit-normal-damage.mp3`;
+    const p = a.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+    }
+  } catch { /* noop */ }
+}
+
+if (typeof window !== 'undefined') {
+  const handler = () => {
+    unlockAudio();
+    window.removeEventListener('pointerdown', handler);
+    window.removeEventListener('touchstart', handler);
+    window.removeEventListener('keydown', handler);
+  };
+  window.addEventListener('pointerdown', handler, { once: true, passive: true });
+  window.addEventListener('touchstart', handler, { once: true, passive: true });
+  window.addEventListener('keydown', handler, { once: true });
+}
+
+// ─── HTMLAudioElement cache / pool ───────────────────────────────────────
+//
+// One "template" HTMLAudioElement per URL (preload="auto"), cloned for each
+// playback. Cloning is dramatically cheaper than `new Audio(url)` because
+// the browser reuses the cached resource.
+
+interface CacheEntry {
+  el: HTMLAudioElement;
+  failed: boolean;
+}
+const audioCache = new Map<string, CacheEntry>();
+
+function getOrCreate(url: string): CacheEntry {
+  let entry = audioCache.get(url);
+  if (entry) return entry;
+  const el = new Audio();
+  el.preload = 'auto';
+  el.src = url;
+  entry = { el, failed: false };
+  el.addEventListener('error', () => { entry!.failed = true; }, { once: true });
+  try { el.load(); } catch { /* noop */ }
+  audioCache.set(url, entry);
+  return entry;
+}
+
+function playUrl(url: string, volume = 0.4, playbackRate = 1.0): boolean {
+  const entry = getOrCreate(url);
+  if (entry.failed) return false;
+  try {
+    const node = entry.el.cloneNode(true) as HTMLAudioElement;
+    node.volume = Math.max(0, Math.min(1, volume));
+    node.playbackRate = playbackRate;
+    const p = node.play();
+    if (p && typeof p.then === 'function') {
+      p.catch(() => { entry.failed = true; });
+    }
+    return true;
+  } catch {
+    entry.failed = true;
+    return false;
+  }
+}
+
+/** Preload a list of URLs into the cache. Safe to call multiple times. */
+export function preloadAudio(urls: string[]): void {
+  for (const url of urls) getOrCreate(url);
+}
+
+// ─── Synthesized fallback move SFX (Web Audio) ───────────────────────────
 
 type SfxType =
   | 'hit' | 'hit-hard' | 'hit-weak'
@@ -42,12 +150,10 @@ function playTone(
 }
 
 function playNoise(ac: AudioContext, duration: number, volume = 0.15) {
-  const bufferSize = ac.sampleRate * duration;
+  const bufferSize = Math.floor(ac.sampleRate * duration);
   const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
   const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1;
-  }
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
   const source = ac.createBufferSource();
   source.buffer = buffer;
   const gain = ac.createGain();
@@ -59,154 +165,58 @@ function playNoise(ac: AudioContext, duration: number, volume = 0.15) {
 }
 
 const SFX_PLAYERS: Record<SfxType, (ac: AudioContext) => void> = {
-  'hit': (ac) => {
-    playNoise(ac, 0.1, 0.2);
-    playTone(ac, 200, 0.1, 'square', 0.15);
-  },
-  'hit-hard': (ac) => {
-    playNoise(ac, 0.15, 0.3);
-    playTone(ac, 120, 0.15, 'square', 0.2);
-    playTone(ac, 80, 0.2, 'sawtooth', 0.1);
-  },
-  'hit-weak': (ac) => {
-    playNoise(ac, 0.08, 0.1);
-    playTone(ac, 300, 0.08, 'sine', 0.1);
-  },
-  'electric': (ac) => {
-    playTone(ac, 800, 0.08, 'sawtooth', 0.2);
-    setTimeout(() => playTone(ac, 1200, 0.06, 'sawtooth', 0.15), 50);
-    setTimeout(() => playTone(ac, 600, 0.1, 'square', 0.2), 100);
-    playNoise(ac, 0.15, 0.15);
-  },
-  'fire': (ac) => {
-    playNoise(ac, 0.3, 0.2);
-    playTone(ac, 300, 0.2, 'sawtooth', 0.15);
-    playTone(ac, 200, 0.3, 'triangle', 0.1);
-  },
-  'water': (ac) => {
-    playNoise(ac, 0.2, 0.12);
-    playTone(ac, 400, 0.15, 'sine', 0.15);
-    playTone(ac, 350, 0.2, 'sine', 0.1, 50);
-  },
-  'ice': (ac) => {
-    playTone(ac, 1000, 0.12, 'sine', 0.2);
-    playTone(ac, 1500, 0.08, 'sine', 0.1);
-    playNoise(ac, 0.1, 0.1);
-  },
-  'grass': (ac) => {
-    playTone(ac, 500, 0.15, 'sine', 0.15);
-    playTone(ac, 600, 0.1, 'triangle', 0.1);
-    playNoise(ac, 0.08, 0.08);
-  },
-  'psychic': (ac) => {
-    playTone(ac, 600, 0.3, 'sine', 0.2);
-    playTone(ac, 900, 0.2, 'sine', 0.1, 100);
-  },
-  'ghost': (ac) => {
-    playTone(ac, 200, 0.4, 'sine', 0.15);
-    playTone(ac, 150, 0.5, 'sine', 0.1, -50);
-  },
-  'poison': (ac) => {
-    playTone(ac, 250, 0.2, 'sawtooth', 0.12);
-    playNoise(ac, 0.15, 0.1);
-  },
-  'ground': (ac) => {
-    playTone(ac, 60, 0.3, 'square', 0.25);
-    playTone(ac, 40, 0.4, 'sawtooth', 0.15);
-    playNoise(ac, 0.2, 0.2);
-  },
-  'rock': (ac) => {
-    playNoise(ac, 0.15, 0.25);
-    playTone(ac, 100, 0.15, 'square', 0.2);
-  },
-  'fighting': (ac) => {
-    playNoise(ac, 0.1, 0.25);
-    playTone(ac, 150, 0.1, 'square', 0.2);
-  },
-  'flying': (ac) => {
-    playNoise(ac, 0.2, 0.1);
-    playTone(ac, 500, 0.15, 'triangle', 0.12);
-  },
-  'dragon': (ac) => {
-    playTone(ac, 150, 0.3, 'sawtooth', 0.2);
-    playTone(ac, 200, 0.25, 'square', 0.15, 50);
-  },
-  'steel': (ac) => {
-    playTone(ac, 1200, 0.1, 'square', 0.2);
-    playTone(ac, 800, 0.08, 'sawtooth', 0.15);
-    playNoise(ac, 0.05, 0.15);
-  },
-  'normal': (ac) => {
-    playNoise(ac, 0.1, 0.15);
-    playTone(ac, 250, 0.1, 'square', 0.12);
-  },
-  'bug': (ac) => {
-    playTone(ac, 700, 0.08, 'square', 0.1);
-    playTone(ac, 800, 0.06, 'square', 0.08);
-    playNoise(ac, 0.08, 0.08);
-  },
-  'weather': (ac) => {
-    playNoise(ac, 0.4, 0.08);
-    playTone(ac, 300, 0.3, 'sine', 0.05);
-  },
-  'faint': (ac) => {
-    playTone(ac, 400, 0.1, 'sine', 0.2);
-    setTimeout(() => playTone(ac, 300, 0.15, 'sine', 0.15), 100);
-    setTimeout(() => playTone(ac, 200, 0.2, 'sine', 0.1), 200);
-  },
-  'miss': (ac) => {
-    playNoise(ac, 0.15, 0.08);
-  },
+  'hit':       (ac) => { playNoise(ac, 0.10, 0.20); playTone(ac, 200, 0.10, 'square', 0.15); },
+  'hit-hard':  (ac) => { playNoise(ac, 0.15, 0.30); playTone(ac, 120, 0.15, 'square', 0.20); playTone(ac, 80, 0.20, 'sawtooth', 0.10); },
+  'hit-weak':  (ac) => { playNoise(ac, 0.08, 0.10); playTone(ac, 300, 0.08, 'sine', 0.10); },
+  'electric':  (ac) => { playTone(ac, 800, 0.08, 'sawtooth', 0.20); setTimeout(() => playTone(ac, 1200, 0.06, 'sawtooth', 0.15), 50); setTimeout(() => playTone(ac, 600, 0.10, 'square', 0.20), 100); playNoise(ac, 0.15, 0.15); },
+  'fire':      (ac) => { playNoise(ac, 0.30, 0.20); playTone(ac, 300, 0.20, 'sawtooth', 0.15); playTone(ac, 200, 0.30, 'triangle', 0.10); },
+  'water':     (ac) => { playNoise(ac, 0.20, 0.12); playTone(ac, 400, 0.15, 'sine', 0.15); playTone(ac, 350, 0.20, 'sine', 0.10, 50); },
+  'ice':       (ac) => { playTone(ac, 1000, 0.12, 'sine', 0.20); playTone(ac, 1500, 0.08, 'sine', 0.10); playNoise(ac, 0.10, 0.10); },
+  'grass':     (ac) => { playTone(ac, 500, 0.15, 'sine', 0.15); playTone(ac, 600, 0.10, 'triangle', 0.10); playNoise(ac, 0.08, 0.08); },
+  'psychic':   (ac) => { playTone(ac, 600, 0.30, 'sine', 0.20); playTone(ac, 900, 0.20, 'sine', 0.10, 100); },
+  'ghost':     (ac) => { playTone(ac, 200, 0.40, 'sine', 0.15); playTone(ac, 150, 0.50, 'sine', 0.10, -50); },
+  'poison':    (ac) => { playTone(ac, 250, 0.20, 'sawtooth', 0.12); playNoise(ac, 0.15, 0.10); },
+  'ground':    (ac) => { playTone(ac, 60, 0.30, 'square', 0.25); playTone(ac, 40, 0.40, 'sawtooth', 0.15); playNoise(ac, 0.20, 0.20); },
+  'rock':      (ac) => { playNoise(ac, 0.15, 0.25); playTone(ac, 100, 0.15, 'square', 0.20); },
+  'fighting':  (ac) => { playNoise(ac, 0.10, 0.25); playTone(ac, 150, 0.10, 'square', 0.20); },
+  'flying':    (ac) => { playNoise(ac, 0.20, 0.10); playTone(ac, 500, 0.15, 'triangle', 0.12); },
+  'dragon':    (ac) => { playTone(ac, 150, 0.30, 'sawtooth', 0.20); playTone(ac, 200, 0.25, 'square', 0.15, 50); },
+  'steel':     (ac) => { playTone(ac, 1200, 0.10, 'square', 0.20); playTone(ac, 800, 0.08, 'sawtooth', 0.15); playNoise(ac, 0.05, 0.15); },
+  'normal':    (ac) => { playNoise(ac, 0.10, 0.15); playTone(ac, 250, 0.10, 'square', 0.12); },
+  'bug':       (ac) => { playTone(ac, 700, 0.08, 'square', 0.10); playTone(ac, 800, 0.06, 'square', 0.08); playNoise(ac, 0.08, 0.08); },
+  'weather':   (ac) => { playNoise(ac, 0.40, 0.08); playTone(ac, 300, 0.30, 'sine', 0.05); },
+  'faint':     (ac) => { playTone(ac, 400, 0.10, 'sine', 0.20); setTimeout(() => playTone(ac, 300, 0.15, 'sine', 0.15), 100); setTimeout(() => playTone(ac, 200, 0.20, 'sine', 0.10), 200); },
+  'miss':      (ac) => { playNoise(ac, 0.15, 0.08); },
 };
 
-export function playSfx(type: SfxType) {
+export function playSfx(type: SfxType): void {
   try {
     const ac = getCtx();
+    if (!ac) return;
     SFX_PLAYERS[type]?.(ac);
-  } catch {
-    // Audio not available
-  }
+  } catch { /* noop */ }
 }
 
-// --- Move name → SFX type mapping ---
-
 const MOVE_SFX: Record<string, SfxType> = {
-  // Fire
   'Ember': 'fire', 'Flamethrower': 'fire',
-  // Water
   'Water Gun': 'water', 'Hydro Pump': 'water', 'Surf': 'water', 'Absorb': 'grass',
-  // Electric
   'Thunderbolt': 'electric', 'Thunder': 'electric',
-  // Grass
   'Vine Whip': 'grass', 'Razor Leaf': 'grass', 'Giga Drain': 'grass', 'Solar Beam': 'grass',
-  // Ice
   'Ice Beam': 'ice',
-  // Psychic
   'Confusion': 'psychic', 'Psybeam': 'psychic', 'Psychic': 'psychic', 'Hidden Power': 'psychic',
-  // Ghost/Dark
   'Lick': 'ghost', 'Night Shade': 'ghost', 'Shadow Ball': 'ghost', 'Crunch': 'ghost',
-  // Fighting
   'Karate Chop': 'fighting', 'Low Kick': 'fighting', 'Cross Chop': 'fighting', 'Dynamic Punch': 'fighting',
-  // Poison
   'Poison Sting': 'poison', 'Sludge Bomb': 'poison',
-  // Bug
   'Bug Bite': 'bug', 'Silver Wind': 'bug', 'Pin Missile': 'bug',
-  // Flying
   'Gust': 'flying', 'Peck': 'flying', 'Wing Attack': 'flying',
   'Aerial Ace': 'flying', 'Drill Peck': 'flying', 'Air Cutter': 'flying', 'Air Slash': 'flying',
-  // Normal
   'Tackle': 'normal', 'Scratch': 'normal', 'Quick Attack': 'normal',
   'Hyper Fang': 'normal', 'Body Slam': 'hit-hard', 'Slam': 'hit-hard',
   'Headbutt': 'hit', 'Take Down': 'hit-hard', 'Struggle': 'hit-weak',
-  // Rock/Ground
   'Rock Throw': 'rock', 'Rock Slide': 'rock', 'Dig': 'ground', 'Earthquake': 'ground',
-  // Dragon
   'Twister': 'dragon', 'Dragon Claw': 'dragon',
-  // Steel
   'Meteor Mash': 'steel', 'Zen Headbutt': 'psychic',
-  // Weather
   'Rain Dance': 'weather', 'Sunny Day': 'weather', 'Sandstorm': 'weather', 'Hail': 'weather',
-  // Hazards
   'Stealth Rock': 'rock', 'Spikes': 'ground', 'Toxic Spikes': 'poison',
   'Rapid Spin': 'normal', 'Defog': 'flying',
 };
@@ -215,38 +225,85 @@ export function getMoveSfxType(moveName: string): SfxType {
   return MOVE_SFX[moveName] || 'hit';
 }
 
-// --- Move sound effects (MP3 files) ---
+// ─── Per-move MP3 SFX ────────────────────────────────────────────────────
 
-const moveSfxCache: Record<string, HTMLAudioElement | null> = {};
+function moveSfxUrl(moveName: string): string {
+  return `${BASE_PATH}/sfx/${encodeURIComponent(moveName)}.mp3`;
+}
 
-export function playMoveSfx(moveName: string, volume = 0.35) {
-  try {
-    const fileName = moveName.replace(/-/g, ' ');
-    const url = `${BASE_PATH}/sfx/${encodeURIComponent(fileName)}.mp3`;
+export function playMoveSfx(moveName: string, volume = 0.35): void {
+  if (!moveName) return;
+  const ok = playUrl(moveSfxUrl(moveName), volume);
+  if (!ok) playSfx(getMoveSfxType(moveName));
+}
 
-    if (moveSfxCache[moveName] === null) {
-      // Previously failed to load — fall back to synth
-      const sfxType = getMoveSfxType(moveName);
-      playSfx(sfxType);
-      return;
+// ─── Hit sounds (effectiveness) ──────────────────────────────────────────
+
+const HIT_SOUNDS: Record<string, string> = {
+  'super':    `${BASE_PATH}/hit-super-effective.mp3`,
+  'not-very': `${BASE_PATH}/hit-not-very-effective.mp3`,
+  'neutral':  `${BASE_PATH}/hit-normal-damage.mp3`,
+};
+
+export function playHitSound(effectiveness: 'super' | 'neutral' | 'not-very' | 'immune' | null, volume = 0.4): void {
+  if (!effectiveness || effectiveness === 'immune') return;
+  const url = HIT_SOUNDS[effectiveness] ?? HIT_SOUNDS['neutral'];
+  playUrl(url, volume);
+}
+
+export function preloadHitSounds(): void {
+  preloadAudio(Object.values(HIT_SOUNDS));
+}
+
+// ─── Stat boost / drop SFX ───────────────────────────────────────────────
+
+const STAT_SFX: Record<'up' | 'down', string> = {
+  'up':   `${BASE_PATH}/sfx/${encodeURIComponent('Stat Rise Up')}.mp3`,
+  'down': `${BASE_PATH}/sfx/${encodeURIComponent('Stat Fall')}.mp3`,
+};
+
+export function playStatChangeSfx(direction: 'up' | 'down', volume = 0.4): void {
+  const ok = playUrl(STAT_SFX[direction], volume);
+  if (!ok) {
+    const ac = getCtx();
+    if (!ac) return;
+    if (direction === 'up') {
+      playTone(ac, 500, 0.12, 'triangle', 0.18);
+      setTimeout(() => playTone(ac, 750, 0.12, 'triangle', 0.18), 80);
+      setTimeout(() => playTone(ac, 1000, 0.15, 'triangle', 0.18), 160);
+    } else {
+      playTone(ac, 800, 0.12, 'triangle', 0.18);
+      setTimeout(() => playTone(ac, 550, 0.12, 'triangle', 0.18), 80);
+      setTimeout(() => playTone(ac, 350, 0.15, 'triangle', 0.18), 160);
     }
-
-    const audio = new Audio(url);
-    audio.volume = volume;
-    audio.play().catch(() => {
-      // MP3 not available — mark and fall back
-      moveSfxCache[moveName] = null;
-      const sfxType = getMoveSfxType(moveName);
-      playSfx(sfxType);
-    });
-    moveSfxCache[moveName] = audio;
-  } catch {
-    const sfxType = getMoveSfxType(moveName);
-    playSfx(sfxType);
   }
 }
 
-// --- Battle BGM ---
+// ─── Status condition SFX ────────────────────────────────────────────────
+
+const STATUS_SFX: Record<string, string> = {
+  'burn':       `${BASE_PATH}/sfx/${encodeURIComponent('Status Burned')}.mp3`,
+  'paralysis':  `${BASE_PATH}/sfx/${encodeURIComponent('Status Paralyzed')}.mp3`,
+  'poison':     `${BASE_PATH}/sfx/${encodeURIComponent('Status Poisoned')}.mp3`,
+  'toxic':      `${BASE_PATH}/sfx/${encodeURIComponent('Status Poisoned')}.mp3`,
+  'freeze':     `${BASE_PATH}/sfx/${encodeURIComponent('Status Frozen')}.mp3`,
+};
+
+export function playStatusSfx(status: string, volume = 0.4): void {
+  const url = STATUS_SFX[status];
+  if (url) {
+    const ok = playUrl(url, volume);
+    if (ok) return;
+  }
+  if (status === 'sleep') playSfx('psychic');
+  else playSfx('hit');
+}
+
+export function preloadStatSounds(): void {
+  preloadAudio([STAT_SFX.up, STAT_SFX.down, ...Object.values(STATUS_SFX)]);
+}
+
+// ─── Battle BGM ──────────────────────────────────────────────────────────
 
 interface BgmTrack {
   url: string;
@@ -271,8 +328,6 @@ const BATTLE_BGMS: BgmTrack[] = [
   { url: 'audio/sm-rival.mp3', loopStart: 11.389, loopEnd: 62.158 },
 ];
 
-// Named tracks for specific trainer types
-const BGM_KANTO_TRAINER: BgmTrack = { url: 'audio/hgss-kanto-trainer.mp3', loopStart: 13.003, loopEnd: 94.656 };
 const BGM_KANTO_GYM: BgmTrack = { url: 'audio/bw2-kanto-gym-leader.mp3', loopStart: 14.626, loopEnd: 58.986 };
 const BGM_JOHTO_TRAINER: BgmTrack = { url: 'audio/hgss-johto-trainer.mp3', loopStart: 23.731, loopEnd: 125.086 };
 const BGM_ELITE4: BgmTrack = { url: 'audio/spl-elite4.mp3', loopStart: 3.962, loopEnd: 152.509 };
@@ -283,31 +338,21 @@ const BGM_HOENN_RIVAL: BgmTrack = { url: 'audio/oras-rival.mp3', loopStart: 14.3
 const BGM_SINNOH_TRAINER: BgmTrack = { url: 'audio/dpp-trainer.mp3', loopStart: 13.440, loopEnd: 96.959 };
 const BGM_RED: BgmTrack = { url: 'audio/bw2-kanto-gym-leader.mp3', loopStart: 14.626, loopEnd: 58.986 };
 
-// Trainer ID → specific BGM
 const TRAINER_BGM: Record<string, BgmTrack> = {
-  // Kanto Gym Leaders
   brock: BGM_KANTO_GYM, misty: BGM_KANTO_GYM, ltsurge: BGM_KANTO_GYM,
   erika: BGM_KANTO_GYM, koga: BGM_KANTO_GYM, janine: BGM_KANTO_GYM,
   sabrina: BGM_KANTO_GYM, blaine: BGM_KANTO_GYM, giovanni: BGM_KANTO_GYM,
-  // Kanto E4 / Champions
-  bruno: BGM_ELITE4,
-  lance: BGM_ELITE4, blue: BGM_ELITE4, red: BGM_RED,
-  // Johto Gym Leaders
+  bruno: BGM_ELITE4, lance: BGM_ELITE4, blue: BGM_ELITE4, red: BGM_RED,
   falkner: BGM_JOHTO_TRAINER, bugsy: BGM_JOHTO_TRAINER, whitney: BGM_JOHTO_TRAINER,
   morty: BGM_JOHTO_TRAINER, chuck: BGM_JOHTO_TRAINER, jasmine: BGM_JOHTO_TRAINER,
   pryce: BGM_JOHTO_TRAINER, clair: BGM_JOHTO_TRAINER,
-  // Johto E4 / Rival
   will: BGM_ELITE4, karen: BGM_ELITE4, silver: BGM_RIVAL_DPP,
-  // Hoenn Gym Leaders
   roxanne: BGM_HOENN_TRAINER, brawly: BGM_HOENN_TRAINER, wattson: BGM_HOENN_TRAINER,
   flannery: BGM_HOENN_TRAINER, norman: BGM_HOENN_TRAINER, winona: BGM_HOENN_TRAINER,
-  // Hoenn E4 / Champions
   sidney: BGM_ELITE4, phoebe: BGM_ELITE4, glacia: BGM_ELITE4, drake: BGM_ELITE4,
   steven: BGM_ELITE4, wallace: BGM_ELITE4,
-  // Sinnoh Gym Leaders
   fantina: BGM_SINNOH_TRAINER, maylene: BGM_SINNOH_TRAINER, crasherwake: BGM_SINNOH_TRAINER,
   byron: BGM_SINNOH_TRAINER, candice: BGM_SINNOH_TRAINER, volkner: BGM_SINNOH_TRAINER,
-  // Sinnoh E4 / Champions / Rival
   aaron: BGM_ELITE4, bertha: BGM_ELITE4, flint: BGM_ELITE4, lucian: BGM_ELITE4,
   cynthia: BGM_CHAMPION_DPP, barry: BGM_RIVAL_DPP,
 };
@@ -315,7 +360,7 @@ const TRAINER_BGM: Record<string, BgmTrack> = {
 let currentBgm: HTMLAudioElement | null = null;
 let bgmLoopHandler: (() => void) | null = null;
 
-export function startBattleBgm(volume = 0.25, trainerId?: string) {
+export function startBattleBgm(volume = 0.25, trainerId?: string): void {
   stopBattleBgm();
   try {
     const track = trainerId && TRAINER_BGM[trainerId]
@@ -323,27 +368,23 @@ export function startBattleBgm(volume = 0.25, trainerId?: string) {
       : BATTLE_BGMS[Math.floor(Math.random() * BATTLE_BGMS.length)];
     const audio = new Audio(`${SHOWDOWN_CDN}/${track.url}`);
     audio.volume = volume;
-
     bgmLoopHandler = () => {
-      if (audio.currentTime >= track.loopEnd) {
-        audio.currentTime = track.loopStart;
-      }
+      if (audio.currentTime >= track.loopEnd) audio.currentTime = track.loopStart;
     };
     audio.addEventListener('timeupdate', bgmLoopHandler);
-    audio.play().catch(() => {});
+    const p = audio.play();
+    if (p && typeof p.then === 'function') p.catch(() => {});
     currentBgm = audio;
-  } catch {
-    // Audio not available
-  }
+  } catch { /* noop */ }
 }
 
-export function stopBattleBgm() {
+export function stopBattleBgm(): void {
   if (currentBgm) {
     if (bgmLoopHandler) {
       currentBgm.removeEventListener('timeupdate', bgmLoopHandler);
       bgmLoopHandler = null;
     }
-    currentBgm.pause();
+    try { currentBgm.pause(); } catch { /* noop */ }
     currentBgm = null;
   }
 }
@@ -360,62 +401,27 @@ export function isBgmMuted(): boolean {
   return currentBgm?.muted ?? false;
 }
 
-// --- Hit sounds (MP3, keyed by effectiveness) ---
+// ─── Pokémon cries ───────────────────────────────────────────────────────
 
-const HIT_SOUNDS: Record<string, string> = {
-  'super': `${BASE_PATH}/hit-super-effective.mp3`,
-  'not-very': `${BASE_PATH}/hit-not-very-effective.mp3`,
-  'neutral': `${BASE_PATH}/hit-normal-damage.mp3`,
-};
-
-export function playHitSound(effectiveness: 'super' | 'neutral' | 'not-very' | 'immune' | null, volume = 0.4) {
-  if (!effectiveness || effectiveness === 'immune') return;
-  const url = HIT_SOUNDS[effectiveness] ?? HIT_SOUNDS['neutral'];
+export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): void {
+  if (!pokemonName) return;
+  const id = pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
+  const url = `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
+  const entry = getOrCreate(url);
+  if (entry.failed) return;
   try {
-    const audio = new Audio(url);
-    audio.volume = volume;
-    audio.play().catch(() => {});
-  } catch {
-    // Audio not available
-  }
+    const node = entry.el.cloneNode(true) as HTMLAudioElement;
+    node.volume = Math.max(0, Math.min(1, volume));
+    node.playbackRate = playbackRate;
+    const p = node.play();
+    if (p && typeof p.then === 'function') p.catch(() => { entry.failed = true; });
+  } catch { entry.failed = true; }
 }
 
-/** Preload hit sounds into browser cache */
-export function preloadHitSounds() {
-  for (const url of Object.values(HIT_SOUNDS)) {
-    const audio = new Audio(url);
-    audio.preload = 'auto';
-    audio.load();
-  }
-}
-
-// --- Pokémon cries ---
-
-const cryCache: Record<string, HTMLAudioElement> = {};
-
-export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0) {
-  try {
-    const id = pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    const url = `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
-
-    // Always create a fresh Audio for overlapping cries and rate changes
-    const audio = new Audio(url);
-    audio.volume = volume;
-    audio.playbackRate = playbackRate;
-    audio.play().catch(() => {});
-  } catch {
-    // Audio not available
-  }
-}
-
-/** Preload cries into browser cache so they play instantly */
-export function preloadCries(pokemonNames: string[]) {
-  for (const name of pokemonNames) {
-    const id = name.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    const url = `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
-    // Fetch into browser cache without playing
-    const audio = new Audio(url);
-    audio.preload = 'auto';
-    audio.load();
-  }
+export function preloadCries(pokemonNames: string[]): void {
+  const urls = pokemonNames.map((n) => {
+    const id = n.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    return `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
+  });
+  preloadAudio(urls);
 }

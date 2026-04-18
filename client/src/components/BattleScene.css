@@ -819,3 +819,126 @@
   .pokemon-status-bar { padding: 4px 8px 5px; }
   .pokemon-name { font-size: 12px; }
 }
+
+/* ─── Battle FX overhaul: hit flash, stat & status animations ───────── */
+
+/* Hit-flash on defender: brief white tint + scale punch. */
+.fx-hit-flash, .fx-hit-flash-crit {
+  position: relative;
+  filter: brightness(2.2) saturate(0.25);
+  transition: filter 80ms ease-out;
+}
+.fx-hit-flash-crit {
+  filter: brightness(2.6) saturate(0.15) drop-shadow(0 0 12px #fff);
+  animation: fx-crit-pulse 280ms ease-out;
+}
+@keyframes fx-crit-pulse {
+  0%   { filter: brightness(3.5) saturate(0.10) drop-shadow(0 0 18px #fff); }
+  60%  { filter: brightness(2.4) saturate(0.20) drop-shadow(0 0 12px #fff); }
+  100% { filter: brightness(1.0) saturate(1.0); }
+}
+
+/* Stat-change ring underneath the affected pokemon. */
+.fx-stat-ring {
+  position: absolute;
+  width: 120px;
+  height: 60px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9;
+  transform: scale(0.4);
+  opacity: 0;
+  animation: fx-stat-ring-pulse 0.9s ease-out forwards;
+}
+.fx-stat-ring-up {
+  background: radial-gradient(ellipse at center, rgba(120, 220, 120, 0.55) 0%, rgba(120, 220, 120, 0) 70%);
+  box-shadow: 0 0 28px 6px rgba(120, 220, 120, 0.55);
+}
+.fx-stat-ring-down {
+  background: radial-gradient(ellipse at center, rgba(255, 110, 110, 0.55) 0%, rgba(255, 110, 110, 0) 70%);
+  box-shadow: 0 0 28px 6px rgba(255, 110, 110, 0.55);
+}
+@keyframes fx-stat-ring-pulse {
+  0%   { transform: scale(0.4); opacity: 0;   }
+  30%  { transform: scale(1.0); opacity: 1;   }
+  100% { transform: scale(1.5); opacity: 0;   }
+}
+
+/* Floating ▲ / ▼ chevrons that drift up or down. */
+.fx-stat-arrow {
+  position: absolute;
+  pointer-events: none;
+  z-index: 11;
+  font-weight: 900;
+  font-family: -apple-system, sans-serif;
+  text-shadow: 0 0 8px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.9);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.fx-stat-arrow-up {
+  color: #6fffa3;
+  animation: fx-arrow-rise 0.85s ease-out forwards;
+}
+.fx-stat-arrow-down {
+  color: #ff7373;
+  animation: fx-arrow-fall 0.85s ease-out forwards;
+}
+@keyframes fx-arrow-rise {
+  0%   { transform: translateY(20px)  scale(0.4); opacity: 0; }
+  20%  { transform: translateY(0)     scale(1.1); opacity: 1; }
+  80%  { transform: translateY(-60px) scale(1.0); opacity: 1; }
+  100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+}
+@keyframes fx-arrow-fall {
+  0%   { transform: translateY(-20px) scale(0.4); opacity: 0; }
+  20%  { transform: translateY(0)     scale(1.1); opacity: 1; }
+  80%  { transform: translateY(60px)  scale(1.0); opacity: 1; }
+  100% { transform: translateY(80px)  scale(0.8); opacity: 0; }
+}
+
+/* Status condition rings + particles. Each status has its own colour. */
+.fx-status-ring {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9;
+  transform: scale(0.5);
+  opacity: 0;
+  animation: fx-status-ring-pulse 0.8s ease-out forwards;
+}
+.fx-status-ring.fx-status-burn       { box-shadow: 0 0 30px 8px rgba(255, 120, 40, 0.85);  background: radial-gradient(circle, rgba(255,140,40,0.45) 0%, transparent 65%); }
+.fx-status-ring.fx-status-paralysis  { box-shadow: 0 0 30px 8px rgba(255, 220, 80, 0.85);  background: radial-gradient(circle, rgba(255,230,80,0.45) 0%, transparent 65%); }
+.fx-status-ring.fx-status-poison,
+.fx-status-ring.fx-status-toxic      { box-shadow: 0 0 30px 8px rgba(190, 90, 220, 0.85);  background: radial-gradient(circle, rgba(190,90,220,0.45) 0%, transparent 65%); }
+.fx-status-ring.fx-status-freeze     { box-shadow: 0 0 30px 8px rgba(140, 220, 255, 0.85); background: radial-gradient(circle, rgba(140,220,255,0.55) 0%, transparent 65%); }
+.fx-status-ring.fx-status-sleep      { box-shadow: 0 0 30px 8px rgba(160, 130, 240, 0.85); background: radial-gradient(circle, rgba(160,130,240,0.45) 0%, transparent 65%); }
+@keyframes fx-status-ring-pulse {
+  0%   { transform: scale(0.5); opacity: 0; }
+  35%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.fx-status-particle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 11;
+  border-radius: 50%;
+  opacity: 0;
+  animation: fx-status-particle-fly 0.7s ease-out forwards;
+  will-change: transform, opacity;
+}
+.fx-status-particle.fx-status-particle-burn       { background: radial-gradient(circle, #fff5b0 0%, #ff7a1a 60%, transparent 100%); box-shadow: 0 0 10px #ff7a1a; }
+.fx-status-particle.fx-status-particle-paralysis  { background: radial-gradient(circle, #ffffaa 0%, #ffe042 60%, transparent 100%); box-shadow: 0 0 12px #ffd60a; clip-path: polygon(40% 0, 60% 35%, 100% 40%, 65% 60%, 60% 100%, 40% 65%, 0 60%, 35% 40%); border-radius: 0; }
+.fx-status-particle.fx-status-particle-poison,
+.fx-status-particle.fx-status-particle-toxic      { background: radial-gradient(circle, #f0c0ff 0%, #b04fde 60%, transparent 100%); box-shadow: 0 0 10px #b04fde; }
+.fx-status-particle.fx-status-particle-freeze     { background: linear-gradient(45deg, #e0f7ff 0%, #7ad5ff 100%); box-shadow: 0 0 10px #7ad5ff; clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); border-radius: 0; }
+.fx-status-particle.fx-status-particle-sleep      { background: radial-gradient(circle, #d6c8ff 0%, #8a6df0 60%, transparent 100%); box-shadow: 0 0 10px #8a6df0; }
+@keyframes fx-status-particle-fly {
+  0%   { transform: scale(0.4) translateY(0); opacity: 0; }
+  30%  { transform: scale(1.2) translateY(-4px); opacity: 1; }
+  100% { transform: scale(0.6) translateY(-22px); opacity: 0; }
+}
