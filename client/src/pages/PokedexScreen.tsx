@@ -25,15 +25,15 @@ export default function PokedexScreen({ discovered }: PokedexScreenProps) {
           return (
             <div key={p.id} className={`pkmn-card ${isDiscovered ? '' : 'undiscovered'}`}>
               <span className="pokedex-dex-num">#{String(p.id).padStart(3, '0')}</span>
+              {isDiscovered && (
+                <RarityStars tier={p.tier} size="sm" className="pokedex-rarity-badge" />
+              )}
               <img
                 src={p.sprite}
                 alt={isDiscovered ? p.name : '???'}
                 className={isDiscovered ? '' : 'silhouette'}
               />
               <div className="pkmn-card-name">{isDiscovered ? p.name : '???'}</div>
-              {isDiscovered && (
-                <RarityStars tier={p.tier} size="sm" />
-              )}
             </div>
           );
         })}
