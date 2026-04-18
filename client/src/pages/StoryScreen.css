@@ -341,7 +341,7 @@
 /* --- Scene-mode dialogue: stable layout (sprite doesn't jump) --- */
 .story-dialogue.story-dialogue--scene {
   justify-content: flex-start;
-  padding: var(--space-4) var(--space-4) var(--space-6);
+  padding: var(--space-8) var(--space-4) var(--space-8);
   gap: var(--space-3);
 }
 .story-dialogue--scene .story-dialogue-figure {
