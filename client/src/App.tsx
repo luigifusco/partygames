@@ -352,7 +352,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/play" element={<MenuScreen playerName={player.name} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} />} />
+      <Route path="/play" element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} />} />
       <Route path="/admin" element={<AdminPanel />} />
       <Route path="/notifications" element={<NotificationsScreen notifications={notifications} onAccept={handleAcceptNotification} onDismiss={dismissNotification} />} />
       <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} />} />

@@ -57,6 +57,7 @@ export function starterRegionChapter(region: string) { return STARTER_REGION_PRE
 // Mechanics elsewhere in the code gate on these.
 export const BOND_UNLOCK_CHAPTER = 'n-bond-awakening:complete';
 export const CHARACTER_UNLOCK_CHAPTER = 'n-styles-revealed:complete';
+export const MENU_UNLOCK_CHAPTER = 'cynthia-intro:complete';
 
 function sp(name: string) { return TRAINERS_PATH + '/' + name + '.png'; }
 
@@ -89,8 +90,42 @@ export const STORYLINES: Storyline[] = [
 
   // ───────────── BEGINNER ─────────────
   {
+    id: 'cynthia-intro', title: 'The Champion at the Crossroads',
+    description: 'A quiet woman in black offers to teach you what a Pokémon battle really is.',
+    region: 'Sinnoh', difficulty: 'beginner', icon: '🌙',
+    requires: ['oak-starters'],
+    steps: [
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "Oh — a new trainer. Professor Oak said you might pass through here. My name is Cynthia. I travel between the regions, researching the myths that people have forgotten and the ones they're still afraid to remember.",
+        "Before you walk any further, I'd like to tell you something. Something every trainer should hear once, from someone who actually means it.",
+        "The world you're standing in is older than any town or league. Long before there were trainers, there were Pokémon, and the land itself was shaped by them — mountains raised, oceans calmed, storms summoned and laid to rest. The regions you'll travel through each remember a different part of that story.",
+      ]},
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "People and Pokémon have walked alongside each other for so long that nobody is quite sure who first reached out to whom. But somewhere along the way, we learned to ask them for help, and they learned to trust that we would care for them in return.",
+        "That is what a battle is. Not a fight to prove who is stronger. A conversation. A moment in which your Pokémon shows you who they are, and you show them who you want to become.",
+        "I'd like to have that conversation with you. Just once, so you understand the shape of it. Will you battle me?",
+      ]},
+      { type: 'battle', trainerName: 'Cynthia', trainerTitle: 'Champion', team: [443], fieldSize: 1, essenceReward: 120 },
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "Thank you. That was a good conversation — and a better one than you realize.",
+        "Did you feel it? The way your Pokémon waited for you, then trusted you, then moved? That feeling has a name in some of the old stories. The people of Sinnoh called it *the thread*. Every time you and a Pokémon share a moment — a victory, a rescue, even just a long walk — a thread is spun between you. Over time, those threads weave together into something the world itself can feel.",
+        "That's the real reason trainers exist. Not to collect Pokémon. Not even to win. It's to weave.",
+      ]},
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "A word of practical advice before I go. As you travel, you'll earn something the old records call Essence — the residue of all those shared moments. You can trade it at the Dreaming Market for supplies, for new partners not yet born into the waking world, and for the little catalysts that help a Pokémon grow into what it's always been becoming.",
+        "You'll also meet other trainers who want to test themselves against you, and tournaments where the whole world is watching. Don't be afraid of any of it. The thread between you and your team is already strong enough.",
+        "Go on, then. The world is ready for you.",
+      ]},
+      { type: 'info', infoTitle: 'The World Opens Up', infoIcon: '🌅', lines: [
+        "Battles, Collection, Pokédex, Shop — all unlocked.",
+        "Your journey begins.",
+      ]},
+    ],
+    completionReward: { essence: 300 },
+  },
+  {
     id: 'bug-catcher', title: 'Bug Catcher Frenzy', description: 'A bug enthusiast blocks the path!',
-    region: 'Kanto', difficulty: 'beginner', icon: '🐛', requires: ['oak-starters'],
+    region: 'Kanto', difficulty: 'beginner', icon: '🐛', requires: ['cynthia-intro'],
     steps: [
       { type: 'dialogue', speaker: 'Bug Catcher', sprite: sp('bugcatcher'), lines: ["Hey! You stepped into my web of bugs!", "Nobody passes without a battle!"] },
       { type: 'battle', trainerName: 'Bug Catcher', trainerTitle: 'Trainer', team: [10, 13], fieldSize: 1, essenceReward: 80 },
@@ -100,7 +135,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'youngster-joey', title: "Youngster Joey's Dare", description: 'His Rattata is in the top percentage!',
-    region: 'Kanto', difficulty: 'beginner', icon: '👦', requires: ['oak-starters'],
+    region: 'Kanto', difficulty: 'beginner', icon: '👦', requires: ['cynthia-intro'],
     steps: [
       { type: 'dialogue', speaker: 'Youngster Joey', sprite: sp('youngster'), lines: ["Hey! My Rattata is in the top percentage of all Rattata!", "I challenge you to prove it!"] },
       { type: 'battle', trainerName: 'Youngster Joey', trainerTitle: 'Trainer', team: [19, 20], fieldSize: 1, essenceReward: 80 },

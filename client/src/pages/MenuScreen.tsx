@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
 import Avatar from '../components/Avatar';
+import { MENU_UNLOCK_CHAPTER } from '@shared/story-data';
+import { useStoryChapters } from '../hooks/useStoryChapters';
 import './MenuScreen.css';
 
 interface MenuScreenProps {
   playerName: string;
+  playerId: string;
   playerPicture?: string | null;
   essence: number;
   elo: number;
@@ -14,10 +17,12 @@ interface MenuScreenProps {
   notificationCount: number;
 }
 
-export default function MenuScreen({ playerName, playerPicture, essence, elo, collectionSize, itemCount, notificationCount }: MenuScreenProps) {
+export default function MenuScreen({ playerName, playerId, playerPicture, essence, elo, collectionSize, itemCount, notificationCount }: MenuScreenProps) {
   const navigate = useNavigate();
   const [tmShopEnabled, setTmShopEnabled] = useState(false);
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
+  const chapters = useStoryChapters(playerId);
+  const menuUnlocked = chapters.has(MENU_UNLOCK_CHAPTER);
 
   useEffect(() => {
     fetch(BASE_PATH + '/api/settings/features')
@@ -51,10 +56,14 @@ export default function MenuScreen({ playerName, playerPicture, essence, elo, co
       </div>
 
       <div className="menu-scroll">
-        {collectionSize === 0 && (
+        {!menuUnlocked && (
           <div className="menu-starter-prompt">
-            <div className="menu-starter-icon">🧪</div>
-            <div className="menu-starter-text">Visit Professor Oak to receive your first Pokémon!</div>
+            <div className="menu-starter-icon">{collectionSize === 0 ? '🧪' : '🌙'}</div>
+            <div className="menu-starter-text">
+              {collectionSize === 0
+                ? 'Visit Professor Oak to receive your first Pokémon!'
+                : 'A woman in black is waiting at the crossroads. Speak with her to begin your journey.'}
+            </div>
             <button className="menu-tile menu-tile-accent" style={{ width: '100%', maxWidth: 220 }} onClick={() => navigate('/story')}>
               <span className="menu-tile-icon">📜</span>
               <span className="menu-tile-label">Story Mode</span>
@@ -62,7 +71,7 @@ export default function MenuScreen({ playerName, playerPicture, essence, elo, co
           </div>
         )}
 
-        {collectionSize > 0 && (<>
+        {menuUnlocked && (<>
         <div className="menu-section">
           <div className="menu-section-title">Battle</div>
           <div className="menu-grid">
