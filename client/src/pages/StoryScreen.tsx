@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { STORYLINES, STORYLINES_BY_ID, DIFFICULTY_ORDER } from '@shared/story-data';
+import { STORYLINES, STORYLINES_BY_ID, DIFFICULTY_ORDER, starterRegionChapter, STARTER_REGION_PREFIX } from '@shared/story-data';
 import type { Storyline, StoryStep, TeamChoice } from '@shared/story-data';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { openBox, rollTM } from '@shared/boxes';
@@ -72,7 +72,15 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     return done;
   }, [completedSteps]);
 
+  const chosenStarterRegion = useMemo<string | null>(() => {
+    for (const key of completedSteps) {
+      if (key.startsWith(STARTER_REGION_PREFIX)) return key.slice(STARTER_REGION_PREFIX.length);
+    }
+    return null;
+  }, [completedSteps]);
+
   const isUnlocked = useCallback((sl: Storyline) => {
+    if (sl.regionLock && sl.regionLock !== chosenStarterRegion) return false;
     if (sl.requires.length === 0) return true;
     const needed = sl.requiresCount ?? sl.requires.length;
     let met = 0;
@@ -81,7 +89,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       if (req && isStorylineComplete(req)) met++;
     }
     return met >= needed;
-  }, [isStorylineComplete]);
+  }, [isStorylineComplete, chosenStarterRegion]);
 
   const getNextStepIdx = useCallback((sl: Storyline) => {
     for (let i = 0; i < sl.steps.length; i++) {
@@ -278,11 +286,22 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   const handleTeamChoice = useCallback(async (choice: TeamChoice) => {
     if (!activeStoryline) return;
     await onAddPokemon(choice.pokemonIds);
+    if (choice.region) {
+      const key = starterRegionChapter(choice.region);
+      try {
+        await fetch(API + '/api/player/' + playerId + '/story/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chapterId: key }),
+        });
+        setCompletedSteps(prev => new Set([...prev, key]));
+      } catch {}
+    }
     if (activeStoryline.completionReward.essence > 0) {
       onGainEssence(activeStoryline.completionReward.essence);
     }
     setPhase('reward');
-  }, [activeStoryline, onAddPokemon, onGainEssence]);
+  }, [activeStoryline, onAddPokemon, onGainEssence, playerId]);
 
   // ─── Team Choice View ───
   if (phase === 'teamChoice' && activeStoryline?.teamChoices) {
@@ -290,7 +309,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       <div className="story-screen">
         <div className="story-dialogue">
           <div className="story-dialogue-name">Choose your team!</div>
-          <div className="story-dialogue-title-text">Pick a regional starter trio</div>
+          <div className="story-dialogue-title-text">Pick a regional starter trio — this also locks in the gym leaders &amp; Elite Four you'll face later. Choose carefully!</div>
           <div className="story-team-choices">
             {activeStoryline.teamChoices.map((choice, i) => (
               <button key={i} className="story-team-choice" onClick={() => handleTeamChoice(choice)}>
@@ -316,7 +335,12 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
 
   // ─── Hub View ───
   if (phase === 'hub') {
-    const sorted = [...STORYLINES].sort((a, b) => DIFFICULTY_ORDER[a.difficulty] - DIFFICULTY_ORDER[b.difficulty]);
+    const visible = STORYLINES.filter(sl => {
+      // Hide storylines locked to a region the player didn't pick.
+      if (sl.regionLock && chosenStarterRegion && sl.regionLock !== chosenStarterRegion) return false;
+      return true;
+    });
+    const sorted = [...visible].sort((a, b) => DIFFICULTY_ORDER[a.difficulty] - DIFFICULTY_ORDER[b.difficulty]);
     return (
       <div className="story-screen">
         <div className="story-header">

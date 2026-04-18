@@ -20,6 +20,9 @@ export type Difficulty = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 export interface TeamChoice {
   label: string;
   pokemonIds: number[];
+  /** Region lock activated when this team is chosen. Storylines with a
+   *  matching `regionLock` become available; others stay locked forever. */
+  region?: string;
 }
 
 export interface Storyline {
@@ -38,7 +41,13 @@ export interface Storyline {
   };
   /** If set, player chooses one team at completion and receives those pokemon */
   teamChoices?: TeamChoice[];
+  /** If set, only unlocks for players whose chosen starter region matches. */
+  regionLock?: string;
 }
+
+/** Special chapter id used to record the irreversible starter-region pick. */
+export const STARTER_REGION_PREFIX = 'starter-region:';
+export function starterRegionChapter(region: string) { return STARTER_REGION_PREFIX + region; }
 
 function sp(name: string) { return TRAINERS_PATH + '/' + name + '.png'; }
 
@@ -61,11 +70,11 @@ export const STORYLINES: Storyline[] = [
     ],
     completionReward: { essence: 0 },
     teamChoices: [
-      { label: 'Kanto Starters', pokemonIds: [1, 4, 7] },
-      { label: 'Johto Starters', pokemonIds: [152, 155, 158] },
-      { label: 'Hoenn Starters', pokemonIds: [252, 255, 258] },
-      { label: 'Sinnoh Starters', pokemonIds: [387, 390, 393] },
-      { label: 'Unova Starters', pokemonIds: [495, 498, 501] },
+      { label: 'Kanto Starters', pokemonIds: [1, 4, 7], region: 'Kanto' },
+      { label: 'Johto Starters', pokemonIds: [152, 155, 158], region: 'Johto' },
+      { label: 'Hoenn Starters', pokemonIds: [252, 255, 258], region: 'Hoenn' },
+      { label: 'Sinnoh Starters', pokemonIds: [387, 390, 393], region: 'Sinnoh' },
+      { label: 'Unova Starters', pokemonIds: [495, 498, 501], region: 'Unova' },
     ],
   },
 
@@ -114,7 +123,7 @@ export const STORYLINES: Storyline[] = [
   // ───────────── INTERMEDIATE ─────────────
   {
     id: 'kanto-gyms', title: 'Kanto Gym Circuit', description: 'Challenge the Kanto gym leaders in sequence.',
-    region: 'Kanto', difficulty: 'intermediate', icon: '🏛️',
+    region: 'Kanto', difficulty: 'intermediate', icon: '🏛️', regionLock: 'Kanto',
     requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Brock', sprite: sp('brock'), lines: ["Ready for the real challenge?", "The Kanto gyms await — and I'm your first opponent again!"] },
@@ -137,7 +146,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'johto-gyms', title: 'Johto Gym Circuit', description: 'Challenge the Johto gym leaders.',
-    region: 'Johto', difficulty: 'intermediate', icon: '🏛️',
+    region: 'Johto', difficulty: 'intermediate', icon: '🏛️', regionLock: 'Johto',
     requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Falkner', sprite: sp('falkner'), lines: ["Johto's gym leaders are no pushovers.", "I, Falkner, am the first wall you must break."] },
@@ -163,7 +172,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'hoenn-gyms', title: 'Hoenn Gym Circuit', description: 'Challenge the Hoenn gym leaders.',
-    region: 'Hoenn', difficulty: 'intermediate', icon: '🏛️',
+    region: 'Hoenn', difficulty: 'intermediate', icon: '🏛️', regionLock: 'Hoenn',
     requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Roxanne', sprite: sp('roxanne'), lines: ["Welcome to Rustboro Gym.", "I'll teach you that rock-types aren't to be underestimated."] },
@@ -189,7 +198,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'sinnoh-gyms', title: 'Sinnoh Gym Circuit', description: 'Challenge the Sinnoh gym leaders.',
-    region: 'Sinnoh', difficulty: 'intermediate', icon: '🏛️',
+    region: 'Sinnoh', difficulty: 'intermediate', icon: '🏛️', regionLock: 'Sinnoh',
     requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
     steps: [
       { type: 'dialogue', speaker: 'Maylene', sprite: sp('maylene'), lines: ["I'm the Veilstone Gym Leader, Maylene.", "Don't hold back — I won't!"] },
@@ -213,11 +222,38 @@ export const STORYLINES: Storyline[] = [
     ],
     completionReward: { essence: 1000, pack: 'uncommon' },
   },
-
-  // ───────────── ADVANCED ─────────────
+  {
+    id: 'unova-gyms', title: 'Unova Gym Circuit', description: 'Challenge the Unova gym leaders.',
+    region: 'Unova', difficulty: 'intermediate', icon: '🏛️', regionLock: 'Unova',
+    requires: ['may-rival', 'barry-rival', 'bug-catcher', 'youngster-joey'], requiresCount: 2,
+    steps: [
+      { type: 'dialogue', speaker: 'Cilan', sprite: sp('cilan'), lines: ["Welcome to the Striaton Gym restaurant.", "Today's special: a battle with the Triple Gym Leaders!"] },
+      { type: 'battle', trainerName: 'Cilan', trainerTitle: 'Striaton Gym Leader', team: [511, 506, 270], fieldSize: 1, essenceReward: 150 },
+      { type: 'dialogue', speaker: 'Chili', sprite: sp('chili'), lines: ["My turn! Time to fire things up!", "Get ready to feel the heat!"] },
+      { type: 'battle', trainerName: 'Chili', trainerTitle: 'Striaton Gym Leader', team: [513, 58, 322], fieldSize: 1, essenceReward: 150 },
+      { type: 'dialogue', speaker: 'Cress', sprite: sp('cress'), lines: ["My elegant water Pokémon will rinse you out.", "Shall we begin?"] },
+      { type: 'battle', trainerName: 'Cress', trainerTitle: 'Striaton Gym Leader', team: [515, 60, 318], fieldSize: 1, essenceReward: 150 },
+      { type: 'dialogue', speaker: 'Lenora', sprite: sp('lenora'), lines: ["Welcome, dear, to the Nacrene Museum.", "Time for a research project — on you!"] },
+      { type: 'battle', trainerName: 'Lenora', trainerTitle: 'Nacrene Gym Leader', team: [505, 507, 508], fieldSize: 1, essenceReward: 150 },
+      { type: 'dialogue', speaker: 'Burgh', sprite: sp('burgh'), lines: ["Inspiration strikes when I battle.", "Let's create a masterpiece together!"] },
+      { type: 'battle', trainerName: 'Burgh', trainerTitle: 'Castelia Gym Leader', team: [542, 545, 589], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Elesa', sprite: sp('elesa'), lines: ["Welcome to my electrifying gym, model challenger.", "Let's give the audience a show!"] },
+      { type: 'battle', trainerName: 'Elesa', trainerTitle: 'Nimbasa Gym Leader', team: [587, 523, 595], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Clay', sprite: sp('clay'), lines: ["Now, that's a sturdy challenger!", "Let me show you what real ground-shakin' looks like!"] },
+      { type: 'battle', trainerName: 'Clay', trainerTitle: 'Driftveil Gym Leader', team: [536, 552, 530], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Skyla', sprite: sp('skyla'), lines: ["Welcome to Mistralton Gym, the runway!", "Ready to soar? My birds will take you on a flight!"] },
+      { type: 'battle', trainerName: 'Skyla', trainerTitle: 'Mistralton Gym Leader', team: [581, 561, 277], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Brycen', sprite: sp('brycen'), lines: ["Hmph. The cold reveals all weakness.", "Let me chill your spirit."] },
+      { type: 'battle', trainerName: 'Brycen', trainerTitle: 'Icirrus Gym Leader', team: [524, 615, 583], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Drayden', sprite: sp('drayden'), lines: ["Long has Opelucid waited for a worthy challenger.", "Show me the fire of a true dragon trainer!"] },
+      { type: 'battle', trainerName: 'Drayden', trainerTitle: 'Opelucid Gym Leader', team: [621, 612, 635], fieldSize: 2, essenceReward: 250 },
+      { type: 'dialogue', speaker: 'Drayden', sprite: sp('drayden'), lines: ["Marvelous!", "Unova's Pokémon League awaits you, Champion-to-be."] },
+    ],
+    completionReward: { essence: 1000, pack: 'uncommon' },
+  },
   {
     id: 'team-rocket', title: 'Team Rocket Hideout', description: 'Infiltrate Team Rocket and face Giovanni.',
-    region: 'Kanto', difficulty: 'advanced', icon: '🚀',
+    region: 'Kanto', difficulty: 'advanced', icon: '🚀', regionLock: 'Kanto',
     requires: ['kanto-gyms'],
     steps: [
       { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgrunt'), lines: ["Hand over your Pokémon!", "Team Rocket doesn't take no for an answer!"] },
@@ -232,7 +268,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'aqua-magma', title: 'Aqua vs Magma', description: 'Stop both teams from tearing Hoenn apart.',
-    region: 'Hoenn', difficulty: 'advanced', icon: '🌋',
+    region: 'Hoenn', difficulty: 'advanced', icon: '🌋', regionLock: 'Hoenn',
     requires: ['hoenn-gyms'],
     steps: [
       { type: 'dialogue', speaker: 'Aqua Grunt', sprite: sp('aquagrunt'), lines: ["Team Aqua will expand the seas!", "Stand aside or face the tide!"] },
@@ -247,7 +283,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'kanto-e4', title: 'Kanto Elite Four', description: 'Face the strongest trainers in Kanto.',
-    region: 'Kanto', difficulty: 'advanced', icon: '⭐',
+    region: 'Kanto', difficulty: 'advanced', icon: '⭐', regionLock: 'Kanto',
     requires: ['kanto-gyms'],
     steps: [
       { type: 'dialogue', speaker: 'Lance', sprite: sp('lance'), lines: ["The Elite Four awaits.", "Only the strongest may pass."] },
@@ -268,7 +304,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'johto-e4', title: 'Johto Elite Four', description: 'Face the strongest trainers in Johto.',
-    region: 'Johto', difficulty: 'advanced', icon: '⭐',
+    region: 'Johto', difficulty: 'advanced', icon: '⭐', regionLock: 'Johto',
     requires: ['johto-gyms'],
     steps: [
       { type: 'dialogue', speaker: 'Will', sprite: sp('will'), lines: ["Welcome, I am Will.", "I have trained all around the world. My psychic Pokémon are unbeatable!"] },
@@ -287,7 +323,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'hoenn-e4', title: 'Hoenn Elite Four', description: 'Face the strongest trainers in Hoenn.',
-    region: 'Hoenn', difficulty: 'advanced', icon: '⭐',
+    region: 'Hoenn', difficulty: 'advanced', icon: '⭐', regionLock: 'Hoenn',
     requires: ['hoenn-gyms'],
     steps: [
       { type: 'dialogue', speaker: 'Sidney', sprite: sp('sidney'), lines: ["Heh, you got grit.", "I'm Sidney — Dark-type's the name, and I don't play nice."] },
@@ -306,7 +342,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'sinnoh-e4', title: 'Sinnoh Elite Four', description: 'Face the strongest trainers in Sinnoh.',
-    region: 'Sinnoh', difficulty: 'advanced', icon: '⭐',
+    region: 'Sinnoh', difficulty: 'advanced', icon: '⭐', regionLock: 'Sinnoh',
     requires: ['sinnoh-gyms'],
     steps: [
       { type: 'dialogue', speaker: 'Aaron', sprite: sp('aaron'), lines: ["Welcome to the Pokémon League.", "I'm Aaron — Bug-types are way stronger than people think!"] },
@@ -323,12 +359,29 @@ export const STORYLINES: Storyline[] = [
     ],
     completionReward: { essence: 3000, pack: 'epic' },
   },
-
-  // ───────────── EXPERT ─────────────
+  {
+    id: 'unova-e4', title: 'Unova Elite Four', description: 'Face the strongest trainers in Unova.',
+    region: 'Unova', difficulty: 'advanced', icon: '⭐', regionLock: 'Unova',
+    requires: ['unova-gyms'],
+    steps: [
+      { type: 'dialogue', speaker: 'Shauntal', sprite: sp('shauntal'), lines: ["You... are an inspiration for my next novel.", "Let my Ghost-types haunt the page!"] },
+      { type: 'battle', trainerName: 'Shauntal', trainerTitle: 'Elite Four', team: [563, 571, 622, 593], fieldSize: 2, essenceReward: 300 },
+      { type: 'dialogue', speaker: 'Marshal', sprite: sp('marshal'), lines: ["Hyaaaah!", "I'll show you the strength of a true martial artist!"] },
+      { type: 'battle', trainerName: 'Marshal', trainerTitle: 'Elite Four', team: [538, 539, 619, 534], fieldSize: 2, essenceReward: 300 },
+      { type: 'dialogue', speaker: 'Grimsley', sprite: sp('grimsley'), lines: ["Life is a serious game of chance.", "Care to wager on this match?"] },
+      { type: 'battle', trainerName: 'Grimsley', trainerTitle: 'Elite Four', team: [510, 552, 625, 461], fieldSize: 2, essenceReward: 300 },
+      { type: 'dialogue', speaker: 'Caitlin', sprite: sp('caitlin'), lines: ["I have awakened from my slumber for you.", "Show me a battle worth the dream."] },
+      { type: 'battle', trainerName: 'Caitlin', trainerTitle: 'Elite Four', team: [579, 518, 561, 576], fieldSize: 2, essenceReward: 400 },
+      { type: 'dialogue', speaker: 'Alder', sprite: sp('alder'), lines: ["Hahaha! What an incredible run!", "I am Alder, the Champion of Unova. Let's enjoy this!"] },
+      { type: 'battle', trainerName: 'Alder', trainerTitle: 'Champion', team: [637, 631, 615, 553, 612, 596], fieldSize: 3, essenceReward: 500 },
+      { type: 'dialogue', speaker: 'Alder', sprite: sp('alder'), lines: ["A truly fiery battle!", "You are now the Champion of Unova. Wear the title with pride."] },
+    ],
+    completionReward: { essence: 3000, pack: 'epic' },
+  },
   {
     id: 'red-challenge', title: 'The Red Challenge', description: 'Face the legendary trainer atop Mt. Silver.',
-    region: 'Kanto', difficulty: 'expert', icon: '🏔️',
-    requires: ['kanto-e4', 'johto-e4'],
+    region: 'Kanto', difficulty: 'expert', icon: '🏔️', regionLock: 'Kanto',
+    requires: ['kanto-e4'],
     steps: [
       { type: 'dialogue', speaker: 'Blue', sprite: sp('blue'), lines: ["You've beaten the Elite Four in two regions...", "But Red is on another level.", "He doesn't speak. He just battles."] },
       { type: 'battle', trainerName: 'Red', trainerTitle: 'Pokémon Master', team: [25, 143, 131, 3, 6, 9], fieldSize: 3, essenceReward: 1000 },
@@ -338,7 +391,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'cynthia-rematch', title: "Cynthia's Rematch", description: 'The Sinnoh Champion seeks a worthy challenger.',
-    region: 'Sinnoh', difficulty: 'expert', icon: '🌟',
+    region: 'Sinnoh', difficulty: 'expert', icon: '🌟', regionLock: 'Sinnoh',
     requires: ['sinnoh-e4'],
     steps: [
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: ["I've been training since our last battle.", "No holding back this time."] },
