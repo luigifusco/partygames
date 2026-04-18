@@ -86,6 +86,23 @@
 .pkmn-card-tier.tier-epic      { color: var(--color-epic);      background: rgba(197, 123, 255, 0.20); }
 .pkmn-card-tier.tier-legendary { color: var(--color-legendary); background: rgba(255, 179, 71, 0.22); }
 
+.pkmn-card-stars {
+  margin-top: 1px;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  user-select: none;
+}
+.pkmn-card-stars.tier-common    { color: var(--color-common); }
+.pkmn-card-stars.tier-uncommon  { color: var(--color-uncommon); }
+.pkmn-card-stars.tier-rare      { color: var(--color-rare); }
+.pkmn-card-stars.tier-epic      { color: var(--color-epic); }
+.pkmn-card-stars.tier-legendary {
+  color: var(--color-legendary);
+  text-shadow: 0 0 4px rgba(255, 179, 71, 0.7), 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
 .pkmn-card-count {
   position: absolute;
   top: 6px;
