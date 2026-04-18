@@ -1169,7 +1169,7 @@ function advanceTournament(t: Tournament) {
 function distributePrizes(t: Tournament) {
   if (!t.prizes || !Array.isArray(t.prizes) || t.prizes.length === 0) return;
 
-  const givePrize = (playerName: string | undefined, prize: { essence: number; pack?: string; pokemonIds?: number[] }) => {
+  const givePrize = (playerName: string | undefined, prize: { essence: number; pack?: string; pokemonIds?: number[] }, rank: number, totalPlayers: number) => {
     if (!playerName || !prize) return;
     const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
     if (!player) return;
@@ -1198,7 +1198,7 @@ function distributePrizes(t: Tournament) {
     const socketId = connectedPlayers.get(playerName);
     if (socketId) {
       io.to(socketId).emit('tournament:prizeAwarded', {
-        tournamentId: t.id, tournamentName: t.name, prize,
+        tournamentId: t.id, tournamentName: t.name, prize, rank, totalPlayers,
       });
     }
 
@@ -1231,7 +1231,7 @@ function distributePrizes(t: Tournament) {
   for (let i = 0; i < rankings.length; i++) {
     // Use ranked prize if available, otherwise participation (last prize in array)
     const prize = i < t.prizes.length - 1 ? t.prizes[i] : participationPrize;
-    givePrize(rankings[i], prize);
+    givePrize(rankings[i], prize, i + 1, rankings.length);
   }
 }
 

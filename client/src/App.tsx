@@ -18,6 +18,7 @@ import AdminPanel from './pages/AdminPanel';
 import BackgroundsDemo from './pages/BackgroundsDemo';
 import StoryScreen from './pages/StoryScreen';
 import TournamentScreen from './pages/TournamentScreen';
+import TournamentPrizeModal, { type TournamentPrizeAward } from './components/TournamentPrizeModal';
 import { socket } from './socket';
 import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, teachTMOnServer, useBoostOnServer, giveHeldItemOnServer, takeHeldItemOnServer, setFavoriteOnServer, buildInstance, buildItem } from './api';
 import { BASE_PATH } from './config';
@@ -46,6 +47,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [discovered, setDiscovered] = useState<Set<number>>(new Set());
   const [recentPokemonIds, setRecentPokemonIds] = useState<number[]>([]);
+  const [prizeQueue, setPrizeQueue] = useState<TournamentPrizeAward[]>([]);
 
   const spendEssence = (amount: number) => {
     const newEssence = essence - amount;
@@ -296,10 +298,18 @@ export default function App() {
       window.location.reload();
     };
 
+    const onPrizeAwarded = (award: TournamentPrizeAward) => {
+      if (!award) return;
+      setPrizeQueue((prev) => [...prev, award]);
+      // Update essence instantly so the UI reflects the award without needing a reload.
+      if (award.prize?.essence) setEssence((e) => e + award.prize.essence);
+    };
+
     socket.on('battle:challenged', onBattleChallenged);
     socket.on('trade:incoming', onTradeIncoming);
     socket.on('tournament:created', onTournamentCreated);
     socket.on('tournament:matchReady', onTournamentMatchReady);
+    socket.on('tournament:prizeAwarded', onPrizeAwarded);
     socket.on('battle:bondUpdate', onBondUpdate);
     socket.on('player:reset', onPlayerReset);
 
@@ -308,6 +318,7 @@ export default function App() {
       socket.off('trade:incoming', onTradeIncoming);
       socket.off('tournament:created', onTournamentCreated);
       socket.off('tournament:matchReady', onTournamentMatchReady);
+      socket.off('tournament:prizeAwarded', onPrizeAwarded);
       socket.off('battle:bondUpdate', onBondUpdate);
       socket.off('player:reset', onPlayerReset);
     };
@@ -359,24 +370,42 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/play" element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} />} />
-      <Route path="/admin" element={<AdminPanel />} />
-      <Route path="/notifications" element={<NotificationsScreen notifications={notifications} onAccept={handleAcceptNotification} onDismiss={dismissNotification} />} />
-      <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} />} />
-      <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} playerId={player.id} />} />
-      <Route path="/pokedex" element={<PokedexScreen discovered={discovered} />} />
-      <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
-      <Route path="/shop" element={<ShopScreen essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
-      <Route path="/items" element={<ItemsScreen items={items} collection={collection} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} />} />
-      <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
-      <Route path="/battle" element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
-      <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
-      <Route path="/story" element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
-      <Route path="/tournaments" element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} />} />
-      <Route path="/tv" element={<TVView />} />
-      <Route path="/bg-demo" element={<BackgroundsDemo />} />
-      <Route path="*" element={<Navigate to="/play" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/play" element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/notifications" element={<NotificationsScreen notifications={notifications} onAccept={handleAcceptNotification} onDismiss={dismissNotification} />} />
+        <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} />} />
+        <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} playerId={player.id} />} />
+        <Route path="/pokedex" element={<PokedexScreen discovered={discovered} />} />
+        <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
+        <Route path="/shop" element={<ShopScreen essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
+        <Route path="/items" element={<ItemsScreen items={items} collection={collection} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} />} />
+        <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
+        <Route path="/battle" element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
+        <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
+        <Route path="/story" element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
+        <Route path="/tournaments" element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} />} />
+        <Route path="/tv" element={<TVView />} />
+        <Route path="/bg-demo" element={<BackgroundsDemo />} />
+        <Route path="*" element={<Navigate to="/play" replace />} />
+      </Routes>
+      {prizeQueue.length > 0 && (
+        <TournamentPrizeModal
+          award={prizeQueue[0]}
+          onClose={() => {
+            const award = prizeQueue[0];
+            const hasPokemon = !!award?.prize?.pokemonIds && award.prize.pokemonIds.length > 0;
+            setPrizeQueue((prev) => prev.slice(1));
+            // Awarded Pokémon were inserted server-side but aren't yet in
+            // our local collection — reload to re-fetch once all prize
+            // modals have been dismissed.
+            if (hasPokemon && prizeQueue.length === 1) {
+              setTimeout(() => window.location.reload(), 250);
+            }
+          }}
+        />
+      )}
+    </>
   );
 }
