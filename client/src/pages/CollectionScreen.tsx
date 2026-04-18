@@ -5,6 +5,8 @@ import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import { evolveGate } from '@shared/evolution';
 import PokemonCard from '../components/PokemonCard';
+import ShardConfirmModal from '../components/ShardConfirmModal';
+import EvolvePreviewModal from '../components/EvolvePreviewModal';
 import './CollectionScreen.css';
 
 const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary'];
@@ -30,6 +32,7 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
   const [filter, setFilter] = useState<BoxTier | 'all'>('all');
   const [shardMode, setShardMode] = useState(false);
   const [shardSelected, setShardSelected] = useState<Set<string>>(new Set());
+  const [shardPreview, setShardPreview] = useState<PokemonInstance[] | null>(null);
 
   // Count tokens per pokemon id
   const tokenCounts = new Map<number, number>();
@@ -52,11 +55,7 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
   const startEvolve = (inst: PokemonInstance) => {
     const targets = getEvoTargets(inst.pokemon);
     if (targets.length === 0) return;
-    if (targets.length === 1) {
-      doEvolve(inst, targets[0]);
-    } else {
-      setEvoPicker({ inst, targets });
-    }
+    setEvoPicker({ inst, targets });
   };
 
   const doEvolve = (inst: PokemonInstance, target: Pokemon) => {
@@ -79,7 +78,14 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
 
   const confirmBulkShard = () => {
     const toShard = collection.filter((c) => shardSelected.has(c.instanceId));
-    for (const inst of toShard) onShard(inst);
+    if (toShard.length === 0) return;
+    setShardPreview(toShard);
+  };
+
+  const doBulkShard = () => {
+    if (!shardPreview) return;
+    for (const inst of shardPreview) onShard(inst);
+    setShardPreview(null);
     setShardSelected(new Set());
     setShardMode(false);
   };
@@ -173,20 +179,23 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
       )}
 
       {evoPicker && (
-        <div className="evolve-overlay" onClick={(e) => e.target === e.currentTarget && setEvoPicker(null)}>
-          <div className="evo-picker">
-            <div className="evo-picker-title">Evolve {evoPicker.inst.pokemon.name} into...</div>
-            <div className="evo-picker-options">
-              {evoPicker.targets.map((target) => (
-                <button key={target.id} className="evo-picker-option" onClick={() => doEvolve(evoPicker.inst, target)}>
-                  <img src={target.sprite} alt={target.name} />
-                  <span>{target.name}</span>
-                </button>
-              ))}
-            </div>
-            <button className="evo-picker-cancel" onClick={() => setEvoPicker(null)}>Cancel</button>
-          </div>
-        </div>
+        <EvolvePreviewModal
+          instance={evoPicker.inst}
+          targets={evoPicker.targets}
+          onCancel={() => setEvoPicker(null)}
+          onConfirm={(id) => {
+            const target = evoPicker.targets.find((t) => t.id === id);
+            if (target) doEvolve(evoPicker.inst, target);
+          }}
+        />
+      )}
+
+      {shardPreview && (
+        <ShardConfirmModal
+          instances={shardPreview}
+          onCancel={() => setShardPreview(null)}
+          onConfirm={doBulkShard}
+        />
       )}
 
       {evolving && (

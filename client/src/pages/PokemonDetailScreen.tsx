@@ -7,6 +7,8 @@ import { NATURE_BY_NAME, calcStat, STAT_LABELS } from '@shared/natures';
 import { getHeldItemSprite, getHeldItemName, HELD_ITEMS_BY_ID } from '@shared/held-item-data';
 import { evolveGate } from '@shared/evolution';
 import RarityStars from '../components/RarityStars';
+import ShardConfirmModal from '../components/ShardConfirmModal';
+import EvolvePreviewModal from '../components/EvolvePreviewModal';
 import './PokemonDetailScreen.css';
 
 interface PokemonDetailScreenProps {
@@ -31,7 +33,7 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const { idx } = useParams();
   const navigate = useNavigate();
   const [shardConfirm, setShardConfirm] = useState(false);
-  const [evoPicker, setEvoPicker] = useState(false);
+  const [evoPreview, setEvoPreview] = useState(false);
 
   const index = parseInt(idx ?? '', 10);
   const inst = collection[index];
@@ -69,7 +71,7 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   };
 
   const handleEvolve = (targetId: number) => {
-    setEvoPicker(false);
+    setEvoPreview(false);
     onEvolve(inst, targetId);
   };
 
@@ -79,42 +81,36 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
         <button className="detail-back" onClick={() => navigate('/collection')}>← Back</button>
         <h2>#{pokemon.id}</h2>
         <div className="detail-header-actions">
-          {canEvolve && evoTargets.length === 1 && (
-            <button className="detail-header-btn detail-evolve-btn" onClick={() => handleEvolve(evoTargets[0].id)}>Evolve</button>
+          {canEvolve && (
+            <button className="detail-header-btn detail-evolve-btn" onClick={() => setEvoPreview(true)}>Evolve</button>
           )}
-          {canEvolve && evoTargets.length > 1 && (
-            <button className="detail-header-btn detail-evolve-btn" onClick={() => setEvoPicker(!evoPicker)}>Evolve</button>
-          )}
-          {!shardConfirm ? (
-            <>
-              <button
-                className={`detail-header-btn detail-favorite-btn ${inst.favorite ? 'active' : ''}`}
-                onClick={() => onToggleFavorite(inst)}
-                title={inst.favorite ? 'Unfavorite' : 'Mark as favorite'}
-                aria-label={inst.favorite ? 'Unfavorite' : 'Mark as favorite'}
-              >
-                {inst.favorite ? '★' : '☆'}
-              </button>
-              <button className="detail-header-btn detail-shard-btn" onClick={() => setShardConfirm(true)}>Shard</button>
-            </>
-          ) : (
-            <button className="detail-header-btn detail-shard-yes" onClick={handleShard}>Confirm</button>
-          )}
-          {shardConfirm && (
-            <button className="detail-header-btn detail-shard-no" onClick={() => setShardConfirm(false)}>✕</button>
-          )}
+          <button
+            className={`detail-header-btn detail-favorite-btn ${inst.favorite ? 'active' : ''}`}
+            onClick={() => onToggleFavorite(inst)}
+            title={inst.favorite ? 'Unfavorite' : 'Mark as favorite'}
+            aria-label={inst.favorite ? 'Unfavorite' : 'Mark as favorite'}
+          >
+            {inst.favorite ? '★' : '☆'}
+          </button>
+          <button className="detail-header-btn detail-shard-btn" onClick={() => setShardConfirm(true)}>Shard</button>
         </div>
       </div>
 
-      {evoPicker && canEvolve && (
-        <div className="detail-evo-bar">
-          {evoTargets.map((t) => (
-            <button key={t.id} className="detail-evo-option" onClick={() => handleEvolve(t.id)}>
-              <img src={t.sprite} alt={t.name} className="detail-evo-sprite" />
-              <span>{t.name}</span>
-            </button>
-          ))}
-        </div>
+      {shardConfirm && (
+        <ShardConfirmModal
+          instances={[inst]}
+          onCancel={() => setShardConfirm(false)}
+          onConfirm={() => { setShardConfirm(false); handleShard(); }}
+        />
+      )}
+
+      {evoPreview && canEvolve && (
+        <EvolvePreviewModal
+          instance={inst}
+          targets={evoTargets}
+          onCancel={() => setEvoPreview(false)}
+          onConfirm={(id) => handleEvolve(id)}
+        />
       )}
 
       <div className="detail-scroll">
