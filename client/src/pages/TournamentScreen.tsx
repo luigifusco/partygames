@@ -4,6 +4,7 @@ import { socket } from '../socket';
 import { BASE_PATH } from '../config';
 import BattleScene from '../components/BattleScene';
 import TeamSelectGrid from '../components/TeamSelectGrid';
+import Avatar from '../components/Avatar';
 import type { BattleSnapshot } from '@shared/battle-types';
 import type { PokemonInstance } from '@shared/types';
 import type { Tournament, TournamentSummary, TournamentMatch, FrozenPokemon } from '@shared/tournament-types';
@@ -35,6 +36,18 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [battleFinished, setBattleFinished] = useState(false);
   const [viewingTeamOf, setViewingTeamOf] = useState<string | null>(null);
+  const [playerPictures, setPlayerPictures] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    fetch(API + '/api/players')
+      .then(r => r.json())
+      .then((rows: any[]) => {
+        const map: Record<string, string | null> = {};
+        for (const r of rows ?? []) map[r.name] = r.picture ?? null;
+        setPlayerPictures(map);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchList = useCallback(async () => {
     try {
@@ -336,14 +349,24 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
               )}
               <div className="ds-section-title">Participants</div>
               <div className="tournament-participants">
-                {t.participants.map(p => (
-                  <span key={p} className={'tournament-participant' + (t.fixedTeam && t.frozenTeams[p] ? ' team-ready' : '')}>
-                    {p}{t.fixedTeam && t.frozenTeams[p] ? ' ·' : ''}
-                    {t.publicTeams && t.frozenTeams[p] && (
-                      <button className="tournament-view-team-sm" onClick={() => setViewingTeamOf(p)}>View</button>
-                    )}
-                  </span>
-                ))}
+                {t.participants.map(p => {
+                  const ready = t.fixedTeam && !!t.frozenTeams[p];
+                  const canViewTeam = t.publicTeams && !!t.frozenTeams[p];
+                  return (
+                    <div key={p} className={'tournament-participant-card' + (ready ? ' team-ready' : '') + (p === playerName ? ' is-me' : '')}>
+                      <Avatar name={p} picture={playerPictures[p] ?? null} size="md" className="tournament-participant-avatar" />
+                      <div className="tournament-participant-info">
+                        <div className="tournament-participant-name">{p}{p === playerName ? ' (you)' : ''}</div>
+                        <div className="tournament-participant-status">
+                          {t.fixedTeam && (ready ? <span className="tournament-participant-badge ready">✓ Team ready</span> : <span className="tournament-participant-badge waiting">Team pending</span>)}
+                          {canViewTeam && (
+                            <button className="tournament-view-team-sm" onClick={() => setViewingTeamOf(p)}>View team</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
