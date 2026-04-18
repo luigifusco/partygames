@@ -23,6 +23,7 @@ import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToSer
 import { BASE_PATH } from './config';
 import { STARTING_ESSENCE } from '@shared/essence';
 import { STARTING_ELO } from '@shared/elo';
+import { evolveGate } from '@shared/evolution';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { MAX_IV } from '@shared/boost-data';
 import type { StatKey } from '@shared/boost-data';
@@ -82,26 +83,37 @@ export default function App() {
     const evolved = POKEMON_BY_ID[targetId];
     if (!evolved) return;
 
-    // Consume 3 tokens of the same pokemon
+    // Determine which gate is satisfied (bond or tokens).
     const tokenId = String(pokemon.id);
-    const tokensToRemove = items.filter((i) => i.itemType === 'token' && i.itemData === tokenId).slice(0, 3);
-    if (tokensToRemove.length < 3) return;
+    const matchingTokens = items.filter((i) => i.itemType === 'token' && i.itemData === tokenId);
+    const gate = evolveGate({
+      bondXp: instance.bondXp ?? 0,
+      tokens: matchingTokens.length,
+      targetTier: evolved.tier,
+    });
+    if (!gate.canEvolve) return;
 
-    // Remove tokens from local state
-    const removedIds = new Set(tokensToRemove.map((t) => t.id));
-    setItems((prev) => prev.filter((i) => !removedIds.has(i.id)));
+    // Prefer the bond path when available (saves the player's tokens).
+    const consumeTokens = !gate.bondMet && gate.tokensMet;
+    if (consumeTokens) {
+      const tokensToRemove = matchingTokens.slice(0, gate.tokensNeeded);
+      const removedIds = new Set(tokensToRemove.map((t) => t.id));
+      setItems((prev) => prev.filter((i) => !removedIds.has(i.id)));
+      if (player) {
+        removeItemsFromServer(player.id, 'token', tokenId, gate.tokensNeeded);
+      }
+    }
 
-    // Evolve the pokemon in-place (keep IVs, nature)
+    // Evolve the pokemon in-place (keep IVs, nature). bondXp resets server-side.
     setCollection((c) =>
       c.map((inst) =>
         inst.instanceId === instance.instanceId
-          ? { ...inst, pokemon: evolved }
+          ? { ...inst, pokemon: evolved, bondXp: 0 }
           : inst
       )
     );
 
     if (player) {
-      removeItemsFromServer(player.id, 'token', tokenId, 3);
       evolvePokemonOnServer(player.id, instance.instanceId, evolved.id);
     }
   };
