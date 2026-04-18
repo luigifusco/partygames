@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
 import Avatar from '../components/Avatar';
 import { MENU_UNLOCK_CHAPTER } from '@shared/story-data';
-import { useStoryChapters } from '../hooks/useStoryChapters';
+import { useStoryChaptersStatus } from '../hooks/useStoryChapters';
 import './MenuScreen.css';
 
 interface MenuScreenProps {
@@ -21,7 +21,7 @@ export default function MenuScreen({ playerName, playerId, playerPicture, essenc
   const navigate = useNavigate();
   const [tmShopEnabled, setTmShopEnabled] = useState(false);
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
-  const chapters = useStoryChapters(playerId);
+  const { chapters, loaded: chaptersLoaded } = useStoryChaptersStatus(playerId);
   const menuUnlocked = chapters.has(MENU_UNLOCK_CHAPTER);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function MenuScreen({ playerName, playerId, playerPicture, essenc
       </div>
 
       <div className="menu-scroll">
-        {!menuUnlocked && (
+        {chaptersLoaded && !menuUnlocked && (
           <div className="menu-starter-prompt">
             <div className="menu-starter-icon">{collectionSize === 0 ? '🧪' : '🌙'}</div>
             <div className="menu-starter-text">
