@@ -21,6 +21,7 @@ export default function BattleConfigScreen({ onConfirm, onBack, showDraftOption 
   const [fieldSize, setFieldSize] = useState<1 | 2 | 3>(DEFAULT_BATTLE_CONFIG.fieldSize);
   const [totalPokemon, setTotalPokemon] = useState<number>(DEFAULT_BATTLE_CONFIG.totalPokemon);
   const [selectionMode, setSelectionMode] = useState<'blind' | 'draft'>(DEFAULT_BATTLE_CONFIG.selectionMode);
+  const [allowLegendaries, setAllowLegendaries] = useState<boolean>(DEFAULT_BATTLE_CONFIG.allowLegendaries ?? true);
   const [useOwnPokemon, setUseOwnPokemon] = useState(false);
 
   const validTotals = VALID_TOTALS[fieldSize];
@@ -115,9 +116,27 @@ export default function BattleConfigScreen({ onConfirm, onBack, showDraftOption 
           </div>
         )}
 
+        <div className="bconfig-group">
+          <div className="bconfig-label">Legendary clause</div>
+          <div className="bconfig-options">
+            <button
+              className={`bconfig-option ${allowLegendaries ? 'active' : ''}`}
+              onClick={() => setAllowLegendaries(true)}
+            >
+              Allow
+            </button>
+            <button
+              className={`bconfig-option ${!allowLegendaries ? 'active' : ''}`}
+              onClick={() => setAllowLegendaries(false)}
+            >
+              Ban Legendaries
+            </button>
+          </div>
+        </div>
+
         <button
           className="bconfig-start"
-          onClick={() => onConfirm({ fieldSize, totalPokemon, selectionMode, ...(useOwnPokemon ? { useOwnPokemon: true } : {}) })}
+          onClick={() => onConfirm({ fieldSize, totalPokemon, selectionMode, allowLegendaries, ...(useOwnPokemon ? { useOwnPokemon: true } : {}) })}
         >
           Continue →
         </button>

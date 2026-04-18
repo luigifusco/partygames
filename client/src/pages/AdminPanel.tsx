@@ -141,6 +141,7 @@ export default function AdminPanel() {
   const [tournamentMatchTime, setTournamentMatchTime] = useState(300);
   const [tournamentFixedTeam, setTournamentFixedTeam] = useState(false);
   const [tournamentPublicTeams, setTournamentPublicTeams] = useState(false);
+  const [tournamentAllowLegendaries, setTournamentAllowLegendaries] = useState(true);
   const [tournamentPrizes, setTournamentPrizes] = useState<{ essence: number; pack: string; pokemonIds: number[] }[]>([]);
   const [showCreateTournament, setShowCreateTournament] = useState(false);
   const [pokemonPickerFor, setPokemonPickerFor] = useState<number | null>(null);
@@ -199,6 +200,7 @@ export default function AdminPanel() {
         matchTimeLimit: tournamentMatchTime,
         fixedTeam: tournamentFixedTeam,
         publicTeams: tournamentPublicTeams,
+        allowLegendaries: tournamentAllowLegendaries,
         prizes,
       }),
     });
@@ -334,6 +336,20 @@ export default function AdminPanel() {
                   type="checkbox"
                   checked={tournamentPublicTeams}
                   onChange={e => setTournamentPublicTeams(e.target.checked)}
+                />
+                <span className="ds-toggle-slider" />
+              </label>
+            </div>
+            <div className="admin-field-row">
+              <div className="admin-field-label">
+                Allow legendaries
+                <span className="admin-field-desc">Off = legendary clause (no legendaries)</span>
+              </div>
+              <label className="ds-toggle admin-field-control">
+                <input
+                  type="checkbox"
+                  checked={tournamentAllowLegendaries}
+                  onChange={e => setTournamentAllowLegendaries(e.target.checked)}
                 />
                 <span className="ds-toggle-slider" />
               </label>

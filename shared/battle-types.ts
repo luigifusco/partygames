@@ -4,12 +4,15 @@ export interface BattleConfig {
   fieldSize: 1 | 2 | 3;
   totalPokemon: number;
   selectionMode: 'blind' | 'draft';
+  /** When false, legendary-tier Pokémon are banned from the team. Default true. */
+  allowLegendaries?: boolean;
 }
 
 export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
   fieldSize: 1,
   totalPokemon: 3,
   selectionMode: 'blind',
+  allowLegendaries: true,
 };
 
 export interface BattlePokemonState {

@@ -52,6 +52,8 @@ export interface Tournament {
   createdAt: number;
   fixedTeam: boolean;
   publicTeams: boolean;
+  /** When false, legendary-tier Pokémon are banned from teams in this tournament. */
+  allowLegendaries: boolean;
   frozenTeams: Record<string, FrozenPokemon[]>;
   prizes: TournamentPrizes;
 }
@@ -68,5 +70,6 @@ export interface TournamentSummary {
   winner?: string;
   fixedTeam: boolean;
   publicTeams: boolean;
+  allowLegendaries: boolean;
   prizes: TournamentPrizes;
 }

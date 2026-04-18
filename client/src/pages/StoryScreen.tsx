@@ -455,6 +455,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   // ─── Team Select ───
   if (phase === 'select' && activeStoryline && step?.type === 'battle') {
     const teamSize = step.team?.length ?? 1;
+    const trainerHasLegendary = (step.team ?? []).some((id) => POKEMON_BY_ID[id]?.tier === 'legendary');
     const toggleSelect = (idx: number, character?: string | null) => {
       const i = selected.indexOf(idx);
       if (i !== -1) {
@@ -475,6 +476,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
         submitLabel={loading ? 'Loading...' : 'Battle!'}
         enableCharacterPick={completedSteps.has(CHARACTER_UNLOCK_CHAPTER)}
         selectedCharacters={selectedCharacters}
+        disallowLegendaries={!trainerHasLegendary}
         onBack={() => { setPhase('hub'); setActiveStoryline(null); }}
         title="Choose your team"
         opponent={{

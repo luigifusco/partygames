@@ -40,6 +40,8 @@ interface TeamSelectGridProps {
   enableCharacterPick?: boolean;
   /** Per-selected-index character override (aligned with `selected`). Shown in the chosen bar. */
   selectedCharacters?: (string | null | undefined)[];
+  /** When true, legendary-tier Pokémon cannot be selected. Selected ones are auto-removed. */
+  disallowLegendaries?: boolean;
 }
 
 export default function TeamSelectGrid({
@@ -59,6 +61,7 @@ export default function TeamSelectGrid({
   recentPokemonIds,
   enableCharacterPick = false,
   selectedCharacters,
+  disallowLegendaries = false,
 }: TeamSelectGridProps) {
   const [pendingPick, setPendingPick] = useState<number | null>(null);
 
@@ -76,6 +79,7 @@ export default function TeamSelectGrid({
   const handleCardClick = (idx: number) => {
     if (disabled) return;
     if (disabledIndices?.has(idx)) return;
+    if (disallowLegendaries && instances[idx].pokemon.tier === 'legendary' && !selected.includes(idx)) return;
     const isSelected = selected.includes(idx);
     if (isSelected) {
       onToggle(idx);
@@ -188,14 +192,17 @@ export default function TeamSelectGrid({
             const moves = getEffectiveMoves(inst);
             const isSelected = selected.includes(idx);
             const isDisabled = disabledIndices?.has(idx) ?? false;
+            const isLegendaryBanned = disallowLegendaries && p.tier === 'legendary' && !isSelected;
             const isRecent = recentSet.has(p.id);
             const isFavorite = !!inst.favorite;
             return (
               <div
                 key={idx}
-                className={`team-select-card ${isSelected ? 'selected' : ''} ${isDisabled ? 'drafted' : ''} ${isRecent ? 'recent' : ''} ${isFavorite ? 'favorite' : ''}`}
+                className={`team-select-card ${isSelected ? 'selected' : ''} ${isDisabled || isLegendaryBanned ? 'drafted' : ''} ${isRecent ? 'recent' : ''} ${isFavorite ? 'favorite' : ''}`}
                 onClick={() => handleCardClick(idx)}
+                title={isLegendaryBanned ? 'Legendary clause: banned' : undefined}
               >
+                {isLegendaryBanned && <span className="favorite-badge" style={{ background: '#555', color: '#fff' }} title="Legendaries banned">🚫</span>}
                 {isFavorite && <span className="favorite-badge" title="Favorite">★</span>}
                 {isRecent && !isFavorite && <span className="recent-badge">★</span>}
                 {inst.heldItem && (

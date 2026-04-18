@@ -234,6 +234,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
         submitLabel="Lock Team"
         enableCharacterPick={characterPickUnlocked}
         selectedCharacters={selectedCharacters}
+        disallowLegendaries={activeTournament.allowLegendaries === false}
         onBack={() => setPhase('detail')}
         title="Lock Tournament Team"
       />
@@ -263,6 +264,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
         submitLabel="Lock In!"
         enableCharacterPick={characterPickUnlocked}
         selectedCharacters={selectedCharacters}
+        disallowLegendaries={activeTournament.allowLegendaries === false}
         onBack={() => setPhase('detail')}
         title="Tournament Match"
       />
@@ -290,6 +292,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
             <span>{t.participants.length} players</span>
             {t.fixedTeam && <span className="ds-badge ds-badge-gold">Fixed Team</span>}
             {t.publicTeams && <span className="ds-badge ds-badge-accent">Public Teams</span>}
+            {t.allowLegendaries === false && <span className="ds-badge ds-badge-gold">No Legendaries</span>}
           </div>
 
           {t.prizes && Array.isArray(t.prizes) && t.prizes.length > 0 && (

@@ -920,7 +920,7 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
 
 // Track challenges: Map<challengerName, targetName>
 const pendingChallenges = new Map<string, string>();
-const pendingChallengeConfigs = new Map<string, { fieldSize: number; totalPokemon: number }>();
+const pendingChallengeConfigs = new Map<string, { fieldSize: number; totalPokemon: number; allowLegendaries: boolean }>();
 // Track connected players: Map<playerName, socketId>
 const connectedPlayers = new Map<string, string>();
 // Track active battles: Map<battleId, battle state>
@@ -932,6 +932,7 @@ interface ActiveBattle {
   player2Team: number[] | null;
   fieldSize: number;
   totalPokemon: number;
+  allowLegendaries: boolean;
   player1HeldItems?: any;
   player2HeldItems?: any;
   player1Moves?: any;
@@ -968,7 +969,9 @@ function loadTournament(id: string): Tournament | null {
     status: row.status, registrationEnd: row.registration_end, matchTimeLimit: row.match_time_limit,
     bracket: JSON.parse(row.bracket), participants: JSON.parse(row.participants),
     currentRound: row.current_round, winner: row.winner ?? undefined, createdAt: new Date(row.created_at).getTime(),
-    fixedTeam: !!row.fixed_team, publicTeams: !!row.public_teams, frozenTeams: JSON.parse(row.frozen_teams || '{}'),
+    fixedTeam: !!row.fixed_team, publicTeams: !!row.public_teams,
+    allowLegendaries: row.allow_legendaries == null ? true : !!row.allow_legendaries,
+    frozenTeams: JSON.parse(row.frozen_teams || '{}'),
     prizes: JSON.parse(row.prizes || '{}'), runnerUp: row.runner_up ?? undefined,
   };
 }
@@ -983,6 +986,7 @@ function broadcastTournamentUpdate(t: Tournament) {
     id: t.id, name: t.name, status: t.status, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon,
     participantCount: t.participants.length, registrationEnd: t.registrationEnd,
     currentRound: t.currentRound, winner: t.winner, fixedTeam: t.fixedTeam, publicTeams: t.publicTeams,
+    allowLegendaries: t.allowLegendaries,
     prizes: t.prizes,
   };
   io.emit('tournament:updated', summary);
@@ -1239,6 +1243,7 @@ app.get(`${BASE_PATH}/api/tournaments`, (_req, res) => {
     id: r.id, name: r.name, status: r.status, fieldSize: r.field_size, totalPokemon: r.total_pokemon,
     participantCount: JSON.parse(r.participants).length, registrationEnd: r.registration_end,
     currentRound: r.current_round, winner: r.winner ?? undefined, fixedTeam: !!r.fixed_team, publicTeams: !!r.public_teams,
+    allowLegendaries: r.allow_legendaries == null ? true : !!r.allow_legendaries,
     prizes: JSON.parse(r.prizes || '{}'),
   }));
   return res.json({ tournaments: list });
@@ -1251,13 +1256,14 @@ app.get(`${BASE_PATH}/api/tournament/:id`, (req, res) => {
 });
 
 app.post(`${BASE_PATH}/api/admin/tournament/create`, (req, res) => {
-  const { name, fieldSize, totalPokemon, registrationMinutes, matchTimeLimit, fixedTeam, publicTeams, prizes } = req.body;
+  const { name, fieldSize, totalPokemon, registrationMinutes, matchTimeLimit, fixedTeam, publicTeams, allowLegendaries, prizes } = req.body;
   const id = uuidv4();
   const regEnd = Date.now() + (registrationMinutes ?? 10) * 60 * 1000;
   const finalPrizes = prizes ?? DEFAULT_PRIZES;
+  const allowLeg = allowLegendaries === false ? 0 : 1;
   db.prepare(
-    'INSERT INTO tournaments (id, name, field_size, total_pokemon, registration_end, match_time_limit, fixed_team, public_teams, prizes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, name ?? 'Tournament', fieldSize ?? 1, totalPokemon ?? 3, regEnd, matchTimeLimit ?? 300, fixedTeam ? 1 : 0, publicTeams ? 1 : 0, JSON.stringify(finalPrizes));
+    'INSERT INTO tournaments (id, name, field_size, total_pokemon, registration_end, match_time_limit, fixed_team, public_teams, allow_legendaries, prizes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, name ?? 'Tournament', fieldSize ?? 1, totalPokemon ?? 3, regEnd, matchTimeLimit ?? 300, fixedTeam ? 1 : 0, publicTeams ? 1 : 0, allowLeg, JSON.stringify(finalPrizes));
   const t = loadTournament(id)!;
   // Broadcast to all connected players
   io.emit('tournament:created', { id: t.id, name: t.name, registrationEnd: t.registrationEnd, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon });
@@ -1304,13 +1310,14 @@ io.on('connection', (socket) => {
     console.log(`Player identified: ${name}`);
   });
 
-  socket.on('battle:challenge', (data: string | { target: string; fieldSize?: number; totalPokemon?: number }) => {
+  socket.on('battle:challenge', (data: string | { target: string; fieldSize?: number; totalPokemon?: number; allowLegendaries?: boolean }) => {
     if (!playerName) return;
     const targetName = typeof data === 'string' ? data : data.target;
     const fieldSize = (typeof data === 'object' ? data.fieldSize : undefined) ?? 3;
     const totalPokemon = (typeof data === 'object' ? data.totalPokemon : undefined) ?? 3;
+    const allowLegendaries = typeof data === 'object' && data.allowLegendaries === false ? false : true;
     pendingChallenges.set(playerName, targetName);
-    pendingChallengeConfigs.set(playerName, { fieldSize, totalPokemon });
+    pendingChallengeConfigs.set(playerName, { fieldSize, totalPokemon, allowLegendaries });
     console.log(`${playerName} challenges ${targetName}`);
 
     // Check if there's a mutual challenge
@@ -1320,7 +1327,7 @@ io.on('connection', (socket) => {
       pendingChallenges.delete(playerName);
       pendingChallenges.delete(targetName);
 
-      const config = pendingChallengeConfigs.get(targetName) ?? { fieldSize: 3, totalPokemon: 3 };
+      const config = pendingChallengeConfigs.get(targetName) ?? { fieldSize: 3, totalPokemon: 3, allowLegendaries: true };
       pendingChallengeConfigs.delete(playerName);
       pendingChallengeConfigs.delete(targetName);
       const battleId = uuidv4();
@@ -1332,14 +1339,16 @@ io.on('connection', (socket) => {
         player2Team: null,
         fieldSize: config.fieldSize,
         totalPokemon: config.totalPokemon,
+        allowLegendaries: config.allowLegendaries,
       };
       activeBattles.set(battleId, battle);
 
       // Notify both players
       const socket1 = connectedPlayers.get(playerName);
       const socket2 = connectedPlayers.get(targetName);
-      if (socket1) io.to(socket1).emit('battle:matched', { battleId, opponent: targetName, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
-      if (socket2) io.to(socket2).emit('battle:matched', { battleId, opponent: playerName, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
+      const matchedPayload = { battleId, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon, allowLegendaries: config.allowLegendaries };
+      if (socket1) io.to(socket1).emit('battle:matched', { ...matchedPayload, opponent: targetName });
+      if (socket2) io.to(socket2).emit('battle:matched', { ...matchedPayload, opponent: playerName });
       console.log(`Battle matched: ${playerName} vs ${targetName} (${battleId})`);
     } else {
       // Notify challenger they're waiting
@@ -1361,6 +1370,12 @@ io.on('connection', (socket) => {
     if (!playerName) return;
     const battle = activeBattles.get(battleId);
     if (!battle) return;
+
+    // Enforce legendary clause: silently drop illegal teams so clients can't bypass.
+    if (!battle.allowLegendaries && Array.isArray(team) && team.some((id) => POKEMON_BY_ID[id]?.tier === 'legendary')) {
+      socket.emit('battle:invalidTeam', { reason: 'legendaries-banned' });
+      return;
+    }
 
     if (battle.player1 === playerName) { battle.player1Team = team; battle.player1InstanceIds = instanceIds ?? []; (battle as any).player1HeldItems = heldItems ?? []; (battle as any).player1Moves = moves ?? []; (battle as any).player1Abilities = abilities ?? []; (battle as any).player1Characters = characters ?? []; }
     else if (battle.player2 === playerName) { battle.player2Team = team; battle.player2InstanceIds = instanceIds ?? []; (battle as any).player2HeldItems = heldItems ?? []; (battle as any).player2Moves = moves ?? []; (battle as any).player2Abilities = abilities ?? []; (battle as any).player2Characters = characters ?? []; }
@@ -1580,6 +1595,10 @@ io.on('connection', (socket) => {
     if (!t.participants.includes(playerName)) return;
     // team is an array of FrozenPokemon
     if (!Array.isArray(team) || team.length !== t.totalPokemon) return;
+    if (!t.allowLegendaries && team.some((f: any) => POKEMON_BY_ID[f?.pokemonId]?.tier === 'legendary')) {
+      socket.emit('tournament:invalidTeam', { tournamentId, reason: 'legendaries-banned' });
+      return;
+    }
     t.frozenTeams[playerName] = team;
     saveTournament(t);
     socket.emit('tournament:teamLocked', { tournamentId });
@@ -1592,6 +1611,11 @@ io.on('connection', (socket) => {
     const match = t.bracket.find(m => m.id === matchId);
     if (!match || match.status !== 'active') return;
     if (match.player1 !== playerName && match.player2 !== playerName) return;
+
+    if (!t.allowLegendaries && !(t.fixedTeam && t.frozenTeams[playerName]) && Array.isArray(team) && team.some((id: number) => POKEMON_BY_ID[id]?.tier === 'legendary')) {
+      socket.emit('tournament:invalidTeam', { tournamentId, reason: 'legendaries-banned' });
+      return;
+    }
 
     // For fixed-team tournaments, override with frozen team data
     let finalTeam = team;
@@ -1617,6 +1641,7 @@ io.on('connection', (socket) => {
         id: matchId, player1: match.player1!, player2: match.player2!,
         player1Team: null, player2Team: null,
         fieldSize: t.fieldSize, totalPokemon: t.totalPokemon,
+        allowLegendaries: t.allowLegendaries,
       };
       activeBattles.set(matchId, battle);
     }

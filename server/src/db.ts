@@ -208,6 +208,7 @@ export function initDb() {
       winner TEXT,
       fixed_team INTEGER NOT NULL DEFAULT 0,
       public_teams INTEGER NOT NULL DEFAULT 0,
+      allow_legendaries INTEGER NOT NULL DEFAULT 1,
       frozen_teams TEXT NOT NULL DEFAULT '{}',
       prizes TEXT NOT NULL DEFAULT '{}',
       runner_up TEXT,
@@ -227,6 +228,9 @@ export function initDb() {
   if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'prizes')) {
     db.exec(`ALTER TABLE tournaments ADD COLUMN prizes TEXT NOT NULL DEFAULT '{}'`);
     db.exec(`ALTER TABLE tournaments ADD COLUMN runner_up TEXT`);
+  }
+  if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'allow_legendaries')) {
+    db.exec(`ALTER TABLE tournaments ADD COLUMN allow_legendaries INTEGER NOT NULL DEFAULT 1`);
   }
 
   return db;

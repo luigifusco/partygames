@@ -68,11 +68,12 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     }
     socket.on('connect', onConnect);
 
-    const onMatched = ({ battleId, opponent, fieldSize, totalPokemon }: { battleId: string; opponent: string; fieldSize?: number; totalPokemon?: number }) => {
+    const onMatched = ({ battleId, opponent, fieldSize, totalPokemon, allowLegendaries }: { battleId: string; opponent: string; fieldSize?: number; totalPokemon?: number; allowLegendaries?: boolean }) => {
       setBattleId(battleId);
       setOpponentName(opponent);
       if (totalPokemon) setTeamSize(totalPokemon);
-      if (fieldSize) setConfig((prev) => ({ ...prev, fieldSize: fieldSize as 2 | 3, totalPokemon: totalPokemon ?? prev.totalPokemon }));
+      if (fieldSize) setConfig((prev) => ({ ...prev, fieldSize: fieldSize as 2 | 3, totalPokemon: totalPokemon ?? prev.totalPokemon, allowLegendaries: allowLegendaries ?? prev.allowLegendaries }));
+      else if (typeof allowLegendaries === 'boolean') setConfig((prev) => ({ ...prev, allowLegendaries }));
       setPhase('teamSelect');
     };
 
@@ -130,19 +131,19 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   useEffect(() => {
     if (autoChallenge && phase === 'challenge') {
       setTargetName(autoChallenge);
-      socket.emit('battle:challenge', { target: autoChallenge, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
+      socket.emit('battle:challenge', { target: autoChallenge, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon, allowLegendaries: config.allowLegendaries });
       window.history.replaceState({}, '');
     }
   }, [autoChallenge]);
 
   const handleChallenge = () => {
     if (!targetName.trim()) return;
-    socket.emit('battle:challenge', { target: targetName.trim(), fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
+    socket.emit('battle:challenge', { target: targetName.trim(), fieldSize: config.fieldSize, totalPokemon: config.totalPokemon, allowLegendaries: config.allowLegendaries });
   };
 
   const challengePlayer = (name: string) => {
     setTargetName(name);
-    socket.emit('battle:challenge', { target: name, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon });
+    socket.emit('battle:challenge', { target: name, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon, allowLegendaries: config.allowLegendaries });
   };
 
   const handleCancel = () => {
@@ -237,6 +238,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         recentPokemonIds={recentPokemonIds}
         enableCharacterPick={characterPickUnlocked}
         selectedCharacters={selectedCharacters}
+        disallowLegendaries={config.allowLegendaries === false}
         onBack={() => navigate('/play')}
         title="Pick Your Team"
         opponent={{ name: opponentName }}
@@ -252,7 +254,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     <div className="battle-mp-screen">
       <div className="battle-mp-header">
         <button className="battle-mp-back" onClick={() => setPhase('config')}>← Back</button>
-        <h2>Battle ({config.fieldSize}v{config.fieldSize}, {config.totalPokemon} total)</h2>
+        <h2>Battle ({config.fieldSize}v{config.fieldSize}, {config.totalPokemon} total{config.allowLegendaries === false ? ' · No Legendaries' : ''})</h2>
       </div>
       <div className="battle-mp-content">
         {challengers.length > 0 && (
