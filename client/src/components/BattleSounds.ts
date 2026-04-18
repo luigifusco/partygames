@@ -17,6 +17,41 @@ import { BASE_PATH } from '../config';
 
 const SHOWDOWN_CDN = 'https://play.pokemonshowdown.com';
 
+// ─── Persistent mute state ───────────────────────────────────────────────
+//
+// Two independent mute toggles: background music (BGM) and sound effects
+// (moves, hits, cries, status, etc). Persisted to localStorage so the
+// choice survives page reloads and future battles.
+
+const BGM_MUTE_KEY = 'pp:bgmMuted';
+const SFX_MUTE_KEY = 'pp:sfxMuted';
+
+function loadFlag(key: string): boolean {
+  try { return typeof window !== 'undefined' && window.localStorage?.getItem(key) === '1'; } catch { return false; }
+}
+function saveFlag(key: string, value: boolean): void {
+  try { window.localStorage?.setItem(key, value ? '1' : '0'); } catch { /* noop */ }
+}
+
+let bgmMuted = loadFlag(BGM_MUTE_KEY);
+let sfxMuted = loadFlag(SFX_MUTE_KEY);
+
+export function isBgmMuted(): boolean { return bgmMuted; }
+export function isSfxMuted(): boolean { return sfxMuted; }
+
+export function setBgmMuted(muted: boolean): void {
+  bgmMuted = muted;
+  saveFlag(BGM_MUTE_KEY, muted);
+  if (currentBgm) currentBgm.muted = muted;
+}
+export function setSfxMuted(muted: boolean): void {
+  sfxMuted = muted;
+  saveFlag(SFX_MUTE_KEY, muted);
+}
+
+export function toggleBgmMute(): boolean { setBgmMuted(!bgmMuted); return bgmMuted; }
+export function toggleSfxMute(): boolean { setSfxMuted(!sfxMuted); return sfxMuted; }
+
 // ─── Shared AudioContext + unlock ────────────────────────────────────────
 
 let ctx: AudioContext | null = null;
@@ -100,6 +135,7 @@ function getOrCreate(url: string): CacheEntry {
 }
 
 function playUrl(url: string, volume = 0.4, playbackRate = 1.0): boolean {
+  if (sfxMuted) return true;
   const entry = getOrCreate(url);
   if (entry.failed) return false;
   try {
@@ -190,6 +226,7 @@ const SFX_PLAYERS: Record<SfxType, (ac: AudioContext) => void> = {
 };
 
 export function playSfx(type: SfxType): void {
+  if (sfxMuted) return;
   try {
     const ac = getCtx();
     if (!ac) return;
@@ -368,6 +405,7 @@ export function startBattleBgm(volume = 0.25, trainerId?: string): void {
       : BATTLE_BGMS[Math.floor(Math.random() * BATTLE_BGMS.length)];
     const audio = new Audio(`${SHOWDOWN_CDN}/${track.url}`);
     audio.volume = volume;
+    audio.muted = bgmMuted;
     bgmLoopHandler = () => {
       if (audio.currentTime >= track.loopEnd) audio.currentTime = track.loopStart;
     };
@@ -389,21 +427,10 @@ export function stopBattleBgm(): void {
   }
 }
 
-export function toggleBgmMute(): boolean {
-  if (currentBgm) {
-    currentBgm.muted = !currentBgm.muted;
-    return currentBgm.muted;
-  }
-  return false;
-}
-
-export function isBgmMuted(): boolean {
-  return currentBgm?.muted ?? false;
-}
-
 // ─── Pokémon cries ───────────────────────────────────────────────────────
 
 export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): void {
+  if (sfxMuted) return;
   if (!pokemonName) return;
   const id = pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
   const url = `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { BattlePokemonState, BattleLogEntry, BattleSnapshot } from '@shared/battle-types';
 import { getMoveAnim } from '../data/moveAnimations';
 import { runMoveAnimation, animateHit, animateStatChange, animateStatusInflict } from './BattleAnimationEngine';
-import { playSfx, playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, preloadStatSounds, playStatChangeSfx, playStatusSfx, unlockAudio, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted } from './BattleSounds';
+import { playSfx, playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, preloadStatSounds, playStatChangeSfx, playStatusSfx, unlockAudio, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted, toggleSfxMute, isSfxMuted } from './BattleSounds';
 import { getHeldItemSprite } from '@shared/held-item-data';
 import BattleBackground, { pickPreset } from './BattleBackground';
 import './BattleScene.css';
@@ -223,7 +223,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const animatingRef = useRef(false);
   const [debugView, setDebugView] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [bgmMuted, setBgmMuted] = useState(isBgmMuted());
+  const [sfxMuted, setSfxMuted] = useState(isSfxMuted());
 
   const fieldSize = snapshot.fieldSize ?? snapshot.left.length;
 
@@ -781,8 +782,11 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         <button className="playback-btn" onClick={stepForward} disabled={anim.currentLogIndex >= snapshot.log.length - 1} title="Step forward">⏭</button>
         <span className="playback-counter">{anim.currentLogIndex + 1}/{snapshot.log.length}</span>
         <div className="battle-controls-sep" />
-        <button className="playback-btn" onClick={() => { toggleBgmMute(); setMuted(isBgmMuted()); }} title={muted ? 'Unmute' : 'Mute'}>
-          {muted ? '🔇' : '🔊'}
+        <button className="playback-btn" onClick={() => { toggleBgmMute(); setBgmMuted(isBgmMuted()); }} title={bgmMuted ? 'Unmute music' : 'Mute music'}>
+          {bgmMuted ? '🎵🚫' : '🎵'}
+        </button>
+        <button className="playback-btn" onClick={() => { toggleSfxMute(); setSfxMuted(isSfxMuted()); }} title={sfxMuted ? 'Unmute effects' : 'Mute effects'}>
+          {sfxMuted ? '🔇' : '🔊'}
         </button>
         <button className="playback-btn playback-btn-subtle" onClick={() => setDebugView(!debugView)} title="Debug">
           {debugView ? '✕' : '🐛'}
