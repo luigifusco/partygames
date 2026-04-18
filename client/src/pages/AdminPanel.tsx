@@ -93,6 +93,29 @@ export default function AdminPanel() {
     refresh();
   };
 
+  const archiveDb = async () => {
+    if (!confirm(
+      'Archive the current database and start a fresh season?\n\n' +
+      'Every player, Pokémon, item, story step, tournament and battle record ' +
+      'is snapshotted to data/archives/ on the server, and a brand-new, playable ' +
+      'database takes over. Past statistics stay on disk for analysis.\n\n' +
+      'The server will briefly restart and every connected client will reload.'
+    )) return;
+    if (!confirm('Really start a new season? This cannot be undone from the UI.')) return;
+    try {
+      const res = await fetch(`${API}/api/admin/archive-db`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        alert('Archived as ' + (data.archive ?? 'snapshot') + '. Server is restarting — this page will reload.');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        alert('Archive failed: ' + (data.error ?? res.statusText));
+      }
+    } catch (e) {
+      alert('Archive request failed: ' + e);
+    }
+  };
+
   const [tournamentName, setTournamentName] = useState('Tournament');
   const [tournamentFieldSize, setTournamentFieldSize] = useState(1);
   const [tournamentPokemon, setTournamentPokemon] = useState(3);
@@ -486,6 +509,9 @@ export default function AdminPanel() {
           </button>
           <button className="ds-btn ds-btn-danger" onClick={wipeAllPokemon}>
             Wipe All PKM
+          </button>
+          <button className="ds-btn ds-btn-danger" onClick={archiveDb} title="Archive the entire DB and start fresh">
+            New Season
           </button>
         </div>
 

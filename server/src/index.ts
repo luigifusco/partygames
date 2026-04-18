@@ -741,6 +741,68 @@ app.post(`${BASE_PATH}/api/admin/wipe-all-pokemon`, (_req, res) => {
   return res.json({ ok: true });
 });
 
+// Archive the entire DB (and WAL files) to an `archives/` folder next
+// to the live DB, then exit the process so the container restart
+// policy boots a freshly initialized, playable DB. Archived files are
+// left untouched so statistics from the past season can still be
+// analyzed offline.
+app.post(`${BASE_PATH}/api/admin/archive-db`, (_req, res) => {
+  try {
+    const dataDir = path.join(__dirname, '../../data');
+    const archiveDir = path.join(dataDir, 'archives');
+    fs.mkdirSync(archiveDir, { recursive: true });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const label = `game-${stamp}`;
+
+    // Tell every connected client to reload once the server comes back.
+    io.emit('player:reset');
+
+    res.json({ ok: true, archive: label });
+
+    // Let Express flush the response before we tear down the DB.
+    setTimeout(() => {
+      try {
+        // Checkpoint WAL into the main db file so a single file is enough.
+        try { db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); } catch {}
+        try { db.close(); } catch {}
+        for (const suffix of ['', '-wal', '-shm']) {
+          const src = path.join(dataDir, 'game.db' + suffix);
+          const dest = path.join(archiveDir, label + '.db' + suffix);
+          if (fs.existsSync(src)) {
+            try { fs.renameSync(src, dest); } catch (e) { console.error('archive rename failed:', src, e); }
+          }
+        }
+      } finally {
+        // Container restart policy ("unless-stopped") will bring us
+        // back up against a freshly-initialized DB.
+        console.log('DB archived as ' + label + ' — exiting to restart.');
+        process.exit(0);
+      }
+    }, 250);
+  } catch (e) {
+    console.error('archive-db failed:', e);
+    return res.status(500).json({ error: 'archive failed' });
+  }
+});
+
+app.get(`${BASE_PATH}/api/admin/archives`, (_req, res) => {
+  try {
+    const archiveDir = path.join(__dirname, '../../data/archives');
+    if (!fs.existsSync(archiveDir)) return res.json({ archives: [] });
+    const files = fs.readdirSync(archiveDir)
+      .filter(f => f.endsWith('.db'))
+      .map(f => {
+        const stat = fs.statSync(path.join(archiveDir, f));
+        return { name: f, size: stat.size, createdAt: stat.mtime.toISOString() };
+      })
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return res.json({ archives: files });
+  } catch {
+    return res.json({ archives: [] });
+  }
+});
+
 app.get(`${BASE_PATH}/api/admin/stats`, (_req, res) => {
   const playerCount = (db.prepare('SELECT COUNT(*) as c FROM players').get() as any).c;
   const pokemonCount = (db.prepare('SELECT COUNT(*) as c FROM owned_pokemon').get() as any).c;
