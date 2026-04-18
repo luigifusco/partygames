@@ -284,14 +284,17 @@
 
 /* ───── Sprite + platform ─────────────────────────────────────── */
 
-/* Platform ellipse shadow under the sprite */
+/* Platform ellipse shadow — positioned under the scaled sprite's feet.
+   The sprite uses transform: scale(1.55) from center, so its visible
+   bottom extends ~22px below its layout box. We offset the ellipse
+   past the card's bottom to match. Field-size overrides below. */
 .pokemon-card::after {
   content: "";
   position: absolute;
-  bottom: -2px;
+  bottom: -22px;
   left: 50%;
   transform: translateX(-50%);
-  width: 62%;
+  width: 58%;
   height: 14px;
   border-radius: 50%;
   background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 70%);
@@ -300,13 +303,15 @@
   transition: transform 0.3s var(--ease-out, ease-out), opacity 0.3s;
 }
 
+.battle-arena[data-field-size="2"] .pokemon-card::after { bottom: -16px; }
+.battle-arena[data-field-size="3"] .pokemon-card::after { bottom: -10px; }
+
 .pokemon-sprite {
   position: relative;
   align-self: center;
   margin-top: 6px;
   transform: translate3d(0, 0, 0) scale(1.55);
   image-rendering: pixelated;
-  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.55));
   transition: transform 0.35s var(--ease-out, ease-out),
               filter 0.4s var(--ease-out, ease-out),
               opacity 0.5s ease;
@@ -333,8 +338,7 @@
 /* Attacking — lunge forward with glow */
 .pokemon-card.attacking { z-index: 20; }
 .pokemon-card.attacking .pokemon-sprite {
-  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.55))
-          drop-shadow(0 0 16px rgba(255, 240, 180, 0.85));
+  filter: drop-shadow(0 0 16px rgba(255, 240, 180, 0.85));
   animation: attackPulse 0.45s ease-out;
 }
 .pokemon-card.attacking::after {
@@ -342,9 +346,9 @@
   opacity: 0.85;
 }
 @keyframes attackPulse {
-  0%   { filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.55)); }
-  35%  { filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px rgba(255, 240, 180, 1)); }
-  100% { filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 16px rgba(255, 240, 180, 0.85)); }
+  0%   { filter: none; }
+  35%  { filter: drop-shadow(0 0 22px rgba(255, 240, 180, 1)); }
+  100% { filter: drop-shadow(0 0 16px rgba(255, 240, 180, 0.85)); }
 }
 
 /* Fainted — fall over and desaturate */
