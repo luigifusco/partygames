@@ -533,7 +533,7 @@
 /* ─── Info card (e.g. mechanic explanation after N storyline) ─── */
 .story-info-card {
   max-width: 540px;
-  margin: 4vh auto;
+  margin: auto;
   padding: var(--space-6);
   background: linear-gradient(180deg, rgba(40, 30, 80, 0.85), rgba(20, 15, 45, 0.92));
   border: 2px solid rgba(255, 200, 90, 0.55);
