@@ -23,7 +23,7 @@ import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToSer
 import { BASE_PATH } from './config';
 import { STARTING_ESSENCE } from '@shared/essence';
 import { STARTING_ELO } from '@shared/elo';
-import { evolveGate } from '@shared/evolution';
+import { evolveGate, bondThreshold } from '@shared/evolution';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { MAX_IV } from '@shared/boost-data';
 import type { StatKey } from '@shared/boost-data';
@@ -104,11 +104,14 @@ export default function App() {
       }
     }
 
-    // Evolve the pokemon in-place (keep IVs, nature). bondXp resets server-side.
+    // Carry over bond XP above the bond threshold for the new tier.
+    const leftoverBond = Math.max(0, (instance.bondXp ?? 0) - bondThreshold(evolved.tier));
+
+    // Evolve the pokemon in-place (keep IVs, nature). Server matches this calc.
     setCollection((c) =>
       c.map((inst) =>
         inst.instanceId === instance.instanceId
-          ? { ...inst, pokemon: evolved, bondXp: 0 }
+          ? { ...inst, pokemon: evolved, bondXp: leftoverBond }
           : inst
       )
     );

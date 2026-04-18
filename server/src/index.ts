@@ -17,7 +17,7 @@ import { canLearnMove, randomMovesForSpecies, randomLevelUpMovesForSpecies, type
 import { getMoveInfo } from '../../shared/move-info.js';
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
-import { computeBondXp, type BondBattleMode } from '../../shared/evolution.js';
+import { computeBondXp, bondThreshold, type BondBattleMode } from '../../shared/evolution.js';
 import { runShowdownBattle, randomAbilityForSpecies } from './showdown-battle.js';
 import { Dex as ShowdownDex } from '../../pokemon-showdown/dist/sim/index.js';
 
@@ -417,14 +417,24 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/evolve`, (req, res) => {
   }
 
   const row = db.prepare(
-    'SELECT id FROM owned_pokemon WHERE id = ? AND player_id = ?'
+    'SELECT id, pokemon_id, bond_xp FROM owned_pokemon WHERE id = ? AND player_id = ?'
   ).get(instanceId, req.params.id) as any;
   if (!row) {
     return res.status(404).json({ error: 'Pokemon not found' });
   }
 
-  db.prepare('UPDATE owned_pokemon SET pokemon_id = ?, bond_xp = 0 WHERE id = ?').run(newPokemonId, instanceId);
-  return res.json({ ok: true });
+  // Carry over any bond XP above the threshold for the target tier.
+  // (If the player evolved via the token path, bond_xp likely < bondNeeded
+  // and leftover will be 0, so nothing changes there.)
+  const target = POKEMON_BY_ID[newPokemonId];
+  let leftover = row.bond_xp ?? 0;
+  if (target) {
+    const needed = bondThreshold(target.tier);
+    leftover = Math.max(0, (row.bond_xp ?? 0) - needed);
+  }
+
+  db.prepare('UPDATE owned_pokemon SET pokemon_id = ?, bond_xp = ? WHERE id = ?').run(newPokemonId, leftover, instanceId);
+  return res.json({ ok: true, bondXp: leftover });
 });
 
 // Teach a TM to a pokemon (replace one of its moves, consume the TM)
