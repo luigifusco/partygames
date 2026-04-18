@@ -10,12 +10,13 @@
 .rarity-stars-md { font-size: 16px; }
 .rarity-stars-lg { font-size: 22px; }
 
-/* Shared neutral gold tint for common → epic */
+/* Dark opaque symbols for common → epic */
 .rarity-stars-common,
 .rarity-stars-uncommon,
 .rarity-stars-rare,
 .rarity-stars-epic {
-  color: #ffd35a;
+  color: #1a1a1a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 /* Legendary: the shining star keeps its colorful emoji glyph and pulses */
