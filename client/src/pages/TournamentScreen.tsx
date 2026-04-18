@@ -462,21 +462,25 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
           </div>
         ) : (
           <div className="tournament-list">
-            {tournaments.map(t => (
-              <div key={t.id} className="ds-card ds-card-interactive" onClick={() => openDetail(t.id)}>
-                <div className="tournament-card-name">{t.name}</div>
-                <div className="tournament-card-meta">
-                  <span className={'tournament-status-badge status-' + t.status}>{t.status}</span>
-                  <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
-                  <span>· {t.participantCount} players</span>
-                  {t.fixedTeam && <span className="ds-badge ds-badge-gold">Fixed</span>}
+            {tournaments.map(t => {
+              const isRegistered = (t.participants ?? []).includes(playerName);
+              return (
+                <div key={t.id} className={'ds-card ds-card-interactive tournament-card' + (isRegistered ? ' is-registered' : '')} onClick={() => openDetail(t.id)}>
+                  {isRegistered && <div className="tournament-registered-ribbon">✓ Registered</div>}
+                  <div className="tournament-card-name">{t.name}</div>
+                  <div className="tournament-card-meta">
+                    <span className={'tournament-status-badge status-' + t.status}>{t.status}</span>
+                    <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
+                    <span>· {t.participantCount} players</span>
+                    {t.fixedTeam && <span className="ds-badge ds-badge-gold">Fixed</span>}
+                  </div>
+                  {t.winner && <div className="tournament-card-winner">Winner: {t.winner}</div>}
+                  {t.prizes && Array.isArray(t.prizes) && t.prizes[0] && (
+                    <div className="tournament-card-prize">1st: {t.prizes[0].essence}✦{t.prizes[0].pack ? ' + ' + t.prizes[0].pack : ''}</div>
+                  )}
                 </div>
-                {t.winner && <div className="tournament-card-winner">Winner: {t.winner}</div>}
-                {t.prizes && Array.isArray(t.prizes) && t.prizes[0] && (
-                  <div className="tournament-card-prize">1st: {t.prizes[0].essence}✦{t.prizes[0].pack ? ' + ' + t.prizes[0].pack : ''}</div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

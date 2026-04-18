@@ -65,6 +65,7 @@ export interface TournamentSummary {
   fieldSize: number;
   totalPokemon: number;
   participantCount: number;
+  participants: string[];
   registrationEnd: number;
   currentRound: number;
   winner?: string;

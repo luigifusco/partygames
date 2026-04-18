@@ -1059,7 +1059,7 @@ function saveTournament(t: Tournament) {
 function broadcastTournamentUpdate(t: Tournament) {
   const summary: TournamentSummary = {
     id: t.id, name: t.name, status: t.status, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon,
-    participantCount: t.participants.length, registrationEnd: t.registrationEnd,
+    participantCount: t.participants.length, participants: t.participants.slice(), registrationEnd: t.registrationEnd,
     currentRound: t.currentRound, winner: t.winner, fixedTeam: t.fixedTeam, publicTeams: t.publicTeams,
     allowLegendaries: t.allowLegendaries,
     prizes: t.prizes,
@@ -1314,13 +1314,16 @@ setInterval(() => {
 // Tournament REST endpoints
 app.get(`${BASE_PATH}/api/tournaments`, (_req, res) => {
   const rows = db.prepare("SELECT * FROM tournaments WHERE status IN ('registration', 'active', 'completed') ORDER BY created_at DESC LIMIT 20").all() as any[];
-  const list: TournamentSummary[] = rows.map((r: any) => ({
-    id: r.id, name: r.name, status: r.status, fieldSize: r.field_size, totalPokemon: r.total_pokemon,
-    participantCount: JSON.parse(r.participants).length, registrationEnd: r.registration_end,
-    currentRound: r.current_round, winner: r.winner ?? undefined, fixedTeam: !!r.fixed_team, publicTeams: !!r.public_teams,
-    allowLegendaries: r.allow_legendaries == null ? true : !!r.allow_legendaries,
-    prizes: JSON.parse(r.prizes || '{}'),
-  }));
+  const list: TournamentSummary[] = rows.map((r: any) => {
+    const participants = JSON.parse(r.participants) as string[];
+    return {
+      id: r.id, name: r.name, status: r.status, fieldSize: r.field_size, totalPokemon: r.total_pokemon,
+      participantCount: participants.length, participants, registrationEnd: r.registration_end,
+      currentRound: r.current_round, winner: r.winner ?? undefined, fixedTeam: !!r.fixed_team, publicTeams: !!r.public_teams,
+      allowLegendaries: r.allow_legendaries == null ? true : !!r.allow_legendaries,
+      prizes: JSON.parse(r.prizes || '{}'),
+    };
+  });
   return res.json({ tournaments: list });
 });
 
