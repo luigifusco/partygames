@@ -7,9 +7,11 @@ import { NATURE_BY_NAME, calcStat, STAT_LABELS } from '@shared/natures';
 import { getHeldItemSprite, getHeldItemName, HELD_ITEMS_BY_ID } from '@shared/held-item-data';
 import { evolveGate } from '@shared/evolution';
 import { evolutionStepFor } from '@shared/evolution-helpers';
+import { BOND_UNLOCK_CHAPTER } from '@shared/story-data';
 import RarityStars from '../components/RarityStars';
 import ShardConfirmModal from '../components/ShardConfirmModal';
 import EvolvePreviewModal from '../components/EvolvePreviewModal';
+import { useStoryChapters } from '../hooks/useStoryChapters';
 import './PokemonDetailScreen.css';
 
 interface PokemonDetailScreenProps {
@@ -18,6 +20,7 @@ interface PokemonDetailScreenProps {
   onShard: (instance: PokemonInstance) => void;
   onEvolve: (instance: PokemonInstance, targetId: number) => void;
   onToggleFavorite: (instance: PokemonInstance) => void;
+  playerId?: string;
 }
 
 const STAT_KEYS: (keyof Stats)[] = ['hp', 'attack', 'defense', 'spAtk', 'spDef', 'speed'];
@@ -30,9 +33,11 @@ const TYPE_COLORS: Record<string, string> = {
   steel: '#B8B8D0', fairy: '#EE99AC',
 };
 
-export default function PokemonDetailScreen({ collection, items, onShard, onEvolve, onToggleFavorite }: PokemonDetailScreenProps) {
+export default function PokemonDetailScreen({ collection, items, onShard, onEvolve, onToggleFavorite, playerId }: PokemonDetailScreenProps) {
   const { idx } = useParams();
   const navigate = useNavigate();
+  const chapters = useStoryChapters(playerId);
+  const bondUnlocked = chapters.has(BOND_UNLOCK_CHAPTER);
   const [shardConfirm, setShardConfirm] = useState(false);
   const [evoPreview, setEvoPreview] = useState(false);
   const [evolving, setEvolving] = useState<{ from: PokemonInstance; toId: number } | null>(null);
@@ -162,7 +167,7 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
           </button>
         )}
 
-        {evoTargets.length > 0 && gate && (
+        {evoTargets.length > 0 && gate && bondUnlocked && (
           <div className="detail-bond-panel">
             <div className="detail-bond-label">
               Bond XP <span className="detail-bond-num">{bondXp} / {gate.bondNeeded}</span>
