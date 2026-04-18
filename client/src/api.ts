@@ -35,6 +35,9 @@ export function buildInstance(row: any): PokemonInstance | null {
   if (row.favorite != null) {
     inst.favorite = !!row.favorite;
   }
+  if (row.character != null) {
+    inst.character = row.character;
+  }
   return inst;
 }
 

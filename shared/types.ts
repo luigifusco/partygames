@@ -47,6 +47,8 @@ export interface PokemonInstance {
   heldItem?: string;
   bondXp?: number;
   favorite?: boolean;
+  /** AI character profile override (balanced | setupSweeper | statusSpammer | glassCannon). */
+  character?: string;
 }
 
 // Returns the effective moves for a pokemon instance (learned overrides species defaults)

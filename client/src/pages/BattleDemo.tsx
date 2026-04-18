@@ -133,6 +133,10 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         const inst = instances.find((i) => i.pokemon.id === p.id);
         return inst?.ability ?? null;
       }) : undefined;
+      const leftCharacters = useOwn ? myTeam.map((p) => {
+        const inst = instances.find((i) => i.pokemon.id === p.id);
+        return inst?.character ?? null;
+      }) : undefined;
 
       const res = await fetch(`${API_BASE}/api/battle/simulate`, {
         method: 'POST',
@@ -145,6 +149,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
           leftMoves,
           leftHeldItems,
           leftAbilities,
+          leftCharacters,
         }),
       });
       const data = await res.json();

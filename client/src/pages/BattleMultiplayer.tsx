@@ -158,6 +158,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         return inst.learnedMoves ?? null;
       }),
       abilities: selected.map((idx) => collection[idx].ability ?? null),
+      characters: selected.map((idx) => collection[idx].character ?? null),
     });
     // Optimistically update recent pokemon with the just-submitted team
     if (onUpdateRecentPokemonIds && recentPokemonIds) {

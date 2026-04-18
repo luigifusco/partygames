@@ -116,6 +116,11 @@ export function initDb() {
     db.exec(`ALTER TABLE owned_pokemon ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0`);
   }
 
+  // Add character column (AI profile override for move choice)
+  if (!pokemonCols2.find((c: any) => c.name === 'character')) {
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN character TEXT DEFAULT NULL`);
+  }
+
   // Add ability column if it doesn't exist (migration for abilities)
   // Drop all owned pokemon and recreate with NOT NULL ability
   if (!pokemonCols2.find((c: any) => c.name === 'ability')) {

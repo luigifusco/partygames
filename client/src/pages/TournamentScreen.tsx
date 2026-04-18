@@ -135,6 +135,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
       heldItems: selected.map(idx => collection[idx].heldItem ?? null),
       moves: selected.map(idx => collection[idx].learnedMoves ?? null),
       abilities: selected.map(idx => collection[idx].ability ?? null),
+      characters: selected.map(idx => collection[idx].character ?? null),
     });
   };
 

@@ -101,7 +101,7 @@ function makeCalcPokemon(p: AppPokemon, curHP?: number, boosts?: Record<string, 
   });
 }
 
-function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[], leftMoves?: ([string, string] | null)[], rightMoves?: ([string, string] | null)[], leftAbilities?: (string | null)[], rightAbilities?: (string | null)[]): BattleSnapshot {
+function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[], leftMoves?: ([string, string] | null)[], rightMoves?: ([string, string] | null)[], leftAbilities?: (string | null)[], rightAbilities?: (string | null)[], leftCharacters?: (string | null)[], rightCharacters?: (string | null)[]): BattleSnapshot {
   const activeFieldSize = fieldSize ?? leftIds.length;
 
   const leftEntries = leftIds.map((id, i) => {
@@ -113,8 +113,9 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
       moves: (moves ?? base.moves) as [string, string],
       heldItem: leftHeldItems?.[i] ?? null,
       ability: leftAbilities?.[i] ?? undefined,
+      character: leftCharacters?.[i] ?? null,
     };
-  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string }[];
+  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string; character?: string | null }[];
 
   const rightEntries = rightIds.map((id, i) => {
     const base = POKEMON_BY_ID[id];
@@ -125,8 +126,9 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
       moves: (moves ?? base.moves) as [string, string],
       heldItem: rightHeldItems?.[i] ?? null,
       ability: rightAbilities?.[i] ?? undefined,
+      character: rightCharacters?.[i] ?? null,
     };
-  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string }[];
+  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string; character?: string | null }[];
 
   return runShowdownBattle(leftEntries, rightEntries, activeFieldSize > 1 ? activeFieldSize : 1);
 }
@@ -234,7 +236,7 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
   }
 
   // Also fetch their pokemon collection
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
   return res.json({ player, pokemon, items, recentPokemonIds });
@@ -247,7 +249,7 @@ app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
     return res.status(404).json({ error: 'Player not found' });
   }
 
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
   return res.json({ player, pokemon, items, recentPokemonIds });
@@ -745,13 +747,13 @@ app.post(`${BASE_PATH}/api/player/:id/pokedex/backfill`, (req, res) => {
 
 // AI / demo battle endpoint
 app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
-  const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities } = req.body;
+  const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters } = req.body;
   if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
     return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
   }
   const fs = fieldSize ?? leftTeam.length;
   const mode = selectionMode ?? 'blind';
-  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities);
+  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters);
 
   const labels = { field_size: String(fs), total_pokemon: String(leftTeam.length), selection_mode: mode, opponent_type: 'ai' };
   battlesTotal.inc(labels);
@@ -1206,13 +1208,13 @@ io.on('connection', (socket) => {
     socket.emit('battle:cancelled');
   });
 
-  socket.on('battle:selectTeam', ({ battleId, team, instanceIds, heldItems, moves, abilities }: { battleId: string; team: number[]; instanceIds?: string[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[]; abilities?: (string | null)[] }) => {
+  socket.on('battle:selectTeam', ({ battleId, team, instanceIds, heldItems, moves, abilities, characters }: { battleId: string; team: number[]; instanceIds?: string[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[]; abilities?: (string | null)[]; characters?: (string | null)[] }) => {
     if (!playerName) return;
     const battle = activeBattles.get(battleId);
     if (!battle) return;
 
-    if (battle.player1 === playerName) { battle.player1Team = team; battle.player1InstanceIds = instanceIds ?? []; (battle as any).player1HeldItems = heldItems ?? []; (battle as any).player1Moves = moves ?? []; (battle as any).player1Abilities = abilities ?? []; }
-    else if (battle.player2 === playerName) { battle.player2Team = team; battle.player2InstanceIds = instanceIds ?? []; (battle as any).player2HeldItems = heldItems ?? []; (battle as any).player2Moves = moves ?? []; (battle as any).player2Abilities = abilities ?? []; }
+    if (battle.player1 === playerName) { battle.player1Team = team; battle.player1InstanceIds = instanceIds ?? []; (battle as any).player1HeldItems = heldItems ?? []; (battle as any).player1Moves = moves ?? []; (battle as any).player1Abilities = abilities ?? []; (battle as any).player1Characters = characters ?? []; }
+    else if (battle.player2 === playerName) { battle.player2Team = team; battle.player2InstanceIds = instanceIds ?? []; (battle as any).player2HeldItems = heldItems ?? []; (battle as any).player2Moves = moves ?? []; (battle as any).player2Abilities = abilities ?? []; (battle as any).player2Characters = characters ?? []; }
 
     // Check if both teams are selected
     if (battle.player1Team && battle.player2Team) {
@@ -1220,7 +1222,7 @@ io.on('connection', (socket) => {
       const socket2 = connectedPlayers.get(battle.player2);
 
       // Simulate battle on server so both players see the same result
-      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities);
+      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters);
 
       const battleDataP1 = {
         battleId,
@@ -1434,7 +1436,7 @@ io.on('connection', (socket) => {
     socket.emit('tournament:teamLocked', { tournamentId });
   });
 
-  socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities }: any) => {
+  socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities, characters }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
     if (!t || t.status !== 'active') return;
@@ -1447,6 +1449,7 @@ io.on('connection', (socket) => {
     let finalHeldItems = heldItems;
     let finalMoves = moves;
     let finalAbilities = abilities;
+    let finalCharacters: (string | null)[] | undefined = characters;
     let finalInstanceIds: string[] | undefined = instanceIds;
     if (t.fixedTeam && t.frozenTeams[playerName]) {
       const frozen = t.frozenTeams[playerName];
@@ -1454,6 +1457,7 @@ io.on('connection', (socket) => {
       finalHeldItems = frozen.map(f => f.heldItem);
       finalMoves = frozen.map(f => f.moves);
       finalAbilities = frozen.map(f => f.ability);
+      finalCharacters = frozen.map((f: any) => f.character ?? null);
       finalInstanceIds = undefined; // frozen teams don't carry live instance ids — skip bond xp
     }
 
@@ -1473,12 +1477,14 @@ io.on('connection', (socket) => {
       battle.player1HeldItems = finalHeldItems;
       battle.player1Moves = finalMoves;
       battle.player1Abilities = finalAbilities;
+      (battle as any).player1Characters = finalCharacters;
       battle.player1InstanceIds = finalInstanceIds;
     } else {
       battle.player2Team = finalTeam;
       battle.player2HeldItems = finalHeldItems;
       battle.player2Moves = finalMoves;
       battle.player2Abilities = finalAbilities;
+      (battle as any).player2Characters = finalCharacters;
       battle.player2InstanceIds = finalInstanceIds;
     }
 
@@ -1489,6 +1495,7 @@ io.on('connection', (socket) => {
         battle.player1HeldItems, battle.player2HeldItems,
         battle.player1Moves, battle.player2Moves,
         battle.player1Abilities, battle.player2Abilities,
+        (battle as any).player1Characters, (battle as any).player2Characters,
       );
 
       const winnerName = snapshot.winner === 'left' ? battle.player1 : battle.player2;
