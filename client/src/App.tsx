@@ -250,16 +250,28 @@ export default function App() {
       addNotification('tournament', 'Match vs ' + opponent);
     };
 
+    const onBondUpdate = ({ awards }: { awards: Array<{ instanceId: string; delta: number; total: number }> }) => {
+      if (!awards || awards.length === 0) return;
+      setCollection((c) =>
+        c.map((inst) => {
+          const a = awards.find((x) => x.instanceId === inst.instanceId);
+          return a ? { ...inst, bondXp: a.total } : inst;
+        })
+      );
+    };
+
     socket.on('battle:challenged', onBattleChallenged);
     socket.on('trade:incoming', onTradeIncoming);
     socket.on('tournament:created', onTournamentCreated);
     socket.on('tournament:matchReady', onTournamentMatchReady);
+    socket.on('battle:bondUpdate', onBondUpdate);
 
     return () => {
       socket.off('battle:challenged', onBattleChallenged);
       socket.off('trade:incoming', onTradeIncoming);
       socket.off('tournament:created', onTournamentCreated);
       socket.off('tournament:matchReady', onTournamentMatchReady);
+      socket.off('battle:bondUpdate', onBondUpdate);
     };
   }, []);
 

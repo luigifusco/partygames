@@ -147,9 +147,11 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
 
   const submitTeam = () => {
     const teamPokemonIds = selected.map((idx) => collection[idx].pokemon.id);
+    const teamInstanceIds = selected.map((idx) => collection[idx].instanceId);
     socket.emit('battle:selectTeam', {
       battleId,
       team: teamPokemonIds,
+      instanceIds: teamInstanceIds,
       heldItems: selected.map((idx) => collection[idx].heldItem ?? null),
       moves: selected.map((idx) => {
         const inst = collection[idx];

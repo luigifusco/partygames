@@ -45,6 +45,7 @@ export interface PokemonInstance {
   ability: string;
   learnedMoves?: [MoveId, MoveId];
   heldItem?: string;
+  bondXp?: number;
 }
 
 // Returns the effective moves for a pokemon instance (learned overrides species defaults)

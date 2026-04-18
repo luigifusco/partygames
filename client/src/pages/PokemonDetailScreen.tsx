@@ -5,6 +5,7 @@ import { getEffectiveMoves } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { NATURE_BY_NAME, calcStat, STAT_LABELS } from '@shared/natures';
 import { getHeldItemSprite, getHeldItemName, HELD_ITEMS_BY_ID } from '@shared/held-item-data';
+import { evolveGate } from '@shared/evolution';
 import './PokemonDetailScreen.css';
 
 interface PokemonDetailScreenProps {
@@ -52,7 +53,13 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
     .map((id) => POKEMON_BY_ID[id])
     .filter(Boolean);
   const tokenCount = items.filter((i) => i.itemType === 'token' && i.itemData === String(pokemon.id)).length;
-  const canEvolve = evoTargets.length > 0 && tokenCount >= 3;
+  const bondXp = inst.bondXp ?? 0;
+  const firstTarget = evoTargets[0];
+  const gate = firstTarget
+    ? evolveGate({ bondXp, tokens: tokenCount, targetTier: firstTarget.tier })
+    : null;
+  const canEvolve = evoTargets.length > 0 && !!gate && gate.canEvolve;
+  const bondPct = gate ? Math.min(100, Math.round((bondXp / gate.bondNeeded) * 100)) : 0;
 
   const handleShard = () => {
     onShard(inst);
@@ -95,6 +102,19 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
               <span>{t.name}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {evoTargets.length > 0 && gate && (
+        <div className="detail-bond-panel">
+          <div className="detail-bond-label">
+            Bond XP <span className="detail-bond-num">{bondXp} / {gate.bondNeeded}</span>
+            {gate.bondMet && <span className="detail-bond-met">✓ ready</span>}
+          </div>
+          <div className="detail-bond-track"><div className="detail-bond-fill" style={{ width: `${bondPct}%` }} /></div>
+          <div className="detail-bond-hint">
+            or spend <strong>{gate.tokensNeeded}</strong> {pokemon.name} token{gate.tokensNeeded > 1 ? 's' : ''} ({tokenCount}/{gate.tokensNeeded})
+          </div>
         </div>
       )}
 

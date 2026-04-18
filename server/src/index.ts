@@ -17,6 +17,7 @@ import { canLearnMove, randomMovesForSpecies } from '../../shared/tm-learnsets.j
 import { getMoveInfo } from '../../shared/move-info.js';
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
+import { computeBondXp, type BondBattleMode } from '../../shared/evolution.js';
 import { runShowdownBattle, randomAbilityForSpecies } from './showdown-battle.js';
 import {
   calculate as calcDamage,
@@ -145,6 +146,37 @@ function flipSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
   };
 }
 
+// --- Bond XP (Evolution 2.0) ---
+
+interface BondAward { instanceId: string; delta: number; total: number; }
+
+function awardBondXp(
+  playerId: string,
+  instanceIds: string[] | undefined,
+  teamStates: BattlePokemonState[],
+  rounds: number,
+  won: boolean,
+  mode: BondBattleMode,
+): BondAward[] {
+  if (!instanceIds || instanceIds.length === 0) return [];
+  const awards: BondAward[] = [];
+  const selectById = db.prepare('SELECT bond_xp FROM owned_pokemon WHERE id = ? AND player_id = ?');
+  const update = db.prepare('UPDATE owned_pokemon SET bond_xp = bond_xp + ? WHERE id = ? AND player_id = ?');
+  for (let i = 0; i < instanceIds.length; i++) {
+    const instanceId = instanceIds[i];
+    if (!instanceId) continue;
+    const state = teamStates[i];
+    const survived = !!state && state.currentHp > 0;
+    const delta = computeBondXp({ mode, won, survived, rounds });
+    if (delta <= 0) continue;
+    const row = selectById.get(instanceId, playerId) as any;
+    if (!row) continue; // pokemon was deleted/traded in-between
+    update.run(delta, instanceId, playerId);
+    awards.push({ instanceId, delta, total: (row.bond_xp ?? 0) + delta });
+  }
+  return awards;
+}
+
 // --- REST API ---
 
 // Get distinct pokemon IDs used in a player's last 3 battles
@@ -202,7 +234,7 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
   }
 
   // Also fetch their pokemon collection
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
   return res.json({ player, pokemon, items, recentPokemonIds });
@@ -215,7 +247,7 @@ app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
     return res.status(404).json({ error: 'Player not found' });
   }
 
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
   return res.json({ player, pokemon, items, recentPokemonIds });
@@ -349,7 +381,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/evolve`, (req, res) => {
     return res.status(404).json({ error: 'Pokemon not found' });
   }
 
-  db.prepare('UPDATE owned_pokemon SET pokemon_id = ? WHERE id = ?').run(newPokemonId, instanceId);
+  db.prepare('UPDATE owned_pokemon SET pokemon_id = ?, bond_xp = 0 WHERE id = ?').run(newPokemonId, instanceId);
   return res.json({ ok: true });
 });
 
@@ -739,6 +771,8 @@ interface ActiveBattle {
   player2Moves?: any;
   player1Abilities?: any;
   player2Abilities?: any;
+  player1InstanceIds?: string[];
+  player2InstanceIds?: string[];
 }
 const activeBattles = new Map<string, ActiveBattle>();
 
@@ -1156,13 +1190,13 @@ io.on('connection', (socket) => {
     socket.emit('battle:cancelled');
   });
 
-  socket.on('battle:selectTeam', ({ battleId, team, heldItems, moves, abilities }: { battleId: string; team: number[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[]; abilities?: (string | null)[] }) => {
+  socket.on('battle:selectTeam', ({ battleId, team, instanceIds, heldItems, moves, abilities }: { battleId: string; team: number[]; instanceIds?: string[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[]; abilities?: (string | null)[] }) => {
     if (!playerName) return;
     const battle = activeBattles.get(battleId);
     if (!battle) return;
 
-    if (battle.player1 === playerName) { battle.player1Team = team; (battle as any).player1HeldItems = heldItems ?? []; (battle as any).player1Moves = moves ?? []; (battle as any).player1Abilities = abilities ?? []; }
-    else if (battle.player2 === playerName) { battle.player2Team = team; (battle as any).player2HeldItems = heldItems ?? []; (battle as any).player2Moves = moves ?? []; (battle as any).player2Abilities = abilities ?? []; }
+    if (battle.player1 === playerName) { battle.player1Team = team; battle.player1InstanceIds = instanceIds ?? []; (battle as any).player1HeldItems = heldItems ?? []; (battle as any).player1Moves = moves ?? []; (battle as any).player1Abilities = abilities ?? []; }
+    else if (battle.player2 === playerName) { battle.player2Team = team; battle.player2InstanceIds = instanceIds ?? []; (battle as any).player2HeldItems = heldItems ?? []; (battle as any).player2Moves = moves ?? []; (battle as any).player2Abilities = abilities ?? []; }
 
     // Check if both teams are selected
     if (battle.player1Team && battle.player2Team) {
@@ -1230,6 +1264,15 @@ io.on('connection', (socket) => {
         );
         for (const pid of battle.player1Team) recordTeamEntry.run(battleId, p1Row.id, pid);
         for (const pid of battle.player2Team) recordTeamEntry.run(battleId, p2Row.id, pid);
+
+        // Award Bond XP per participant instance (Evolution 2.0)
+        const p1Instances = snapshot.winner === 'left' ? battle.player1InstanceIds : battle.player1InstanceIds;
+        const p2Instances = snapshot.winner === 'left' ? battle.player2InstanceIds : battle.player2InstanceIds;
+        const p1Won = snapshot.winner === 'left';
+        const p1Awards = awardBondXp(p1Row.id, p1Instances, snapshot.left, snapshot.round, p1Won, 'pvp');
+        const p2Awards = awardBondXp(p2Row.id, p2Instances, snapshot.right, snapshot.round, !p1Won, 'pvp');
+        if (socket1 && p1Awards.length) io.to(socket1).emit('battle:bondUpdate', { awards: p1Awards });
+        if (socket2 && p2Awards.length) io.to(socket2).emit('battle:bondUpdate', { awards: p2Awards });
       }
 
       activeBattles.delete(battleId);
@@ -1375,7 +1418,7 @@ io.on('connection', (socket) => {
     socket.emit('tournament:teamLocked', { tournamentId });
   });
 
-  socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, heldItems, moves, abilities }: any) => {
+  socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
     if (!t || t.status !== 'active') return;
@@ -1388,12 +1431,14 @@ io.on('connection', (socket) => {
     let finalHeldItems = heldItems;
     let finalMoves = moves;
     let finalAbilities = abilities;
+    let finalInstanceIds: string[] | undefined = instanceIds;
     if (t.fixedTeam && t.frozenTeams[playerName]) {
       const frozen = t.frozenTeams[playerName];
       finalTeam = frozen.map(f => f.pokemonId);
       finalHeldItems = frozen.map(f => f.heldItem);
       finalMoves = frozen.map(f => f.moves);
       finalAbilities = frozen.map(f => f.ability);
+      finalInstanceIds = undefined; // frozen teams don't carry live instance ids — skip bond xp
     }
 
     // Use matchId as battle key
@@ -1412,11 +1457,13 @@ io.on('connection', (socket) => {
       battle.player1HeldItems = finalHeldItems;
       battle.player1Moves = finalMoves;
       battle.player1Abilities = finalAbilities;
+      battle.player1InstanceIds = finalInstanceIds;
     } else {
       battle.player2Team = finalTeam;
       battle.player2HeldItems = finalHeldItems;
       battle.player2Moves = finalMoves;
       battle.player2Abilities = finalAbilities;
+      battle.player2InstanceIds = finalInstanceIds;
     }
 
     if (battle.player1Team && battle.player2Team) {
@@ -1446,6 +1493,19 @@ io.on('connection', (socket) => {
           winner: snapshot.winner === 'left' ? 'right' : snapshot.winner === 'right' ? 'left' : null,
         };
         io.to(s2).emit('tournament:battleStart', { tournamentId, matchId, snapshot: flipped });
+      }
+
+      // Award Bond XP (Evolution 2.0) — tournament mode
+      const p1Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player1) as any;
+      const p2Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player2) as any;
+      const p1Won = snapshot.winner === 'left';
+      if (p1Row) {
+        const p1Awards = awardBondXp(p1Row.id, battle.player1InstanceIds, snapshot.left, snapshot.round, p1Won, 'tournament');
+        if (s1 && p1Awards.length) io.to(s1).emit('battle:bondUpdate', { awards: p1Awards });
+      }
+      if (p2Row) {
+        const p2Awards = awardBondXp(p2Row.id, battle.player2InstanceIds, snapshot.right, snapshot.round, !p1Won, 'tournament');
+        if (s2 && p2Awards.length) io.to(s2).emit('battle:bondUpdate', { awards: p2Awards });
       }
 
       activeBattles.delete(matchId);

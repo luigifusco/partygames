@@ -29,6 +29,9 @@ export function buildInstance(row: any): PokemonInstance | null {
   if (row.held_item != null) {
     inst.heldItem = row.held_item;
   }
+  if (row.bond_xp != null) {
+    inst.bondXp = row.bond_xp;
+  }
   return inst;
 }
 

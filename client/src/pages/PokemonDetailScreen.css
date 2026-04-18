@@ -469,3 +469,40 @@
   border-radius: var(--radius-md);
   text-align: center;
 }
+
+/* --- Bond XP panel on detail screen --- */
+.detail-bond-panel {
+  margin: 12px 16px;
+  padding: 10px 14px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 10px;
+  color: #eee;
+}
+.detail-bond-label {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.detail-bond-num { color: #c4b5fd; font-variant-numeric: tabular-nums; }
+.detail-bond-met { color: #4ade80; margin-left: auto; font-size: 13px; }
+.detail-bond-track {
+  position: relative;
+  height: 10px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.detail-bond-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #ec4899);
+  transition: width .3s ease-out;
+}
+.detail-bond-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.75;
+}

@@ -131,6 +131,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
       tournamentId: activeTournament.id,
       matchId: activeMatchId,
       team: selected.map(idx => collection[idx].pokemon.id),
+      instanceIds: selected.map(idx => collection[idx].instanceId),
       heldItems: selected.map(idx => collection[idx].heldItem ?? null),
       moves: selected.map(idx => collection[idx].learnedMoves ?? null),
       abilities: selected.map(idx => collection[idx].ability ?? null),

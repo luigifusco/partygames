@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { PokemonInstance, Pokemon, BoxTier, OwnedItem } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
+import { evolveGate } from '@shared/evolution';
 import PokemonCard from '../components/PokemonCard';
 import './CollectionScreen.css';
 
@@ -121,7 +122,13 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
           {filtered.map((inst) => {
             const tokens = tokenCounts.get(inst.pokemon.id) ?? 0;
             const targets = getEvoTargets(inst.pokemon);
-            const canEvolve = tokens >= 3 && targets.length > 0;
+            const firstTarget = targets[0];
+            const gate = firstTarget
+              ? evolveGate({ bondXp: inst.bondXp ?? 0, tokens, targetTier: firstTarget.tier })
+              : null;
+            const canEvolve = !!gate && gate.canEvolve && targets.length > 0;
+            const bondXp = inst.bondXp ?? 0;
+            const bondPct = gate ? Math.min(100, Math.round((bondXp / gate.bondNeeded) * 100)) : 0;
             const isShardSelected = shardSelected.has(inst.instanceId);
             return (
               <PokemonCard
@@ -142,9 +149,15 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
                     <span>{getHeldItemName(inst.heldItem)}</span>
                   </div>
                 )}
+                {!shardMode && gate && targets.length > 0 && !canEvolve && (
+                  <div className="collection-bond-bar" title={`Bond ${bondXp}/${gate.bondNeeded} · Tokens ${tokens}/${gate.tokensNeeded}`}>
+                    <div className="collection-bond-fill" style={{ width: `${bondPct}%` }} />
+                    <span className="collection-bond-text">✨ {bondXp}/{gate.bondNeeded}</span>
+                  </div>
+                )}
                 {!shardMode && canEvolve && (
                   <button className="collection-evolve-btn" onClick={(e) => { e.stopPropagation(); startEvolve(inst); }}>
-                    ✨ Evolve ({tokens}/3)
+                    ✨ Evolve {gate?.bondMet ? '(bond!)' : `(${tokens}/${gate?.tokensNeeded})`}
                   </button>
                 )}
               </PokemonCard>
