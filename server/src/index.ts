@@ -9,7 +9,10 @@ import * as promClient from 'prom-client';
 import { initDb } from './db.js';
 import { STARTING_ESSENCE, BOX_COSTS } from '../../shared/essence.js';
 import { STARTING_ELO, calculateEloChanges } from '../../shared/elo.js';
-import { POKEMON_BY_ID } from '../../shared/pokemon-data.js';
+import { POKEMON, POKEMON_BY_ID } from '../../shared/pokemon-data.js';
+import { HELD_ITEMS } from '../../shared/held-item-data.js';
+import { ALL_MOVE_NAMES } from '../../shared/move-data.js';
+import { STORYLINES } from '../../shared/story-data.js';
 import { randomNature, randomIVs } from '../../shared/natures.js';
 import { STAT_MOVES, STATUS_MOVES, MOVE_SECONDARY_EFFECTS, getMoveAccuracy } from '../../shared/move-data.js';
 import type { StatusCondition } from '../../shared/move-data.js';
@@ -739,6 +742,78 @@ app.post(`${BASE_PATH}/api/admin/player/:id/reset`, (req, res) => {
 app.post(`${BASE_PATH}/api/admin/wipe-all-pokemon`, (_req, res) => {
   db.exec('DELETE FROM owned_pokemon');
   return res.json({ ok: true });
+});
+
+// Create (or overwrite) a dev/test user with a completed story, massive
+// essence, every pokemon, and every collectable item. Intended for local
+// testing; harmless if it shows up in ladders.
+app.post(`${BASE_PATH}/api/admin/create-test-user`, (req, res) => {
+  const rawName = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const name = rawName || '_dev_test_';
+  const TEST_ESSENCE = 1_000_000;
+
+  const existing = db.prepare('SELECT id FROM players WHERE name = ?').get(name) as any;
+  if (existing) {
+    const pid = existing.id;
+    db.prepare('DELETE FROM owned_pokemon WHERE player_id = ?').run(pid);
+    db.prepare('DELETE FROM owned_items WHERE player_id = ?').run(pid);
+    db.prepare('DELETE FROM story_progress WHERE player_id = ?').run(pid);
+    db.prepare('DELETE FROM battle_pokemon_usage WHERE player_id = ?').run(pid);
+    db.prepare('DELETE FROM pokedex WHERE player_id = ?').run(pid);
+    db.prepare('DELETE FROM battle_team_entries WHERE player_id = ?').run(pid);
+    db.prepare('UPDATE battles SET winner_id = NULL WHERE winner_id = ?').run(pid);
+    db.prepare('UPDATE battles SET loser_id = NULL WHERE loser_id = ?').run(pid);
+    db.prepare('DELETE FROM players WHERE id = ?').run(pid);
+  }
+
+  const id = uuidv4();
+  const insertPlayer = db.prepare('INSERT INTO players (id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?)');
+  const insertMon = db.prepare(
+    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  );
+  const discover = db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)');
+  const insertItem = db.prepare('INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)');
+  const insertStory = db.prepare('INSERT OR IGNORE INTO story_progress (player_id, chapter_id) VALUES (?, ?)');
+
+  db.exec('BEGIN');
+  try {
+    insertPlayer.run(id, name, TEST_ESSENCE, STARTING_ELO, null);
+
+    for (const species of POKEMON) {
+      const monId = uuidv4();
+      const nature = randomNature();
+      const ivs = randomIVs();
+      const ability = randomAbilityForSpecies(species.name);
+      const moves = randomLevelUpMovesForSpecies(
+        species.name,
+        getMoveInfoFull,
+        species.moves as [string, string],
+        { atkBias: speciesAtkBias(species), types: species.types as string[] }
+      );
+      insertMon.run(monId, id, species.id, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+      discover.run(id, species.id);
+    }
+
+    for (const h of HELD_ITEMS) insertItem.run(uuidv4(), id, 'held_item', h.id);
+    for (const m of ALL_MOVE_NAMES) insertItem.run(uuidv4(), id, 'tm', m);
+    for (const s of ['hp', 'attack', 'defense', 'spAtk', 'spDef', 'speed']) {
+      insertItem.run(uuidv4(), id, 'boost', s);
+    }
+
+    insertStory.run(id, 'starter-region:kanto');
+    for (const sl of STORYLINES) {
+      for (let i = 0; i < sl.steps.length; i++) {
+        insertStory.run(id, sl.id + ':' + i);
+      }
+      insertStory.run(id, sl.id + ':complete');
+    }
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+
+  return res.json({ ok: true, id, name });
 });
 
 // Archive the entire DB (and WAL files) to an `archives/` folder next

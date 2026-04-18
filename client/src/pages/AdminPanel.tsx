@@ -111,6 +111,29 @@ export default function AdminPanel() {
     refresh();
   };
 
+  const createTestUser = async () => {
+    const raw = prompt('Test user name?', '_dev_test_');
+    if (raw === null) return;
+    const name = raw.trim() || '_dev_test_';
+    if (!confirm(`Create/overwrite test user "${name}"?\n\nThey'll start with a completed story, 1,000,000 essence, every Pokémon, every held item, every TM, and every stat boost.`)) return;
+    try {
+      const res = await fetch(`${API}/api/admin/create-test-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        alert(`Test user "${data.name ?? name}" ready.`);
+        refresh();
+      } else {
+        alert('Failed: ' + (data.error ?? res.statusText));
+      }
+    } catch (e) {
+      alert('Request failed: ' + e);
+    }
+  };
+
   const archiveDb = async () => {
     if (!confirm(
       'Archive the current database and start a fresh season?\n\n' +
@@ -540,6 +563,9 @@ export default function AdminPanel() {
         <div className="admin-actions-row">
           <button className="ds-btn ds-btn-primary" onClick={() => setShowCreateTournament(true)}>
             Tournament
+          </button>
+          <button className="ds-btn" onClick={createTestUser} title="Create a dev test user with everything unlocked">
+            Test User
           </button>
           <button className="ds-btn ds-btn-danger" onClick={wipeAllPokemon}>
             Wipe All PKM
