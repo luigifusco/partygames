@@ -175,6 +175,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
           rightTeam: step.team,
           fieldSize: step.fieldSize ?? 1,
           leftMoves: playerMoves,
+          rightMoves: step.teamMoves ?? undefined,
           leftHeldItems: playerHeldItems,
           leftAbilities: playerAbilities,
           leftCharacters: playerCharacters,

@@ -11,6 +11,8 @@ export interface StoryStep {
   trainerName?: string;
   trainerTitle?: string;
   team?: number[];
+  /** Optional per-pokemon hardcoded movesets (aligned with `team`). null → roll automatically. */
+  teamMoves?: ([string, string] | null)[];
   fieldSize?: 1 | 2 | 3;
   essenceReward?: number;
   /** For 'info' steps: the title of the info card. */
@@ -105,7 +107,7 @@ export const STORYLINES: Storyline[] = [
         "That is what a battle is. Not a fight to prove who is stronger. A conversation. A moment in which your Pokémon shows you who they are, and you show them who you want to become.",
         "I'd like to have that conversation with you. Just once, so you understand the shape of it. Will you battle me?",
       ]},
-      { type: 'battle', trainerName: 'Cynthia', trainerTitle: 'Champion', team: [443], fieldSize: 1, essenceReward: 120 },
+      { type: 'battle', trainerName: 'Cynthia', trainerTitle: 'Champion', team: [443], teamMoves: [['Tackle', 'Sand Attack']], fieldSize: 1, essenceReward: 120 },
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
         "Thank you. That was a good conversation — and a better one than you realize.",
         "Did you feel it? The way your Pokémon waited for you, then trusted you, then moved? That feeling has a name in some of the old stories. The people of Sinnoh called it *the thread*. Every time you and a Pokémon share a moment — a victory, a rescue, even just a long walk — a thread is spun between you. Over time, those threads weave together into something the world itself can feel.",
