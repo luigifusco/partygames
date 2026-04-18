@@ -406,10 +406,16 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
                     {t.bracket.filter(m => m.round === round).map(match => (
                       <div key={match.id} className={'tournament-match-card status-' + match.status}>
                         <div className={'tournament-match-player' + (match.winner === match.player1 ? ' winner' : '')}>
+                          {match.player1
+                            ? <Avatar name={match.player1} picture={playerPictures[match.player1] ?? null} size="sm" className="tournament-match-avatar" />
+                            : <div className="tournament-match-avatar tournament-match-avatar-tbd">?</div>}
                           <span className="tournament-match-player-name">{match.player1 ?? 'TBD'}</span>
                         </div>
                         <div className="tournament-match-vs">vs</div>
                         <div className={'tournament-match-player' + (match.winner === match.player2 ? ' winner' : '')}>
+                          {match.player2
+                            ? <Avatar name={match.player2} picture={playerPictures[match.player2] ?? null} size="sm" className="tournament-match-avatar" />
+                            : <div className="tournament-match-avatar tournament-match-avatar-tbd">?</div>}
                           <span className="tournament-match-player-name">{match.player2 ?? 'TBD'}</span>
                         </div>
                       </div>

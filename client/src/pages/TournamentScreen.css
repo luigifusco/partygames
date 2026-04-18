@@ -422,7 +422,7 @@
 .tournament-match-player {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 6px;
   padding: 4px 8px;
   border-radius: var(--radius-sm);
@@ -430,6 +430,24 @@
   color: var(--color-text-dim);
   font-weight: 600;
   min-height: 24px;
+}
+
+.tournament-match-avatar {
+  flex-shrink: 0;
+}
+
+.tournament-match-avatar-tbd {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-faint);
+  font-weight: 700;
+  font-size: 12px;
 }
 
 .tournament-match-player.winner {
