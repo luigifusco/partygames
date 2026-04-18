@@ -17,6 +17,7 @@ const API = BASE_PATH;
 
 interface StoryScreenProps {
   playerId: string;
+  playerName: string;
   essence: number;
   onGainEssence: (amount: number) => void;
   onAddPokemon: (pokemonIds: number[]) => Promise<PokemonInstance[]>;
@@ -37,7 +38,7 @@ function stepKey(storylineId: string, stepIdx: number) {
   return storylineId + ':' + stepIdx;
 }
 
-export default function StoryScreen({ playerId, essence, onGainEssence, onAddPokemon, onAddItems, collection }: StoryScreenProps) {
+export default function StoryScreen({ playerId, playerName, essence, onGainEssence, onAddPokemon, onAddItems, collection }: StoryScreenProps) {
   const navigate = useNavigate();
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>('hub');
@@ -132,6 +133,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
       let playerHeldItems: (string | null)[] | undefined;
       let playerAbilities: (string | null)[] | undefined;
       let playerCharacters: (string | null)[] | undefined;
+      let playerInstanceIds: string[] | undefined;
 
       if (selected.length > 0) {
         playerTeam = selected.map(idx => collection[idx].pokemon.id);
@@ -139,6 +141,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
         playerHeldItems = selected.map(idx => collection[idx].heldItem ?? null);
         playerAbilities = selected.map(idx => collection[idx].ability ?? null);
         playerCharacters = selected.map((idx, i) => selectedCharacters[i] ?? collection[idx].character ?? null);
+        playerInstanceIds = selected.map(idx => collection[idx].instanceId);
       } else {
         const pool = Object.values(POKEMON_BY_ID).filter(p => p.tier !== 'legendary');
         playerTeam = Array.from({ length: teamSize }, () => pool[Math.floor(Math.random() * pool.length)].id);
@@ -155,6 +158,9 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
           leftHeldItems: playerHeldItems,
           leftAbilities: playerAbilities,
           leftCharacters: playerCharacters,
+          playerName,
+          leftInstanceIds: playerInstanceIds,
+          bondMode: 'story',
         }),
       });
       const data = await res.json();
@@ -166,7 +172,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
     } finally {
       setLoading(false);
     }
-  }, [collection, selected, selectedCharacters]);
+  }, [collection, selected, selectedCharacters, playerName]);
 
   const handleBattleEnd = useCallback(async () => {
     if (!activeStoryline || !snapshot) return;

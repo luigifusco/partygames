@@ -73,9 +73,10 @@ interface BattleDemoProps {
   onGainEssence: (amount: number) => void;
   collection: PokemonInstance[];
   recentPokemonIds?: number[];
+  playerName?: string;
 }
 
-export default function BattleDemo({ essence, onGainEssence, collection, recentPokemonIds }: BattleDemoProps) {
+export default function BattleDemo({ essence, onGainEssence, collection, recentPokemonIds, playerName }: BattleDemoProps) {
   const navigate = useNavigate();
   const [trainer, setTrainer] = useState<AITrainer | null>(null);
   const [config, setConfig] = useState<(BattleConfig & { useOwnPokemon?: boolean }) | null>(null);
@@ -141,6 +142,11 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         return override ?? inst?.character ?? null;
       }) : undefined;
 
+      const leftInstanceIds = useOwn ? myTeam.map((p) => {
+        const inst = instances.find((i) => i.pokemon.id === p.id);
+        return inst?.instanceId ?? null;
+      }).filter((x): x is string => !!x) : undefined;
+
       const res = await fetch(`${API_BASE}/api/battle/simulate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -153,6 +159,9 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
           leftHeldItems,
           leftAbilities,
           leftCharacters,
+          playerName: playerName,
+          leftInstanceIds,
+          bondMode: 'ai',
         }),
       });
       const data = await res.json();

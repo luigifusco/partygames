@@ -787,7 +787,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokedex/backfill`, (req, res) => {
 
 // AI / demo battle endpoint
 app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
-  const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters } = req.body;
+  const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters, playerName, leftInstanceIds, bondMode } = req.body;
   if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
     return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
   }
@@ -804,7 +804,20 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
     'INSERT INTO battles (id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds) VALUES (?, NULL, NULL, 0, ?, ?, ?, ?, ?)'
   ).run(uuidv4(), fs, leftTeam.length, mode, 'ai', snapshot.round);
 
-  return res.json({ snapshot });
+  // Award Bond XP if the caller identifies a real player + their instance IDs.
+  let bondAwards: BondAward[] = [];
+  if (playerName && Array.isArray(leftInstanceIds) && leftInstanceIds.length > 0) {
+    const playerRow = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
+    if (playerRow) {
+      const bm: BondBattleMode = (bondMode === 'story' || bondMode === 'friendly' || bondMode === 'demo') ? bondMode : 'ai';
+      const playerWon = snapshot.winner === 'left';
+      bondAwards = awardBondXp(playerRow.id, leftInstanceIds, snapshot.left, snapshot.round, playerWon, bm);
+      const sock = connectedPlayers.get(playerName);
+      if (sock && bondAwards.length) io.to(sock).emit('battle:bondUpdate', { awards: bondAwards });
+    }
+  }
+
+  return res.json({ snapshot, bondAwards });
 });
 
 // --- Socket.IO: Battle matching ---
