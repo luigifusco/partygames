@@ -13,7 +13,7 @@ interface BattleSceneProps {
   essenceGained?: number;
   trainerId?: string;
   /** XP (bond) awards for the left-side team, keyed by instanceId. Shown on the result card. */
-  bondAwards?: { instanceId: string; delta: number; total: number }[];
+  bondAwards?: { instanceId: string; slot: number; delta: number; total: number }[];
   onFinished?: () => void;
   /** Optional callback invoked when the user clicks the result card's primary button. */
   onContinue?: () => void;
@@ -711,7 +711,6 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       {anim.finished && snapshot.winner && (() => {
         const playerWon = snapshot.winner === 'left';
         const awards = (bondAwards ?? []).filter((a) => a.delta > 0);
-        const awardByInst = new Map(awards.map((a) => [a.instanceId, a]));
         return (
           <div className="battle-result-overlay">
             <div className={`battle-result-card ${playerWon ? 'win' : 'loss'}`}>
@@ -733,11 +732,11 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
                 <div className="battle-result-xp-block">
                   <div className="battle-result-xp-title">Bond XP earned</div>
                   <ul className="battle-result-xp-list">
-                    {snapshot.left.map((p) => {
-                      const a = awardByInst.get(p.instanceId);
-                      if (!a) return null;
+                    {awards.map((a) => {
+                      const p = snapshot.left[a.slot];
+                      if (!p) return null;
                       return (
-                        <li key={p.instanceId} className="battle-result-xp-row">
+                        <li key={a.instanceId} className="battle-result-xp-row">
                           <img src={p.sprite} alt={p.name} className="battle-result-xp-sprite" />
                           <span className="battle-result-xp-name">{p.name}</span>
                           <span className="battle-result-xp-delta">+{a.delta}</span>

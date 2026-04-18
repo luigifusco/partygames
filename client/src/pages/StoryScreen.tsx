@@ -44,7 +44,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   const [activeStoryline, setActiveStoryline] = useState<Storyline | null>(null);
   const [activeStepIdx, setActiveStepIdx] = useState(0);
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
-  const [bondAwards, setBondAwards] = useState<{ instanceId: string; delta: number; total: number }[]>([]);
+  const [bondAwards, setBondAwards] = useState<{ instanceId: string; slot: number; delta: number; total: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const [firstClear, setFirstClear] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);

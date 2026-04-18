@@ -191,7 +191,7 @@ function flipSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
 
 // --- Bond XP (Evolution 2.0) ---
 
-interface BondAward { instanceId: string; delta: number; total: number; }
+interface BondAward { instanceId: string; slot: number; delta: number; total: number; }
 
 // Special story chapter that, once completed, unlocks Bond XP gain
 // for the player. Until N has been defeated in his first appearance,
@@ -225,7 +225,7 @@ function awardBondXp(
     const row = selectById.get(instanceId, playerId) as any;
     if (!row) continue; // pokemon was deleted/traded in-between
     update.run(delta, instanceId, playerId);
-    awards.push({ instanceId, delta, total: (row.bond_xp ?? 0) + delta });
+    awards.push({ instanceId, slot: i, delta, total: (row.bond_xp ?? 0) + delta });
   }
   return awards;
 }

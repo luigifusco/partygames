@@ -49,7 +49,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   const [selected, setSelected] = useState<number[]>([]);
   const [selectedCharacters, setSelectedCharacters] = useState<(string | null)[]>([]);
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
-  const [bondAwards, setBondAwards] = useState<{ instanceId: string; delta: number; total: number }[]>([]);
+  const [bondAwards, setBondAwards] = useState<{ instanceId: string; slot: number; delta: number; total: number }[]>([]);
   const [opponentTeamIds, setOpponentTeamIds] = useState<number[]>([]);
   const [rewarded, setRewarded] = useState(false);
   const [battleFinished, setBattleFinished] = useState(false);
@@ -102,7 +102,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
       onEloUpdate(myNewElo);
     };
 
-    const onBondAwards = ({ awards }: { awards: Array<{ instanceId: string; delta: number; total: number }> }) => {
+    const onBondAwards = ({ awards }: { awards: Array<{ instanceId: string; slot: number; delta: number; total: number }> }) => {
       if (Array.isArray(awards) && awards.length > 0) setBondAwards(awards);
     };
 

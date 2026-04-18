@@ -89,7 +89,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
   const [selectedCharacters, setSelectedCharacters] = useState<(string | null)[]>([]);
   const [aiTeam, setAiTeam] = useState<Pokemon[]>([]);
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
-  const [bondAwards, setBondAwards] = useState<{ instanceId: string; delta: number; total: number }[]>([]);
+  const [bondAwards, setBondAwards] = useState<{ instanceId: string; slot: number; delta: number; total: number }[]>([]);
   const [opponentTeam, setOpponentTeam] = useState<Pokemon[]>([]);
   const [rewarded, setRewarded] = useState(false);
   const [battleFinished, setBattleFinished] = useState(false);
