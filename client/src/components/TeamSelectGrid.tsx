@@ -172,6 +172,15 @@ export default function TeamSelectGrid({
       )}
 
       <div className="team-select-scroll">
+        {instances.length === 0 ? (
+          <div className="team-select-empty">
+            <div className="team-select-empty-icon">🎒</div>
+            <div className="team-select-empty-title">No Pokémon yet</div>
+            <div className="team-select-empty-hint">
+              Head back and complete <b>Oak's Gift</b> first — you'll pick your starter team there.
+            </div>
+          </div>
+        ) : (
         <div className="team-select-grid">
           {sortedIndices.map((idx) => {
             const inst = instances[idx];
@@ -214,6 +223,7 @@ export default function TeamSelectGrid({
             );
           })}
         </div>
+        )}
       </div>
 
       {pendingInst && pendingDefault && (

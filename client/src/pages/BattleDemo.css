@@ -760,3 +760,25 @@
   color: var(--color-text-muted);
   line-height: 1.35;
 }
+
+.team-select-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.team-select-empty-icon { font-size: 48px; }
+.team-select-empty-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+.team-select-empty-hint {
+  font-size: var(--text-sm);
+  max-width: 320px;
+  line-height: 1.5;
+}

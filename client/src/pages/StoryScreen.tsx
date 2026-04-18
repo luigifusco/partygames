@@ -112,9 +112,8 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     const step = sl.steps[nextStep];
     if (step.type === 'dialogue') setPhase('dialogue');
     else if (step.type === 'info') setPhase('info');
-    else if (collection.length > 0) setPhase('select');
-    else startBattleStep(sl, nextStep);
-  }, [getNextStepIdx, collection]);
+    else setPhase('select');
+  }, [getNextStepIdx]);
 
   const markStepComplete = useCallback(async (sl: Storyline, stepIdx: number) => {
     const key = stepKey(sl.id, stepIdx);
@@ -146,27 +145,24 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   const startBattleStep = useCallback(async (sl: Storyline, stepIdx: number) => {
     const step = sl.steps[stepIdx];
     if (!step.team) return;
+    if (selected.length === 0) {
+      // No team picked (or no collection at all). Refuse to silently
+      // roll a random team — send the player back to the hub instead
+      // so the "no Pokémon" state is visible upstream.
+      setPhase('hub');
+      setActiveStoryline(null);
+      return;
+    }
     setLoading(true);
     try {
       const teamSize = step.team.length;
-      let playerTeam: number[];
-      let playerMoves: ([string, string] | null)[] | undefined;
-      let playerHeldItems: (string | null)[] | undefined;
-      let playerAbilities: (string | null)[] | undefined;
-      let playerCharacters: (string | null)[] | undefined;
-      let playerInstanceIds: string[] | undefined;
-
-      if (selected.length > 0) {
-        playerTeam = selected.map(idx => collection[idx].pokemon.id);
-        playerMoves = selected.map(idx => collection[idx].learnedMoves ?? null);
-        playerHeldItems = selected.map(idx => collection[idx].heldItem ?? null);
-        playerAbilities = selected.map(idx => collection[idx].ability ?? null);
-        playerCharacters = selected.map((idx, i) => selectedCharacters[i] ?? collection[idx].character ?? null);
-        playerInstanceIds = selected.map(idx => collection[idx].instanceId);
-      } else {
-        const pool = Object.values(POKEMON_BY_ID).filter(p => p.tier !== 'legendary');
-        playerTeam = Array.from({ length: teamSize }, () => pool[Math.floor(Math.random() * pool.length)].id);
-      }
+      const playerTeam = selected.map(idx => collection[idx].pokemon.id);
+      const playerMoves = selected.map(idx => collection[idx].learnedMoves ?? null);
+      const playerHeldItems = selected.map(idx => collection[idx].heldItem ?? null);
+      const playerAbilities = selected.map(idx => collection[idx].ability ?? null);
+      const playerCharacters = selected.map((idx, i) => selectedCharacters[i] ?? collection[idx].character ?? null);
+      const playerInstanceIds = selected.map(idx => collection[idx].instanceId);
+      void teamSize;
 
       const res = await fetch(API + '/api/battle/simulate', {
         method: 'POST',
@@ -251,9 +247,10 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     const step = activeStoryline.steps[nextIdx];
     if (step.type === 'dialogue') setPhase('dialogue');
     else if (step.type === 'info') setPhase('info');
-    else if (collection.length > 0) setPhase('select');
-    else startBattleStep(activeStoryline, nextIdx);
-  }, [activeStoryline, activeStepIdx, collection, startBattleStep]);
+    else setPhase('select');
+  }, [activeStoryline, activeStepIdx, startBattleStep]);
+
+  // (old fallback used when first entering a storyline)
 
   const handleDialogueContinue = useCallback(async () => {
     if (!activeStoryline) return;
@@ -276,14 +273,25 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     );
 
     if (allDone) {
-      const fc = !completedSteps.has(stepKey(activeStoryline.id, activeStepIdx));
-      if (fc) {
+      const firstClearFlag = !completedSteps.has(stepKey(activeStoryline.id, activeStepIdx));
+      // Team choices (e.g. Oak's starter pick) must always be surfaced until
+      // the player has actually redeemed them, even if the storyline is
+      // already marked complete on the server — otherwise an admin reset or
+      // an interrupted first run can leave the player with no starter and
+      // oak-starters:complete already flagged.
+      const needsTeamChoice =
+        activeStoryline.teamChoices &&
+        activeStoryline.teamChoices.length > 0 &&
+        !activeStoryline.teamChoices.some(choice =>
+          choice.pokemonIds.some(id => collection.some(inst => inst.pokemon.id === id))
+        );
+      if (needsTeamChoice) {
+        if (firstClearFlag) await markStorylineComplete(activeStoryline);
+        setPhase('teamChoice');
+        return;
+      }
+      if (firstClearFlag) {
         await markStorylineComplete(activeStoryline);
-        // If storyline has team choices, show choice screen before reward
-        if (activeStoryline.teamChoices && activeStoryline.teamChoices.length > 0) {
-          setPhase('teamChoice');
-          return;
-        }
         onGainEssence(activeStoryline.completionReward.essence);
         if (activeStoryline.completionReward.pack) {
           const pack = openBox(activeStoryline.completionReward.pack);
@@ -301,7 +309,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     }
 
     advanceToNextStep();
-  }, [activeStoryline, activeStepIdx, dialogueLineIdx, completedSteps, markStepComplete, markStorylineComplete, advanceToNextStep, onGainEssence, onAddPokemon, onAddItems]);
+  }, [activeStoryline, activeStepIdx, dialogueLineIdx, completedSteps, collection, markStepComplete, markStorylineComplete, advanceToNextStep, onGainEssence, onAddPokemon, onAddItems]);
 
   const handleTeamChoice = useCallback(async (choice: TeamChoice) => {
     if (!activeStoryline) return;

@@ -290,11 +290,18 @@ export default function App() {
       );
     };
 
+    const onPlayerReset = () => {
+      // Admin wiped this account — nuke cached local state and reload so
+      // we re-fetch fresh collection/story/essence from the server.
+      window.location.reload();
+    };
+
     socket.on('battle:challenged', onBattleChallenged);
     socket.on('trade:incoming', onTradeIncoming);
     socket.on('tournament:created', onTournamentCreated);
     socket.on('tournament:matchReady', onTournamentMatchReady);
     socket.on('battle:bondUpdate', onBondUpdate);
+    socket.on('player:reset', onPlayerReset);
 
     return () => {
       socket.off('battle:challenged', onBattleChallenged);
@@ -302,6 +309,7 @@ export default function App() {
       socket.off('tournament:created', onTournamentCreated);
       socket.off('tournament:matchReady', onTournamentMatchReady);
       socket.off('battle:bondUpdate', onBondUpdate);
+      socket.off('player:reset', onPlayerReset);
     };
   }, []);
 

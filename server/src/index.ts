@@ -698,6 +698,11 @@ app.post(`${BASE_PATH}/api/admin/player/:id/set-elo`, (req, res) => {
 
 app.post(`${BASE_PATH}/api/admin/player/:id/wipe-pokemon`, (req, res) => {
   db.prepare('DELETE FROM owned_pokemon WHERE player_id = ?').run(req.params.id);
+  const row = db.prepare('SELECT name FROM players WHERE id = ?').get(req.params.id) as any;
+  if (row) {
+    const sock = connectedPlayers.get(row.name);
+    if (sock) io.to(sock).emit('player:reset');
+  }
   return res.json({ ok: true });
 });
 
@@ -720,7 +725,14 @@ app.post(`${BASE_PATH}/api/admin/player/:id/reset`, (req, res) => {
   db.prepare('DELETE FROM owned_items WHERE player_id = ?').run(req.params.id);
   db.prepare('DELETE FROM story_progress WHERE player_id = ?').run(req.params.id);
   db.prepare('DELETE FROM battle_pokemon_usage WHERE player_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM pokedex WHERE player_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM battle_team_entries WHERE player_id = ?').run(req.params.id);
   db.prepare(`UPDATE players SET essence = ${STARTING_ESSENCE}, elo = ${STARTING_ELO} WHERE id = ?`).run(req.params.id);
+  const row = db.prepare('SELECT name FROM players WHERE id = ?').get(req.params.id) as any;
+  if (row) {
+    const sock = connectedPlayers.get(row.name);
+    if (sock) io.to(sock).emit('player:reset');
+  }
   return res.json({ ok: true });
 });
 
