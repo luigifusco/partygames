@@ -25,7 +25,7 @@ interface StoryScreenProps {
   collection: PokemonInstance[];
 }
 
-type Phase = 'hub' | 'dialogue' | 'select' | 'battle' | 'victory' | 'reward' | 'teamChoice';
+type Phase = 'hub' | 'dialogue' | 'select' | 'battle' | 'victory' | 'reward' | 'teamChoice' | 'info';
 
 const DIFF_LABELS: Record<string, { label: string; cls: string }> = {
   beginner: { label: 'Beginner', cls: 'diff-beginner' },
@@ -110,10 +110,8 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     setBattleFinished(false);
     setDialogueLineIdx(0);
     const step = sl.steps[nextStep];
-    setPhase(step.type === 'dialogue' ? 'dialogue' : 'dialogue');
-    // Always start with dialogue-like intro for battles too (show trainer info)
-    setPhase(step.type === 'dialogue' ? 'dialogue' : 'select');
     if (step.type === 'dialogue') setPhase('dialogue');
+    else if (step.type === 'info') setPhase('info');
     else if (collection.length > 0) setPhase('select');
     else startBattleStep(sl, nextStep);
   }, [getNextStepIdx, collection]);
@@ -129,6 +127,21 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     setCompletedSteps(prev => new Set([...prev, key]));
     return data.firstClear as boolean;
   }, [playerId]);
+
+  // Posts a sentinel `<storyline>:complete` chapter on first clear.
+  // Server-side gates (e.g. Bond XP unlock) check for these sentinels.
+  const markStorylineComplete = useCallback(async (sl: Storyline) => {
+    const key = sl.id + ':complete';
+    if (completedSteps.has(key)) return;
+    try {
+      await fetch(API + '/api/player/' + playerId + '/story/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chapterId: key }),
+      });
+      setCompletedSteps(prev => new Set([...prev, key]));
+    } catch {}
+  }, [playerId, completedSteps]);
 
   const startBattleStep = useCallback(async (sl: Storyline, stepIdx: number) => {
     const step = sl.steps[stepIdx];
@@ -197,6 +210,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       );
 
       if (allDone && fc) {
+        await markStorylineComplete(activeStoryline);
         // Give completion reward
         onGainEssence(activeStoryline.completionReward.essence);
         if (activeStoryline.completionReward.pack) {
@@ -217,7 +231,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       setPhase('hub');
       setActiveStoryline(null);
     }
-  }, [activeStoryline, activeStepIdx, snapshot, completedSteps, markStepComplete, onGainEssence, onAddPokemon, onAddItems]);
+  }, [activeStoryline, activeStepIdx, snapshot, completedSteps, markStepComplete, markStorylineComplete, onGainEssence, onAddPokemon, onAddItems]);
 
   const advanceToNextStep = useCallback(() => {
     if (!activeStoryline) return;
@@ -234,6 +248,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     setDialogueLineIdx(0);
     const step = activeStoryline.steps[nextIdx];
     if (step.type === 'dialogue') setPhase('dialogue');
+    else if (step.type === 'info') setPhase('info');
     else if (collection.length > 0) setPhase('select');
     else startBattleStep(activeStoryline, nextIdx);
   }, [activeStoryline, activeStepIdx, collection, startBattleStep]);
@@ -243,7 +258,9 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     const step = activeStoryline.steps[activeStepIdx];
     const lines = step.lines ?? [];
 
-    if (dialogueLineIdx < lines.length - 1) {
+    // For dialogue steps we walk through lines one at a time. Info
+    // steps render all lines at once so we skip the per-line loop.
+    if (step.type === 'dialogue' && dialogueLineIdx < lines.length - 1) {
       setDialogueLineIdx(dialogueLineIdx + 1);
       return;
     }
@@ -259,6 +276,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     if (allDone) {
       const fc = !completedSteps.has(stepKey(activeStoryline.id, activeStepIdx));
       if (fc) {
+        await markStorylineComplete(activeStoryline);
         // If storyline has team choices, show choice screen before reward
         if (activeStoryline.teamChoices && activeStoryline.teamChoices.length > 0) {
           setPhase('teamChoice');
@@ -281,7 +299,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     }
 
     advanceToNextStep();
-  }, [activeStoryline, activeStepIdx, dialogueLineIdx, completedSteps, markStepComplete, advanceToNextStep, onGainEssence, onAddPokemon, onAddItems]);
+  }, [activeStoryline, activeStepIdx, dialogueLineIdx, completedSteps, markStepComplete, markStorylineComplete, advanceToNextStep, onGainEssence, onAddPokemon, onAddItems]);
 
   const handleTeamChoice = useCallback(async (choice: TeamChoice) => {
     if (!activeStoryline) return;
@@ -380,6 +398,23 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   }
 
   const step = activeStoryline?.steps[activeStepIdx];
+
+  // ─── Info View ───
+  if (phase === 'info' && activeStoryline && step?.type === 'info') {
+    const lines = step.lines ?? [];
+    return (
+      <div className="story-screen">
+        <div className="story-info-card">
+          <div className="story-info-icon">{step.infoIcon ?? 'ℹ️'}</div>
+          <div className="story-info-title">{step.infoTitle ?? 'Info'}</div>
+          <ul className="story-info-lines">
+            {lines.map((ln, i) => <li key={i}>{ln}</li>)}
+          </ul>
+          <button className="story-fight-btn" onClick={handleDialogueContinue}>Got it! →</button>
+        </div>
+      </div>
+    );
+  }
 
   // ─── Dialogue View ───
   if (phase === 'dialogue' && activeStoryline && step?.type === 'dialogue') {

@@ -193,6 +193,15 @@ function flipSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
 
 interface BondAward { instanceId: string; delta: number; total: number; }
 
+// Special story chapter that, once completed, unlocks Bond XP gain
+// for the player. Until N has been defeated in his first appearance,
+// no battles will award bond XP at all.
+const BOND_UNLOCK_CHAPTER = 'n-bond-awakening:complete';
+function hasBondUnlocked(playerId: string): boolean {
+  const row = db.prepare('SELECT 1 FROM story_progress WHERE player_id = ? AND chapter_id = ?').get(playerId, BOND_UNLOCK_CHAPTER);
+  return !!row;
+}
+
 function awardBondXp(
   playerId: string,
   instanceIds: string[] | undefined,
@@ -202,6 +211,7 @@ function awardBondXp(
   mode: BondBattleMode,
 ): BondAward[] {
   if (!instanceIds || instanceIds.length === 0) return [];
+  if (!hasBondUnlocked(playerId)) return [];
   const awards: BondAward[] = [];
   const selectById = db.prepare('SELECT bond_xp FROM owned_pokemon WHERE id = ? AND player_id = ?');
   const update = db.prepare('UPDATE owned_pokemon SET bond_xp = bond_xp + ? WHERE id = ? AND player_id = ?');

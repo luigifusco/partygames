@@ -4,7 +4,7 @@
 const TRAINERS_PATH = '/pokemonparty/assets/trainers';
 
 export interface StoryStep {
-  type: 'battle' | 'dialogue';
+  type: 'battle' | 'dialogue' | 'info';
   speaker?: string;
   sprite?: string;
   lines?: string[];
@@ -13,6 +13,10 @@ export interface StoryStep {
   team?: number[];
   fieldSize?: 1 | 2 | 3;
   essenceReward?: number;
+  /** For 'info' steps: the title of the info card. */
+  infoTitle?: string;
+  /** For 'info' steps: the icon shown on the info card. */
+  infoIcon?: string;
 }
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced' | 'expert';
@@ -100,8 +104,46 @@ export const STORYLINES: Storyline[] = [
     completionReward: { essence: 150 },
   },
   {
+    id: 'n-bond-awakening', title: 'A Stranger Named N',
+    description: 'A mysterious young man wants to talk about your Pokémon.',
+    region: 'Unova', difficulty: 'beginner', icon: '👁️',
+    requires: ['bug-catcher', 'youngster-joey'],
+    steps: [
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "...Your Pokémon. They're saying something.",
+        "Yes — I can hear them. Most people can't, but I always have.",
+        "Tell me, trainer: do you think your Pokémon are happy by your side?",
+      ]},
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "I'm called N. I travel the world looking for the truth about Pokémon and people.",
+        "I've seen trainers who treat their Pokémon as tools. Weapons.",
+        "But I've also seen ones — like you — who might just be friends with them.",
+        "I want to feel for myself. Battle me, and let me hear your Pokémon's voices.",
+      ]},
+      { type: 'battle', trainerName: 'N', trainerTitle: 'Mysterious Trainer', team: [509, 519, 531], fieldSize: 1, essenceReward: 120 },
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "...I felt it. Your Pokémon trust you.",
+        "That bond is not something you train into them. It's something you earn — together, over time.",
+        "Every battle you fight beside them, every moment you share — they grow closer to you.",
+        "And as that bond deepens, your Pokémon themselves change. They grow. They become more.",
+      ]},
+      { type: 'info', infoTitle: 'Bond XP — Unlocked!', infoIcon: '💞', lines: [
+        "Your Pokémon now gain Bond XP from every battle they fight by your side.",
+        "Win or lose, surviving the battle deepens the bond. Winning grants more.",
+        "Bond XP fills the bar shown in your collection and on each Pokémon's detail page.",
+        "Once a Pokémon's bond is high enough — and you've gathered enough thematic tokens from sharding — it's ready to evolve into its next form.",
+        "Battle often, treat your Pokémon well, and watch them grow.",
+      ]},
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "We will meet again, trainer. The world is larger than you realize.",
+        "Until then... listen to your Pokémon. They have so much to say."
+      ]},
+    ],
+    completionReward: { essence: 300 },
+  },
+  {
     id: 'may-rival', title: "May's Challenge", description: 'A Hoenn rival blocks the path with her starter!',
-    region: 'Hoenn', difficulty: 'beginner', icon: '🌿', requires: ['bug-catcher', 'youngster-joey'],
+    region: 'Hoenn', difficulty: 'beginner', icon: '🌿', requires: ['n-bond-awakening'],
     steps: [
       { type: 'dialogue', speaker: 'May', sprite: sp('may'), lines: ["Hey, you're that new trainer Dad mentioned!", "I'm May — let's see what you've got!"] },
       { type: 'battle', trainerName: 'May', trainerTitle: 'Hoenn Rival', team: [255, 261, 273], fieldSize: 1, essenceReward: 100 },
@@ -111,7 +153,7 @@ export const STORYLINES: Storyline[] = [
   },
   {
     id: 'barry-rival', title: "Barry's Rush", description: "Sinnoh's hyper rival has no time to lose!",
-    region: 'Sinnoh', difficulty: 'beginner', icon: '⚡', requires: ['bug-catcher', 'youngster-joey'],
+    region: 'Sinnoh', difficulty: 'beginner', icon: '⚡', requires: ['n-bond-awakening'],
     steps: [
       { type: 'dialogue', speaker: 'Barry', sprite: sp('barry'), lines: ["Hey hey hey! Took you long enough!", "I'm gonna fine you a million if you don't battle me right now!"] },
       { type: 'battle', trainerName: 'Barry', trainerTitle: 'Sinnoh Rival', team: [390, 396, 399], fieldSize: 1, essenceReward: 100 },
