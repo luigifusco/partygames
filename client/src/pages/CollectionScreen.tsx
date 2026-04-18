@@ -157,9 +157,6 @@ export default function CollectionScreen({ collection, items, onShard }: Collect
                     <span className="collection-bond-text">{bondXp}/{gate.bondNeeded}</span>
                   </div>
                 )}
-                {!shardMode && canEvolve && (
-                  <div className="collection-evolve-badge" title="Ready to evolve!">✦</div>
-                )}
               </PokemonCard>
             );
           })}
