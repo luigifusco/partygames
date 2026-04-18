@@ -210,7 +210,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
       <div className="battle-mp-screen">
         <div className="battle-mp-header">
           <button className="battle-mp-back" onClick={() => navigate('/play')}>← Back</button>
-          <h2>⚔️ Challenge a Trainer</h2>
+          <h2>Challenge a Trainer</h2>
         </div>
         <div className="trainer-filters">
           <div className="trainer-filter-row">
@@ -281,7 +281,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         <BattleScene snapshot={snapshot} turnDelayMs={2000} essenceGained={essenceGained} trainerId={trainer?.id} onFinished={() => setBattleFinished(true)} />
         {battleFinished && (
           <button className="battle-demo-back" onClick={() => { setSnapshot(null); setSelected([]); setAiTeam([]); setOpponentTeam([]); setRewarded(false); setBattleFinished(false); setConfig(null); setTrainer(null); setDraftSchedule([]); setDraftPhase(0); setAllPickedIndices(new Set()); setAllPickedAiIds(new Set()); setDraftBattleStarted(false); }}>
-            {snapshot.winner === 'left' ? '🏆 Claim Rewards' : '← Back'}
+            {snapshot.winner === 'left' ? 'Claim Rewards' : '← Back'}
           </button>
         )}
       </div>
@@ -336,10 +336,10 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         teamSize={teamSize}
         disabledIndices={disabledIndices}
         onSubmit={isMyDraftTurn && pendingPicks === neededPicks ? confirmDraftPick : undefined}
-        submitLabel="✓ Confirm"
+        submitLabel="Confirm"
         recentPokemonIds={useOwn ? recentPokemonIds : undefined}
         headerLeft={<button className="battle-mp-back" onClick={() => setConfig(null)}>← Back</button>}
-        headerCenter={<h2>⚡ Draft ({selected.length} / {teamSize})</h2>}
+        headerCenter={<h2>Draft ({selected.length} / {teamSize})</h2>}
         aboveGrid={
           <>
             <div className="draft-turn-banner" style={{ textAlign: 'center', padding: '8px 14px', color: isMyDraftTurn ? 'var(--color-teal)' : 'var(--color-text-muted)' }}>
@@ -383,7 +383,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
       onToggle={toggleBlind}
       teamSize={teamSize}
       onSubmit={selected.length === teamSize ? startBattle : undefined}
-      submitLabel={loading ? '⏳ Simulating...' : '⚔️ Battle!'}
+      submitLabel={loading ? 'Simulating...' : 'Battle!'}
       recentPokemonIds={useOwn ? recentPokemonIds : undefined}
       headerLeft={<button className="battle-mp-back" onClick={() => setConfig(null)}>← Back</button>}
       headerCenter={<h2>Pick Your Team ({selected.length}/{teamSize})</h2>}

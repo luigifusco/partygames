@@ -97,15 +97,15 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
     <div className="collection-screen">
       <div className="collection-header">
         <button className="collection-back" onClick={() => shardMode ? exitShardMode() : navigate('/play')}>
-          {shardMode ? '✕ Cancel' : '← Back'}
+          {shardMode ? 'Cancel' : '← Back'}
         </button>
         <h2>{shardMode ? `Shard (${shardSelected.size} selected)` : `My Pokémon (${collection.length})`}</h2>
         {!shardMode && (
-          <button className="collection-shard-mode-btn" onClick={() => setShardMode(true)}>🔮 Shard</button>
+          <button className="collection-shard-mode-btn" onClick={() => setShardMode(true)}>Shard</button>
         )}
         {shardMode && shardSelected.size > 0 && (
           <button className="collection-shard-confirm-btn" onClick={confirmBulkShard}>
-            🔮 Shard {shardSelected.size}
+            Shard {shardSelected.size}
           </button>
         )}
       </div>
@@ -158,12 +158,12 @@ export default function CollectionScreen({ collection, items, onEvolve, onShard 
                 {!shardMode && gate && targets.length > 0 && !canEvolve && (
                   <div className="collection-bond-bar" title={`Bond ${bondXp}/${gate.bondNeeded} · Tokens ${tokens}/${gate.tokensNeeded}`}>
                     <div className="collection-bond-fill" style={{ width: `${bondPct}%` }} />
-                    <span className="collection-bond-text">✨ {bondXp}/{gate.bondNeeded}</span>
+                    <span className="collection-bond-text">{bondXp}/{gate.bondNeeded}</span>
                   </div>
                 )}
                 {!shardMode && canEvolve && (
                   <button className="collection-evolve-btn" onClick={(e) => { e.stopPropagation(); startEvolve(inst); }}>
-                    ✨ Evolve {gate?.bondMet ? '(bond!)' : `(${tokens}/${gate?.tokensNeeded})`}
+                    Evolve {gate?.bondMet ? '(bond!)' : `(${tokens}/${gate?.tokensNeeded})`}
                   </button>
                 )}
               </PokemonCard>

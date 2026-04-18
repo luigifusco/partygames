@@ -179,7 +179,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
             setPhase('detail');
             if (activeTournament) fetchDetail(activeTournament.id);
           }}>
-            {snapshot.winner === 'left' ? '🏆 You advance!' : '💀 Eliminated'}
+            {snapshot.winner === 'left' ? 'You advance!' : 'Eliminated'}
           </button>
         )}
       </div>
@@ -215,7 +215,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
         onToggle={toggleSelect}
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? submitLockedTeam : undefined}
-        submitLabel="🔒 Lock Team"
+        submitLabel="Lock Team"
         headerLeft={<button className="battle-mp-back" onClick={() => setPhase('detail')}>← Back</button>}
         headerCenter={<span style={{ fontSize: 14, fontWeight: 'bold' }}>Lock Tournament Team</span>}
       />
@@ -236,7 +236,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
         onToggle={toggleSelect}
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? submitTeam : undefined}
-        submitLabel="⚔️ Lock In!"
+        submitLabel="Lock In!"
         headerLeft={<button className="battle-mp-back" onClick={() => setPhase('detail')}>← Back</button>}
         headerCenter={<span style={{ fontSize: 14, fontWeight: 'bold' }}>Tournament Match</span>}
       />
@@ -254,7 +254,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
       <div className="ds-screen">
         <div className="ds-topbar">
           <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => { setPhase('list'); setActiveTournament(null); }}>← Back</button>
-          <div className="ds-topbar-title">🏆 {t.name}</div>
+          <div className="ds-topbar-title">{t.name}</div>
         </div>
 
         <div className="ds-screen-scroll">
@@ -262,8 +262,8 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
             <span className={'tournament-status-badge status-' + t.status}>{t.status}</span>
             <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
             <span>{t.participants.length} players</span>
-            {t.fixedTeam && <span className="ds-badge ds-badge-gold">🔒 Fixed Team</span>}
-            {t.publicTeams && <span className="ds-badge ds-badge-accent">👁 Public Teams</span>}
+            {t.fixedTeam && <span className="ds-badge ds-badge-gold">Fixed Team</span>}
+            {t.publicTeams && <span className="ds-badge ds-badge-accent">Public Teams</span>}
           </div>
 
           {t.prizes && Array.isArray(t.prizes) && t.prizes.length > 0 && (
@@ -294,12 +294,12 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
                 <>
                   {t.fixedTeam && !t.frozenTeams[playerName] && (
                     <button className="ds-btn ds-btn-gold ds-btn-block" onClick={() => { setSelected([]); setPhase('lockTeam'); }}>
-                      🔒 Lock Your Team
+                      Lock Your Team
                     </button>
                   )}
                   {t.fixedTeam && t.frozenTeams[playerName] && (
                     <div className="tournament-team-locked">
-                      ✅ Team locked: {t.frozenTeams[playerName].map(f => f.name).join(', ')}
+                      Team locked: {t.frozenTeams[playerName].map(f => f.name).join(', ')}
                     </div>
                   )}
                   <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => leaveTournament(t.id)}>Leave</button>
@@ -309,9 +309,9 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
               <div className="tournament-participants">
                 {t.participants.map(p => (
                   <span key={p} className={'tournament-participant' + (t.fixedTeam && t.frozenTeams[p] ? ' team-ready' : '')}>
-                    {p}{t.fixedTeam && t.frozenTeams[p] ? ' 🔒' : ''}
+                    {p}{t.fixedTeam && t.frozenTeams[p] ? ' ·' : ''}
                     {t.publicTeams && t.frozenTeams[p] && (
-                      <button className="tournament-view-team-sm" onClick={() => setViewingTeamOf(p)}>👁</button>
+                      <button className="tournament-view-team-sm" onClick={() => setViewingTeamOf(p)}>View</button>
                     )}
                   </span>
                 ))}
@@ -321,14 +321,14 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
 
           {myMatch && (
             <div className="tournament-my-match">
-              <div className="tournament-my-match-title">⚔️ Your Match</div>
+              <div className="tournament-my-match-title">Your Match</div>
               <div className="tournament-my-match-info">
                 vs <strong>{myMatch.player1 === playerName ? myMatch.player2 : myMatch.player1}</strong>
                 {myMatch.deadline && <span className="tournament-deadline"> · {timeLeft(myMatch.deadline)} left</span>}
                 {t.publicTeams && (() => {
                   const opp = myMatch.player1 === playerName ? myMatch.player2 : myMatch.player1;
                   return opp && t.frozenTeams[opp] ? (
-                    <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => setViewingTeamOf(opp)}>👁 View Team</button>
+                    <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => setViewingTeamOf(opp)}>View Team</button>
                   ) : null;
                 })()}
               </div>
@@ -339,7 +339,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
           )}
 
           {t.winner && (
-            <div className="tournament-winner-banner">🏆 Winner: {t.winner}</div>
+            <div className="tournament-winner-banner">Winner: {t.winner}</div>
           )}
 
           {t.bracket.length > 0 && (
@@ -384,7 +384,7 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
                       <div className="tournament-team-pokemon-name">{fp.name}</div>
                       {fp.ability && <div className="tournament-team-pokemon-detail">{fp.ability}</div>}
                       {fp.moves && <div className="tournament-team-pokemon-detail">{fp.moves[0]} / {fp.moves[1]}</div>}
-                      {fp.heldItem && <div className="tournament-team-pokemon-detail">📦 {fp.heldItem}</div>}
+                      {fp.heldItem && <div className="tournament-team-pokemon-detail">{fp.heldItem}</div>}
                     </div>
                   </div>
                 ))}
@@ -401,12 +401,11 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
     <div className="ds-screen">
       <div className="ds-topbar">
         <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => navigate('/play')}>← Back</button>
-        <div className="ds-topbar-title">🏆 Tournaments</div>
+        <div className="ds-topbar-title">Tournaments</div>
       </div>
       <div className="ds-screen-scroll">
         {tournaments.length === 0 ? (
           <div className="ds-empty">
-            <div className="ds-empty-icon">🏆</div>
             <div className="ds-empty-text">No tournaments right now.<br />Check back later!</div>
           </div>
         ) : (
@@ -418,11 +417,11 @@ export default function TournamentScreen({ playerName, collection }: TournamentS
                   <span className={'tournament-status-badge status-' + t.status}>{t.status}</span>
                   <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
                   <span>· {t.participantCount} players</span>
-                  {t.fixedTeam && <span className="ds-badge ds-badge-gold">🔒</span>}
+                  {t.fixedTeam && <span className="ds-badge ds-badge-gold">Fixed</span>}
                 </div>
-                {t.winner && <div className="tournament-card-winner">🏆 {t.winner}</div>}
+                {t.winner && <div className="tournament-card-winner">Winner: {t.winner}</div>}
                 {t.prizes && Array.isArray(t.prizes) && t.prizes[0] && (
-                  <div className="tournament-card-prize">🥇 {t.prizes[0].essence}✦{t.prizes[0].pack ? ' + ' + t.prizes[0].pack : ''}</div>
+                  <div className="tournament-card-prize">1st: {t.prizes[0].essence}✦{t.prizes[0].pack ? ' + ' + t.prizes[0].pack : ''}</div>
                 )}
               </div>
             ))}

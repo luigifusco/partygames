@@ -191,14 +191,14 @@ export default function AdminPanel() {
           </button>
           <div className="admin-topbar-titles">
             <div className="ds-topbar-subtitle">Tournament</div>
-            <div className="ds-topbar-title">🏆 Create Tournament</div>
+            <div className="ds-topbar-title">Create Tournament</div>
           </div>
         </div>
 
         <div className="admin-create-scroll">
           {/* Basics */}
           <div className="ds-card">
-            <h3 className="admin-card-title">📝 Basics</h3>
+            <h3 className="admin-card-title">Basics</h3>
             <div className="admin-field-row">
               <label className="admin-field-label" htmlFor="t-name">Name</label>
               <input
@@ -268,7 +268,7 @@ export default function AdminPanel() {
 
           {/* Flags */}
           <div className="ds-card">
-            <h3 className="admin-card-title">⚙️ Flags</h3>
+            <h3 className="admin-card-title">Flags</h3>
             <div className="admin-field-row">
               <div className="admin-field-label">
                 Fixed team
@@ -302,7 +302,7 @@ export default function AdminPanel() {
           {/* Prizes */}
           <div className="ds-card">
             <h3 className="admin-card-title">
-              🎁 Prizes
+              Prizes
               <span className="ds-badge ds-badge-accent">{tournamentPrizes.length} tiers</span>
             </h3>
             <p className="admin-card-hint">
@@ -324,7 +324,7 @@ export default function AdminPanel() {
                       onClick={() => removePrizeTier(i)}
                       aria-label="Remove tier"
                     >
-                      ✕ Remove
+                      Remove
                     </button>
                   </div>
 
@@ -392,7 +392,7 @@ export default function AdminPanel() {
           </div>
 
           <button className="ds-btn ds-btn-primary ds-btn-lg ds-btn-block" onClick={createTournament}>
-            🏆 Create Tournament
+            Create Tournament
           </button>
         </div>
 
@@ -445,7 +445,7 @@ export default function AdminPanel() {
       <div className="ds-topbar">
         <div className="admin-topbar-titles">
           <div className="ds-topbar-subtitle">Administrator</div>
-          <div className="ds-topbar-title">🔧 Admin Panel</div>
+          <div className="ds-topbar-title">Admin Panel</div>
         </div>
         <button
           className="ds-btn ds-btn-ghost ds-btn-sm"
@@ -482,10 +482,10 @@ export default function AdminPanel() {
         {/* Quick actions */}
         <div className="admin-actions-row">
           <button className="ds-btn ds-btn-primary" onClick={() => setShowCreateTournament(true)}>
-            🏆 Tournament
+            Tournament
           </button>
           <button className="ds-btn ds-btn-danger" onClick={wipeAllPokemon}>
-            🗑️ Wipe All PKM
+            Wipe All PKM
           </button>
         </div>
 

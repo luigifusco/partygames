@@ -231,7 +231,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   if (step === 'picture') {
     return (
       <div className="login-screen">
-        <h1>⚡ Pokémon Party</h1>
+        <h1>Pokémon Party</h1>
         <div className="register-step">
           <div className="register-step-title">Add your trainer photo</div>
           <div className="register-step-hint">
@@ -306,7 +306,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
   return (
     <div className="login-screen">
-      <h1>⚡ Pokémon Party</h1>
+      <h1>Pokémon Party</h1>
       <div className="login-form">
         <input
           className="ds-input login-input"

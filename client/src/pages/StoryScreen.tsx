@@ -311,7 +311,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
       <div className="story-screen">
         <div className="story-header">
           <button className="story-back" onClick={() => navigate('/play')}>← Back</button>
-          <h2>📖 Story Mode</h2>
+          <h2>Story Mode</h2>
         </div>
         <div className="story-hub">
           {sorted.map(sl => {
@@ -388,7 +388,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
           onToggle={toggleSelect}
           teamSize={teamSize}
           onSubmit={selected.length === teamSize ? () => startBattleStep(activeStoryline, activeStepIdx) : undefined}
-          submitLabel={loading ? '⏳ Loading...' : '⚔️ Battle!'}
+          submitLabel={loading ? 'Loading...' : 'Battle!'}
           headerLeft={<button className="battle-mp-back" onClick={() => { setPhase('hub'); setActiveStoryline(null); }}>← Back</button>}
           headerCenter={<span style={{ fontSize: 14, fontWeight: 'bold' }}>vs {step.trainerName}</span>}
         />
@@ -403,7 +403,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
         <BattleScene snapshot={snapshot} turnDelayMs={1500} onFinished={() => setBattleFinished(true)} />
         {battleFinished && snapshot.winner && (
           <button className="story-continue-btn" onClick={handleBattleEnd}>
-            {snapshot.winner === 'left' ? '🏆 Continue' : '💀 Try Again'}
+            {snapshot.winner === 'left' ? 'Continue' : 'Try Again'}
           </button>
         )}
       </div>
@@ -415,7 +415,7 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
     return (
       <div className="story-screen">
         <div className="story-dialogue">
-          <div className="story-dialogue-name">🏆 Victory!</div>
+          <div className="story-dialogue-name">Victory!</div>
           {firstClear && step?.essenceReward && (
             <div className="story-rewards"><div className="story-reward">✦ +{step.essenceReward} Essence</div></div>
           )}
@@ -430,11 +430,11 @@ export default function StoryScreen({ playerId, essence, onGainEssence, onAddPok
     return (
       <div className="story-screen">
         <div className="story-dialogue">
-          <div className="story-dialogue-name">🎉 {activeStoryline.title} Complete!</div>
+          <div className="story-dialogue-name">{activeStoryline.title} Complete!</div>
           <div className="story-rewards">
             <div className="story-reward">✦ +{activeStoryline.completionReward.essence} Essence</div>
             {activeStoryline.completionReward.pack && (
-              <div className="story-reward">🎁 {activeStoryline.completionReward.pack} pack!</div>
+              <div className="story-reward">{activeStoryline.completionReward.pack} pack!</div>
             )}
           </div>
           <button className="story-fight-btn" onClick={() => { setPhase('hub'); setActiveStoryline(null); }}>Back to Stories →</button>

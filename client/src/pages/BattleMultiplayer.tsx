@@ -196,7 +196,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         <BattleScene snapshot={snapshot} turnDelayMs={2000} essenceGained={essenceGained} onFinished={() => setBattleFinished(true)} />
         {battleFinished && (
           <button className="battle-demo-back" onClick={() => navigate('/play')}>
-            {snapshot.winner === 'left' ? '🏆 Claim Rewards' : '← Back to Menu'}
+            {snapshot.winner === 'left' ? 'Claim Rewards' : '← Back to Menu'}
           </button>
         )}
       </div>
@@ -213,7 +213,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         teamSize={teamSize}
         disabled={phase === 'waitingTeam'}
         onSubmit={selected.length === teamSize ? submitTeam : undefined}
-        submitLabel="⚔️ Lock In!"
+        submitLabel="Lock In!"
         recentPokemonIds={recentPokemonIds}
         headerLeft={<button className="battle-mp-back" onClick={() => navigate('/play')}>← Back</button>}
         headerCenter={<h2>Pick Your Team ({selected.length}/{teamSize})</h2>}
@@ -230,12 +230,12 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     <div className="battle-mp-screen">
       <div className="battle-mp-header">
         <button className="battle-mp-back" onClick={() => setPhase('config')}>← Back</button>
-        <h2>⚔️ Battle ({config.fieldSize}v{config.fieldSize}, {config.totalPokemon} total)</h2>
+        <h2>Battle ({config.fieldSize}v{config.fieldSize}, {config.totalPokemon} total)</h2>
       </div>
       <div className="battle-mp-content">
         {challengers.length > 0 && (
           <div className="battle-mp-challenged">
-            ⚡ Challenged by: {challengers.join(', ')}
+            Challenged by: {challengers.join(', ')}
           </div>
         )}
 
@@ -243,7 +243,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
           <>
             {onlinePlayers.length > 0 && (
               <div className="online-players-section">
-                <div className="online-players-label">🟢 Online — tap to challenge</div>
+                <div className="online-players-label">Online — tap to challenge</div>
                 <div className="online-players-grid">
                   {onlinePlayers.map((p) => (
                     <button
@@ -273,7 +273,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
               onClick={handleChallenge}
               disabled={!targetName.trim()}
             >
-              ⚔️ Challenge!
+              Challenge!
             </button>
           </>
         )}

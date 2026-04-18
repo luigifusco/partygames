@@ -36,7 +36,7 @@ export default function NotificationsScreen({ notifications, onAccept, onDismiss
     <div className="notif-screen">
       <div className="notif-header">
         <button className="notif-back" onClick={() => navigate('/play')}>← Back</button>
-        <h2>🔔 Notifications</h2>
+        <h2>Notifications</h2>
       </div>
       <div className="notif-list">
         {notifications.length === 0 && (

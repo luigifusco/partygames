@@ -205,7 +205,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
           </div>
           {phase === 'confirm' && (
             <button className="trade-btn confirm" onClick={handleConfirm}>
-              ✅ Confirm Trade
+              Confirm Trade
             </button>
           )}
           {phase === 'waitingConfirm' && (
@@ -277,12 +277,12 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
     <div className="trade-screen">
       <div className="trade-header">
         <button className="trade-back" onClick={() => navigate('/play')}>← Back</button>
-        <h2>🔄 Trade</h2>
+        <h2>Trade</h2>
       </div>
       <div className="trade-content">
         {incomingFrom.length > 0 && (
           <div className="trade-incoming">
-            🔄 Trade request from: {incomingFrom.join(', ')}
+            Trade request from: {incomingFrom.join(', ')}
           </div>
         )}
 
@@ -290,7 +290,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
           <>
             {onlinePlayers.length > 0 && (
               <div className="online-players-section">
-                <div className="online-players-label">🟢 Online — tap to trade</div>
+                <div className="online-players-label">Online — tap to trade</div>
                 <div className="online-players-grid">
                   {onlinePlayers.map((p) => (
                     <button
@@ -320,7 +320,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
               onClick={handleRequest}
               disabled={!targetName.trim()}
             >
-              🔄 Request Trade
+              Request Trade
             </button>
           </>
         )}

@@ -122,7 +122,7 @@ export default function TVView() {
           <span className="tv-live-dot" />
           <span className="tv-live-label">LIVE</span>
         </div>
-        <h1 className="tv-title">⚡ Pokémon Party Leaderboard ⚡</h1>
+        <h1 className="tv-title">Pokémon Party Leaderboard</h1>
         <div className="tv-header-right">
           <span className="tv-clock">{timeStr}</span>
           <span className="tv-player-count">{leaderboard.length} trainers</span>

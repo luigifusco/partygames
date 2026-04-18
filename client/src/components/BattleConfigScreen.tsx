@@ -37,7 +37,7 @@ export default function BattleConfigScreen({ onConfirm, onBack, showDraftOption 
     <div className="bconfig-screen">
       <div className="bconfig-header">
         <button className="bconfig-back" onClick={onBack}>← Back</button>
-        <h2>⚙️ Battle Settings</h2>
+        <h2>Battle Settings</h2>
       </div>
       <div className="bconfig-content">
         <div className="bconfig-group">
@@ -83,13 +83,13 @@ export default function BattleConfigScreen({ onConfirm, onBack, showDraftOption 
                 className={`bconfig-option ${selectionMode === 'blind' ? 'active' : ''}`}
                 onClick={() => setSelectionMode('blind')}
               >
-                ⚔️ Blind
+                Blind
               </button>
               <button
                 className={`bconfig-option ${selectionMode === 'draft' ? 'active' : ''}`}
                 onClick={() => setSelectionMode('draft')}
               >
-                ⚡ Draft
+                Draft
               </button>
             </div>
           </div>
@@ -103,13 +103,13 @@ export default function BattleConfigScreen({ onConfirm, onBack, showDraftOption 
                 className={`bconfig-option ${!useOwnPokemon ? 'active' : ''}`}
                 onClick={() => setUseOwnPokemon(false)}
               >
-                📋 All Pokémon
+                All Pokémon
               </button>
               <button
                 className={`bconfig-option ${useOwnPokemon ? 'active' : ''} ${ownPokemonCount === 0 ? 'disabled' : ''}`}
                 onClick={() => ownPokemonCount > 0 && setUseOwnPokemon(true)}
               >
-                🎒 My Pokémon ({ownPokemonCount})
+                My Pokémon ({ownPokemonCount})
               </button>
             </div>
           </div>

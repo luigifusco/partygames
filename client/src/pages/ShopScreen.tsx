@@ -80,7 +80,7 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
     <div className="shop-screen">
       <div className="ds-topbar">
         <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => navigate('/play')}>← Back</button>
-        <div className="ds-topbar-title">🛒 Shop</div>
+        <div className="ds-topbar-title">Shop</div>
         <div className="ds-stat ds-stat-essence"><span className="ds-stat-icon">✦</span>{essence}</div>
       </div>
 

@@ -80,10 +80,10 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
         <h2>#{pokemon.id}</h2>
         <div className="detail-header-actions">
           {canEvolve && evoTargets.length === 1 && (
-            <button className="detail-header-btn detail-evolve-btn" onClick={() => handleEvolve(evoTargets[0].id)}>✨ Evolve</button>
+            <button className="detail-header-btn detail-evolve-btn" onClick={() => handleEvolve(evoTargets[0].id)}>Evolve</button>
           )}
           {canEvolve && evoTargets.length > 1 && (
-            <button className="detail-header-btn detail-evolve-btn" onClick={() => setEvoPicker(!evoPicker)}>✨ Evolve</button>
+            <button className="detail-header-btn detail-evolve-btn" onClick={() => setEvoPicker(!evoPicker)}>Evolve</button>
           )}
           {!shardConfirm ? (
             <>
@@ -95,7 +95,7 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
               >
                 {inst.favorite ? '★' : '☆'}
               </button>
-              <button className="detail-header-btn detail-shard-btn" onClick={() => setShardConfirm(true)}>🔮 Shard</button>
+              <button className="detail-header-btn detail-shard-btn" onClick={() => setShardConfirm(true)}>Shard</button>
             </>
           ) : (
             <button className="detail-header-btn detail-shard-yes" onClick={handleShard}>Confirm</button>

@@ -27,7 +27,7 @@ export default function TeamSelectGrid({
   disabled = false,
   disabledIndices,
   onSubmit,
-  submitLabel = '⚔️ Lock In!',
+  submitLabel = 'Lock In!',
   headerLeft,
   headerCenter,
   headerRight,
