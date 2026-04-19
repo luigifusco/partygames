@@ -273,7 +273,7 @@
   image-rendering: pixelated;
 }
 
-.team-select-chosen-card span {
+.team-select-chosen-card .team-select-chosen-name {
   font-size: 10px;
   font-weight: 700;
   position: absolute;
