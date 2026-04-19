@@ -710,6 +710,43 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/favorite`, (req, res) => {
   return res.json({ ok: true });
 });
 
+// ─── Showdown-sourced dex lookups ───────────────────────────────
+// Used by the client to show move/ability detail cards. Gen 5 is the
+// engine used for battles, so we look up against the same Dex for
+// consistency; fall back to the latest gen if an entry is missing.
+app.get(`${BASE_PATH}/api/dex/move/:name`, (req, res) => {
+  const raw = decodeURIComponent(req.params.name || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Missing move name' });
+  let m: any = GEN5_DEX.moves.get(raw);
+  if (!m || !m.exists) m = ShowdownDex.moves.get(raw);
+  if (!m || !m.exists) return res.status(404).json({ error: 'Unknown move' });
+  return res.json({
+    name: m.name,
+    type: m.type,
+    category: m.category,
+    basePower: m.basePower ?? 0,
+    accuracy: m.accuracy === true ? null : (m.accuracy ?? null),
+    pp: m.pp ?? null,
+    priority: m.priority ?? 0,
+    target: m.target ?? null,
+    shortDesc: m.shortDesc || '',
+    desc: m.desc || m.shortDesc || '',
+  });
+});
+
+app.get(`${BASE_PATH}/api/dex/ability/:name`, (req, res) => {
+  const raw = decodeURIComponent(req.params.name || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Missing ability name' });
+  let a: any = GEN5_DEX.abilities.get(raw);
+  if (!a || !a.exists) a = ShowdownDex.abilities.get(raw);
+  if (!a || !a.exists) return res.status(404).json({ error: 'Unknown ability' });
+  return res.json({
+    name: a.name,
+    shortDesc: a.shortDesc || '',
+    desc: a.desc || a.shortDesc || '',
+  });
+});
+
 // Get leaderboard (ranked by Elo)
 app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
   const players = db.prepare(`

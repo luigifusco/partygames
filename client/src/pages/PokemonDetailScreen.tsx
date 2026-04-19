@@ -11,6 +11,7 @@ import { BOND_UNLOCK_CHAPTER } from '@shared/story-data';
 import RarityStars from '../components/RarityStars';
 import ShardConfirmModal from '../components/ShardConfirmModal';
 import EvolvePreviewModal from '../components/EvolvePreviewModal';
+import DexInfoModal from '../components/DexInfoModal';
 import { useStoryChapters } from '../hooks/useStoryChapters';
 import './PokemonDetailScreen.css';
 
@@ -41,6 +42,11 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const [shardConfirm, setShardConfirm] = useState(false);
   const [evoPreview, setEvoPreview] = useState(false);
   const [evolving, setEvolving] = useState<{ from: PokemonInstance; toId: number } | null>(null);
+  const [dexInfo, setDexInfo] = useState<
+    | { kind: 'move'; name: string }
+    | { kind: 'ability'; name: string }
+    | null
+  >(null);
 
   const index = parseInt(idx ?? '', 10);
   const inst = collection[index]
@@ -210,15 +216,28 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
         <div className="detail-section-title">Moves</div>
         <div className="detail-moves">
           {getEffectiveMoves(inst).map((moveName, i) => (
-            <div key={i} className="detail-move-card">
+            <button
+              key={i}
+              type="button"
+              className="detail-move-card detail-move-card-button"
+              onClick={() => setDexInfo({ kind: 'move', name: moveName })}
+              aria-label={`Show details for ${moveName}`}
+            >
               <span className="detail-move-name">{moveName}</span>
-            </div>
+            </button>
           ))}
         </div>
 
         <div className="detail-section-title">Ability</div>
         <div className="detail-ability">
-          <div className="detail-ability-name">{inst.ability}</div>
+          <button
+            type="button"
+            className="detail-ability-name detail-ability-name-button"
+            onClick={() => setDexInfo({ kind: 'ability', name: inst.ability })}
+            aria-label={`Show details for ${inst.ability}`}
+          >
+            {inst.ability}
+          </button>
         </div>
 
         <div className="detail-section-title">Held Item</div>
@@ -281,6 +300,12 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
           </div>
         );
       })()}
+      {dexInfo && dexInfo.kind === 'move' && (
+        <DexInfoModal kind="move" moveName={dexInfo.name} onClose={() => setDexInfo(null)} />
+      )}
+      {dexInfo && dexInfo.kind === 'ability' && (
+        <DexInfoModal kind="ability" abilityName={dexInfo.name} onClose={() => setDexInfo(null)} />
+      )}
     </div>
   );
 }

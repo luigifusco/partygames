@@ -403,6 +403,24 @@
   background: var(--color-surface-2);
 }
 
+/* When the move card is rendered as a <button> for click-to-inspect, keep
+ * the visual identical to the previous div and make it feel tappable. */
+.detail-move-card-button {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+}
+.detail-move-card-button:focus-visible {
+  outline: 2px solid var(--color-primary, #a96bff);
+  outline-offset: 2px;
+}
+.detail-move-card-button:active {
+  transform: translateY(1px);
+}
+
 .detail-move-name {
   font-size: var(--text-sm);
   font-weight: 700;
@@ -425,6 +443,31 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Button-form of the ability label for tap-to-inspect. Preserves the
+ * gradient text styling from .detail-ability-name. */
+.detail-ability-name-button {
+  appearance: none;
+  border: none;
+  background: var(--grad-teal);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--text-base);
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.detail-ability-name-button:focus-visible {
+  outline: 2px solid var(--color-primary, #a96bff);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.detail-ability-name-button:hover {
+  filter: brightness(1.1);
 }
 
 /* --- Held item --- */
