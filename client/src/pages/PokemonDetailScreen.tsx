@@ -128,12 +128,7 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
             ['--type-grad' as string]: `radial-gradient(ellipse 70% 55% at 50% 40%, ${TYPE_COLORS[pokemon.types[0]] ?? '#7aa7ff'}55, transparent 70%), radial-gradient(ellipse 60% 50% at 70% 70%, ${TYPE_COLORS[pokemon.types[1] ?? pokemon.types[0]] ?? '#a96bff'}33, transparent 70%)`,
           }}
         >
-          {index > 0 && (
-            <button className="detail-nav detail-nav-prev" onClick={() => navigate(`/pokemon/${index - 1}`, { replace: true })}>‹</button>
-          )}
-          {index < collection.length - 1 && (
-            <button className="detail-nav detail-nav-next" onClick={() => navigate(`/pokemon/${index + 1}`, { replace: true })}>›</button>
-          )}
+          {/* Prev/Next pokemon navigation removed by request. */}
           <div className="detail-top-row">
             <div className="detail-name">{pokemon.name}</div>
             <RarityStars tier={pokemon.tier} size="md" />
