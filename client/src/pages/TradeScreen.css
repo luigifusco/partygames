@@ -338,11 +338,11 @@
   flex-shrink: 0;
 }
 
-/* --- Animation overlay --- */
+/* --- Animation overlay (Pokéball trade sequence) --- */
 .trade-overlay {
   position: fixed;
   inset: 0;
-  background: var(--color-overlay);
+  background: radial-gradient(ellipse at center, rgba(30, 18, 60, 0.85), rgba(4, 4, 12, 0.96));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   display: flex;
@@ -353,71 +353,189 @@
   padding: var(--space-4);
   color: var(--color-text);
   animation: ds-fade-in var(--duration-base) var(--ease-out);
+  overflow: hidden;
 }
 
-.trade-animation {
+.trade-stage {
+  position: relative;
+  width: min(560px, 100%);
+  height: 220px;
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
 }
 
-.trade-anim-card {
+.trade-slot {
+  position: relative;
+  width: 140px;
+  height: 200px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
-  box-shadow: var(--shadow-lg);
-  min-width: 120px;
+  justify-content: center;
 }
 
-.trade-anim-card img {
-  width: 96px;
-  height: 96px;
+.trade-sprite {
+  position: absolute;
+  width: 130px;
+  height: 130px;
   object-fit: scale-down;
   image-rendering: pixelated;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+  opacity: 0;
 }
 
-.trade-anim-card .name {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  margin-top: var(--space-2);
+/* Starting Pokémon: visible → shrinks into the ball. */
+.trade-sprite-out {
+  opacity: 1;
+  animation: trade-sprite-out 700ms var(--ease-in-out) forwards;
+}
+@keyframes trade-sprite-out {
+  0%   { transform: scale(1);    opacity: 1; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55)); }
+  55%  { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 0 22px rgba(255, 255, 200, 0.9)) brightness(1.6); }
+  85%  { transform: scale(0.2);  opacity: 0.8; filter: brightness(2.2); }
+  100% { transform: scale(0);    opacity: 0; }
 }
 
-.trade-anim-card.outgoing { animation: tradeSlideOut 1.5s var(--ease-in-out) forwards; }
-.trade-anim-card.incoming { animation: tradeSlideIn  1.5s var(--ease-in-out) forwards; }
-
-@keyframes tradeSlideOut {
-  0%   { transform: translateX(0); opacity: 1; }
-  40%  { transform: translateX(60px) scale(0.8); opacity: 0.5; }
-  60%  { transform: translateX(60px) scale(0.8); opacity: 0; }
-  100% { transform: translateX(0); opacity: 0; }
+/* Received sprite (left slot) + given sprite mirror (right slot): appears
+ * after the ball lands and opens. */
+.trade-sprite-in {
+  animation: trade-sprite-in 700ms cubic-bezier(0.2, 0.9, 0.3, 1.25) forwards;
+  animation-delay: 2000ms;
 }
-@keyframes tradeSlideIn {
-  0%   { transform: translateX(0); opacity: 0; }
-  40%  { transform: translateX(-60px) scale(0.8); opacity: 0; }
-  60%  { transform: translateX(-60px) scale(0.8); opacity: 0.5; }
-  100% { transform: translateX(0); opacity: 1; }
+@keyframes trade-sprite-in {
+  0%   { transform: scale(0) rotate(-8deg); opacity: 0; filter: brightness(2.4); }
+  30%  { opacity: 1; }
+  60%  { transform: scale(1.15) rotate(4deg); filter: brightness(1.4); }
+  100% { transform: scale(1) rotate(0); opacity: 1; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55)); }
 }
 
-.trade-anim-arrows {
-  font-size: 40px;
-  color: transparent;
-  background: var(--grad-primary);
-  -webkit-background-clip: text;
-  background-clip: text;
-  animation: tradeArrowSpin 1.5s var(--ease-in-out);
+/* The received Pokémon (left slot) gets an extra celebratory glow halo. */
+.trade-sprite-received {
+  filter: drop-shadow(0 0 22px rgba(255, 230, 130, 0.7))
+          drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
 }
 
-@keyframes tradeArrowSpin {
-  0%   { transform: rotate(0deg);   opacity: 0.6; }
-  50%  { transform: rotate(180deg); opacity: 1;   }
-  100% { transform: rotate(360deg); opacity: 0.6; }
+/* --- Pokéball (CSS-drawn) --- */
+.trade-ball {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5),
+              inset -6px -8px 14px rgba(0, 0, 0, 0.35),
+              inset 6px 6px 12px rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+.trade-ball-top {
+  position: absolute;
+  inset: 0 0 50% 0;
+  background: linear-gradient(180deg, #ff4d4d, #d92323);
+}
+.trade-ball-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 4px);
+  height: 8px;
+  background: #1a1a20;
+}
+.trade-ball-btn {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  top: calc(50% - 11px);
+  left: calc(50% - 11px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, #c9cbd6 60%, #8a8d9a);
+  box-shadow: 0 0 0 3px #1a1a20,
+              inset 0 2px 4px rgba(255, 255, 255, 0.7);
 }
 
+.trade-ball-left {
+  animation: trade-ball-left 1700ms cubic-bezier(0.4, 0, 0.4, 1) forwards;
+  animation-delay: 500ms;
+}
+.trade-ball-right {
+  animation: trade-ball-right 1700ms cubic-bezier(0.4, 0, 0.4, 1) forwards;
+  animation-delay: 500ms;
+}
+
+/* Left ball: appears at left slot, arcs up and to the right, lands at
+ * the right slot, then flashes open and fades out. */
+@keyframes trade-ball-left {
+  0%   { transform: translate(0, 0) rotate(0);       opacity: 0; }
+  10%  { transform: translate(0, 0) rotate(0);       opacity: 1; }
+  20%  { transform: translate(0, -20px) rotate(40deg);  opacity: 1; }
+  55%  { transform: translate(200px, -110px) rotate(240deg); opacity: 1; }
+  85%  { transform: translate(210px, 0)     rotate(400deg); opacity: 1; }
+  90%  { transform: translate(210px, 0)     rotate(400deg); opacity: 1; filter: brightness(2.4); }
+  100% { transform: translate(210px, 0)     rotate(400deg); opacity: 0; filter: brightness(3); }
+}
+@keyframes trade-ball-right {
+  0%   { transform: translate(0, 0) rotate(0);         opacity: 0; }
+  10%  { transform: translate(0, 0) rotate(0);         opacity: 1; }
+  20%  { transform: translate(0, -20px) rotate(-40deg); opacity: 1; }
+  55%  { transform: translate(-200px, -110px) rotate(-240deg); opacity: 1; }
+  85%  { transform: translate(-210px, 0)    rotate(-400deg); opacity: 1; }
+  90%  { transform: translate(-210px, 0)    rotate(-400deg); opacity: 1; filter: brightness(2.4); }
+  100% { transform: translate(-210px, 0)    rotate(-400deg); opacity: 0; filter: brightness(3); }
+}
+
+/* --- Starburst at crossover point --- */
+.trade-starburst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.trade-starburst-core {
+  position: absolute;
+  inset: -30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 240, 1), rgba(255, 200, 120, 0.6) 40%, transparent 70%);
+  opacity: 0;
+  animation: trade-starburst-core 700ms ease-out forwards;
+  animation-delay: 1200ms;
+}
+@keyframes trade-starburst-core {
+  0%   { opacity: 0; transform: scale(0.2); }
+  40%  { opacity: 1; transform: scale(2.2); }
+  100% { opacity: 0; transform: scale(3.4); }
+}
+.trade-starburst-ray {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 80px;
+  margin-left: -2px;
+  margin-top: -40px;
+  background: linear-gradient(180deg, rgba(255, 255, 240, 0) 0%, rgba(255, 240, 180, 0.95) 40%, rgba(255, 180, 90, 0) 100%);
+  transform-origin: 50% 50%;
+  opacity: 0;
+  animation: trade-starburst-ray 700ms ease-out forwards;
+  animation-delay: 1200ms;
+}
+@keyframes trade-starburst-ray {
+  0%   { opacity: 0; transform: rotate(var(--ang)) scaleY(0.3); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--ang)) scaleY(1.8); }
+}
+.trade-starburst-ray-0 { --ang: 0deg; }
+.trade-starburst-ray-1 { --ang: 45deg; }
+.trade-starburst-ray-2 { --ang: 90deg; }
+.trade-starburst-ray-3 { --ang: 135deg; }
+.trade-starburst-ray-4 { --ang: 180deg; }
+.trade-starburst-ray-5 { --ang: 225deg; }
+.trade-starburst-ray-6 { --ang: 270deg; }
+.trade-starburst-ray-7 { --ang: 315deg; }
+
+/* --- End-of-animation text --- */
 .trade-anim-text {
   font-size: var(--text-xl);
   font-weight: 800;
@@ -426,8 +544,9 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  margin-top: var(--space-6);
-  animation: ds-fade-in var(--duration-slow) var(--ease-out) 1.2s both;
+  margin-top: var(--space-4);
+  opacity: 0;
+  animation: ds-fade-in var(--duration-slow) var(--ease-out) 2400ms forwards;
 }
 
 .trade-anim-received {
@@ -435,7 +554,8 @@
   font-weight: 600;
   color: var(--color-teal);
   margin-top: var(--space-2);
-  animation: ds-fade-in var(--duration-slow) var(--ease-out) 1.5s both;
+  opacity: 0;
+  animation: ds-fade-in var(--duration-slow) var(--ease-out) 2700ms forwards;
 }
 
 .trade-anim-close {
@@ -449,7 +569,8 @@
   background: var(--color-surface-2);
   color: var(--color-text);
   cursor: pointer;
-  animation: ds-fade-in var(--duration-slow) var(--ease-out) 1.8s both;
+  opacity: 0;
+  animation: ds-fade-in var(--duration-slow) var(--ease-out) 3000ms forwards;
   transition: background var(--duration-fast) var(--ease-out),
               border-color var(--duration-fast) var(--ease-out),
               transform var(--duration-fast) var(--ease-out);
@@ -459,3 +580,16 @@
   border-color: var(--color-border-focus);
 }
 .trade-anim-close:active { transform: translateY(1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .trade-sprite-out,
+  .trade-sprite-in,
+  .trade-ball-left,
+  .trade-ball-right,
+  .trade-starburst-core,
+  .trade-starburst-ray {
+    animation: none;
+  }
+  .trade-sprite-out { opacity: 1; }
+  .trade-sprite-in { opacity: 1; transform: none; }
+}

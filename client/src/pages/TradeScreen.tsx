@@ -5,6 +5,8 @@ import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { useOnlinePlayers } from '../useOnlinePlayers';
 import Avatar from '../components/Avatar';
 import type { PokemonInstance } from '@shared/types';
+import { getEffectiveMoves } from '@shared/types';
+import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import { randomNature, randomIVs } from '@shared/natures';
 import './TradeScreen.css';
 import '../pages/BattleDemo.css';
@@ -30,6 +32,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [myPokemonId, setMyPokemonId] = useState<number | null>(null);
   const [theirPokemonId, setTheirPokemonId] = useState<number | null>(null);
+  const [nameQuery, setNameQuery] = useState('');
 
   useEffect(() => {
     if (!socket.connected) {
@@ -91,7 +94,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
           };
           onTrade(giveInst, receiveInst);
         }
-      }, 2000);
+      }, 2800);
     };
 
     socket.on('trade:matched', onMatched);
@@ -156,15 +159,46 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
   if (phase === 'animation' && myPokemon && theirPokemon) {
     return (
       <div className="trade-overlay">
-        <div className="trade-animation">
-          <div className="trade-anim-card outgoing">
-            <img src={myPokemon.sprite} alt={myPokemon.name} />
-            <div className="name">{myPokemon.name}</div>
+        <div className="trade-stage">
+          <div className="trade-slot trade-slot-left">
+            <img
+              className="trade-sprite trade-sprite-out"
+              src={myPokemon.sprite}
+              alt={myPokemon.name}
+            />
+            <div className="trade-ball trade-ball-left" aria-hidden="true">
+              <div className="trade-ball-top" />
+              <div className="trade-ball-band" />
+              <div className="trade-ball-btn" />
+            </div>
+            <img
+              className="trade-sprite trade-sprite-in trade-sprite-received"
+              src={theirPokemon.sprite}
+              alt={theirPokemon.name}
+            />
           </div>
-          <div className="trade-anim-arrows">⇄</div>
-          <div className="trade-anim-card incoming">
-            <img src={theirPokemon.sprite} alt={theirPokemon.name} />
-            <div className="name">{theirPokemon.name}</div>
+          <div className="trade-starburst" aria-hidden="true">
+            <div className="trade-starburst-core" />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className={`trade-starburst-ray trade-starburst-ray-${i}`} />
+            ))}
+          </div>
+          <div className="trade-slot trade-slot-right">
+            <img
+              className="trade-sprite trade-sprite-out"
+              src={theirPokemon.sprite}
+              alt={theirPokemon.name}
+            />
+            <div className="trade-ball trade-ball-right" aria-hidden="true">
+              <div className="trade-ball-top" />
+              <div className="trade-ball-band" />
+              <div className="trade-ball-btn" />
+            </div>
+            <img
+              className="trade-sprite trade-sprite-in"
+              src={myPokemon.sprite}
+              alt={myPokemon.name}
+            />
           </div>
         </div>
         <div className="trade-anim-text">Trade complete!</div>
@@ -218,12 +252,25 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
 
   // Select pokemon phase
   if (phase === 'selectPokemon' || phase === 'waitingPartner') {
-    const indices = collection.map((_, i) => i).sort((a, b) => {
-      const aFav = collection[a].favorite ? 0 : 1;
-      const bFav = collection[b].favorite ? 0 : 1;
-      if (aFav !== bFav) return aFav - bFav;
-      return collection[a].pokemon.id - collection[b].pokemon.id;
-    });
+    const normalizedQuery = nameQuery.trim().toLowerCase();
+    const matchesQuery = (inst: PokemonInstance) => {
+      if (!normalizedQuery) return true;
+      const q = normalizedQuery;
+      if (inst.pokemon.name.toLowerCase().includes(q)) return true;
+      if ((inst.ability ?? '').toLowerCase().includes(q)) return true;
+      if ((inst.nature ?? '').toLowerCase().includes(q)) return true;
+      return getEffectiveMoves(inst).some((m) => m.toLowerCase().includes(q));
+    };
+
+    const indices = collection
+      .map((_, i) => i)
+      .filter((i) => matchesQuery(collection[i]))
+      .sort((a, b) => {
+        const aFav = collection[a].favorite ? 0 : 1;
+        const bFav = collection[b].favorite ? 0 : 1;
+        if (aFav !== bFav) return aFav - bFav;
+        return collection[a].pokemon.id - collection[b].pokemon.id;
+      });
 
     return (
       <div className="trade-screen">
@@ -237,6 +284,27 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
             <div className="trade-select-label">Select a Pokémon to trade</div>
           )}
         </div>
+        {phase === 'selectPokemon' && (
+          <div className="team-select-search-row">
+            <span className="team-select-search-icon" aria-hidden="true">🔍</span>
+            <input
+              className="team-select-search-input"
+              type="text"
+              placeholder="Search name, move, ability, nature…"
+              value={nameQuery}
+              onChange={(e) => setNameQuery(e.target.value)}
+              maxLength={40}
+            />
+            {nameQuery && (
+              <button
+                type="button"
+                className="team-select-search-clear"
+                aria-label="Clear search"
+                onClick={() => setNameQuery('')}
+              >✕</button>
+            )}
+          </div>
+        )}
         {selectedIdx !== null && phase === 'selectPokemon' && (
           <div style={{ textAlign: 'center', padding: '8px' }}>
             <div className="trade-selected-pokemon" style={{ display: 'inline-flex' }}>
@@ -250,11 +318,18 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
             </div>
           </div>
         )}
-        <div className="team-select-grid" style={{ flex: 1, overflow: 'auto', padding: '8px' }}>
+        <div className="team-select-grid" style={{ flex: 1, overflow: 'auto', padding: '8px', alignContent: 'start' }}>
+          {indices.length === 0 && (
+            <div className="team-select-empty" style={{ gridColumn: '1 / -1' }}>
+              No Pokémon match “{nameQuery}”.
+            </div>
+          )}
           {indices.map((idx) => {
-            const p = collection[idx].pokemon;
+            const inst = collection[idx];
+            const p = inst.pokemon;
             const isSelected = selectedIdx === idx;
-            const isFavorite = !!collection[idx].favorite;
+            const isFavorite = !!inst.favorite;
+            const moves = getEffectiveMoves(inst);
             return (
               <div
                 key={idx}
@@ -264,6 +339,21 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
                 {isFavorite && <span className="favorite-badge" title="Favorite">★</span>}
                 <img src={p.sprite} alt={p.name} />
                 <div className="team-select-card-name">{p.name}</div>
+                <div className="team-select-card-info">
+                  <div className="team-select-card-nature">{inst.nature}</div>
+                  {inst.ability && <div className="team-select-card-ability">{inst.ability}</div>}
+                  <div className="team-select-card-moves">
+                    {moves.map((m, i) => (
+                      <span key={i} className="team-select-card-move">{m}</span>
+                    ))}
+                  </div>
+                  {inst.heldItem && (
+                    <div className="team-select-card-held">
+                      <img src={getHeldItemSprite(inst.heldItem)} alt="" className="team-select-held-icon" />
+                      <span>{getHeldItemName(inst.heldItem)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
