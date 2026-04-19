@@ -121,9 +121,9 @@ export function evolveGate(input: EvolveGateInput): EvolveGate {
 const REAWAKEN_ESSENCE_BY_TIER: Record<BoxTier, number> = {
   common: 300,
   uncommon: 800,
-  rare: 2000,
-  epic: 6000,
-  legendary: 20000,
+  rare: 1300,
+  epic: 2000,
+  legendary: 8000,
 };
 
 export interface ReawakenSpecies {
@@ -137,14 +137,14 @@ export interface ReawakenCost {
   essence: number;
 }
 
-/** 1.0 for base forms, 1.8 for mid-evolutions, 3.0 for final forms. */
+/** 1.0 for base forms, 1.4 for mid-evolutions, 2.0 for final forms. */
 export function reawakenStageMultiplier(s: ReawakenSpecies): number {
   const hasPrev = typeof s.evolutionFrom === 'number';
   const hasNext = Array.isArray(s.evolutionTo) && s.evolutionTo.length > 0;
-  if (hasPrev && !hasNext) return 3.0;     // final form
-  if (hasPrev && hasNext) return 1.8;      // middle stage
+  if (hasPrev && !hasNext) return 2.0;     // final form
+  if (hasPrev && hasNext) return 1.4;      // middle stage
   if (!hasPrev && hasNext) return 1.0;     // base form with further evolutions
-  return 1.8;                              // standalone (no evolutions either way)
+  return 1.4;                              // standalone (no evolutions either way)
 }
 
 export function reawakenCost(species: ReawakenSpecies): ReawakenCost {
