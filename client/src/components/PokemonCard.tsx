@@ -1,4 +1,5 @@
-import type { Pokemon, PokemonType } from '@shared/types';
+import type { Pokemon, PokemonInstance, PokemonType } from '@shared/types';
+import { getEffectiveMoves } from '@shared/types';
 import RarityStars from './RarityStars';
 import './PokemonCard.css';
 
@@ -8,6 +9,8 @@ interface PokemonCardProps {
   onClick?: () => void;
   children?: React.ReactNode;
   className?: string;
+  /** When provided, card shows nature, ability, and moves like battle cards. */
+  instance?: PokemonInstance;
 }
 
 const TYPE_COLORS: Record<PokemonType, string> = {
@@ -24,18 +27,32 @@ function typeGradient(types: PokemonType[]): string {
   return `linear-gradient(160deg, ${a}66 0%, ${b}33 55%, transparent 100%)`;
 }
 
-export default function PokemonCard({ pokemon, count, onClick, children, className }: PokemonCardProps) {
+export default function PokemonCard({ pokemon, count, onClick, children, className, instance }: PokemonCardProps) {
   const rarityClass = `ds-rarity-${pokemon.tier}`;
   const style: React.CSSProperties = {
     ...(onClick ? { cursor: 'pointer' } : {}),
     ['--type-grad' as string]: typeGradient(pokemon.types),
   };
+  const moves = instance ? getEffectiveMoves(instance) : null;
   return (
     <div className={`pkmn-card ${rarityClass} ${className ?? ''}`} onClick={onClick} style={style}>
       {count !== undefined && count > 1 && <div className="pkmn-card-count">×{count}</div>}
       <img src={pokemon.sprite} alt={pokemon.name} />
       <div className="pkmn-card-name">{pokemon.name}</div>
       <RarityStars tier={pokemon.tier} size="sm" className="pkmn-card-stars" />
+      {instance && (
+        <div className="pkmn-card-info">
+          <div className="pkmn-card-nature">{instance.nature}</div>
+          {instance.ability && <div className="pkmn-card-ability">{instance.ability}</div>}
+          {moves && (
+            <div className="pkmn-card-moves">
+              {moves.map((m, i) => (
+                <span key={i} className="pkmn-card-move">{m}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {children}
     </div>
   );

@@ -127,6 +127,7 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
               <PokemonCard
                 key={inst.instanceId}
                 pokemon={inst.pokemon}
+                instance={inst}
                 onClick={() => {
                   if (shardMode) toggleShardSelect(inst);
                   else navigate(`/pokemon/${getCollectionIndex(inst)}`);

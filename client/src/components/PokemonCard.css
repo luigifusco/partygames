@@ -104,3 +104,45 @@
 .pkmn-card.ds-rarity-epic {
   box-shadow: 0 0 22px color-mix(in srgb, var(--rarity-color) 22%, transparent);
 }
+
+/* Instance info (nature, ability, moves) — shown on My Pokémon cards */
+.pkmn-card-info {
+  width: 100%;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pkmn-card-nature {
+  font-size: 10px;
+  text-align: center;
+  color: var(--color-text-dim);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.pkmn-card-ability {
+  font-size: 9px;
+  text-align: center;
+  color: var(--color-teal);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.pkmn-card-moves {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 1px;
+}
+
+.pkmn-card-move {
+  font-size: 9px;
+  text-align: center;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
