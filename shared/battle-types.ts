@@ -44,6 +44,8 @@ export interface BattleLogEntry {
   statusChange?: { instanceId: string; status: string };
   statusDamage?: { instanceId: string; damage: number };
   replacement?: { instanceId: string; name: string; sprite: string; side: 'left' | 'right' };
+  /** Illusion broke — client should swap this pokemon's displayed sprite/name. */
+  illusionBroken?: { instanceId: string; name: string; sprite: string };
   itemConsumed?: { instanceId: string; itemId: string };
   /** Absolute HP snapshot for all pokemon after this event — client should SET hp to these values */
   hpState?: Record<string, number>;

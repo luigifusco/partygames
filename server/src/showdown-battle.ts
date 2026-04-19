@@ -254,9 +254,11 @@ function parseProtocol(
   fieldSize: number,
   battle?: any,
 ): BattleSnapshot {
-  // Track pokemon state by ident (e.g. "p1a: Victini")
+  // Track pokemon state by instanceId (survives same-species collisions + Illusion disguises)
   const pokemonState: Record<string, { hp: number; maxHp: number; side: 'left' | 'right'; name: string; species: string }> = {};
-  // Map player slot to our instance IDs
+  // Active slot occupant: "p1a" -> "l2"
+  const activeSlot: Record<string, string> = {};
+  // ident string -> instanceId (kept as convenience fallback)
   const identToInstanceId: Record<string, string> = {};
   const instanceIdToSprite: Record<string, string> = {};
   const instanceIdToTypes: Record<string, string[]> = {};
@@ -273,20 +275,63 @@ function parseProtocol(
     instanceIdToTypes[`r${i}`] = [...p.types];
   }
 
-  // Track which names map to which instance IDs
-  const leftNameToIdx: Record<string, number> = {};
-  for (let i = 0; i < leftEntries.length; i++) leftNameToIdx[leftEntries[i].pokemon.name] = i;
-  const rightNameToIdx: Record<string, number> = {};
-  for (let i = 0; i < rightEntries.length; i++) rightNameToIdx[rightEntries[i].pokemon.name] = i;
+  // Team rosters with consumption tracking. Each team member is claimed exactly once,
+  // the first time a |switch|/|drag| reveals it (by name, or via Illusion disguise).
+  type RosterEntry = { idx: number; name: string; ability: string; consumed: boolean };
+  const leftRoster: RosterEntry[] = leftEntries.map((e, i) => ({
+    idx: i,
+    name: e.pokemon.name,
+    ability: e.ability || getShowdownAbility(e.pokemon.name),
+    consumed: false,
+  }));
+  const rightRoster: RosterEntry[] = rightEntries.map((e, i) => ({
+    idx: i,
+    name: e.pokemon.name,
+    ability: e.ability || getShowdownAbility(e.pokemon.name),
+    consumed: false,
+  }));
+  let leftSwitchCount = 0;
+  let rightSwitchCount = 0;
 
-  function getInstanceId(ident: string): string {
-    if (identToInstanceId[ident]) return identToInstanceId[ident];
+  function slotPrefix(ident: string): string {
+    const i = ident.indexOf(':');
+    return i >= 0 ? ident.slice(0, i).trim() : ident.trim();
+  }
+
+  /** Called on |switch|/|drag|: assigns the slot to a roster entry, handling duplicates + Illusion. */
+  function assignSlot(ident: string): string {
     const parsed = parsePokemonIdent(ident);
-    const nameMap = parsed.side === 'left' ? leftNameToIdx : rightNameToIdx;
-    const idx = nameMap[parsed.name] ?? 0;
-    const id = `${parsed.side === 'left' ? 'l' : 'r'}${idx}`;
+    const prefix = slotPrefix(ident);
+    const roster = parsed.side === 'left' ? leftRoster : rightRoster;
+    const switchNum = parsed.side === 'left' ? leftSwitchCount++ : rightSwitchCount++;
+
+    let pick: RosterEntry | undefined;
+    if (switchNum === 0) {
+      // The very first switch-in for a side is always the team lead (roster[0]).
+      // This handles Illusion's opening disguise: lead Zoroark may be shown with the
+      // name of its disguise target, but it IS roster[0].
+      pick = roster[0];
+    } else {
+      // Later switches: match by name among unconsumed, else any unconsumed Illusion user (disguise),
+      // else any unconsumed entry.
+      pick = roster.find(r => !r.consumed && r.name === parsed.name);
+      if (!pick) pick = roster.find(r => !r.consumed && r.ability === 'Illusion');
+      if (!pick) pick = roster.find(r => !r.consumed);
+      if (!pick) pick = roster[0];
+    }
+    pick.consumed = true;
+    const id = `${parsed.side === 'left' ? 'l' : 'r'}${pick.idx}`;
+    activeSlot[prefix] = id;
     identToInstanceId[ident] = id;
     return id;
+  }
+
+  function getInstanceId(ident: string): string {
+    const prefix = slotPrefix(ident);
+    if (activeSlot[prefix]) return activeSlot[prefix];
+    if (identToInstanceId[ident]) return identToInstanceId[ident];
+    // Fallback: lazily assign (shouldn't normally happen — switch events come first)
+    return assignSlot(ident);
   }
 
   // Build absolute HP snapshot from pokemonState at the current point in time
@@ -297,8 +342,7 @@ function parseProtocol(
     const snap: Record<string, number> = {};
     // Only include pokemon that have appeared in battle (via |switch| events)
     // Reserves are NOT included — the client initializes them at maxHp
-    for (const [ident, state] of Object.entries(pokemonState)) {
-      const instId = getInstanceId(ident);
+    for (const [instId, state] of Object.entries(pokemonState)) {
       snap[instId] = Math.max(0, state.hp);
     }
     return snap;
@@ -329,7 +373,44 @@ function parseProtocol(
   let pendingMessage = '';
   let pendingStatusChange: { instanceId: string; status: string } | undefined;
 
+  // A |move| line tagged with [still] (or stripped target) MIGHT be:
+  //  (a) a real charge turn — Solar Beam without sun, Fly turn 1, Dig turn 1, etc.
+  //  (b) a same-turn execution where Showdown just wants to re-issue the animation
+  //      via a follow-up |-anim| (Solar Beam under sun, Solar Blade under sun, etc.).
+  // We can't tell at |move|-time, so we buffer the charge-flavored log here and
+  // resolve it later:
+  //   - If |-anim| arrives for the same attacker+move, discard the buffer and let
+  //     the |-anim| handler start a fresh pendingMove (normal damage flow).
+  //   - Otherwise (next |move|, turn boundary, any other event), flush the buffer
+  //     as a real charge-turn log entry.
+  let pendingCharge: {
+    round: number;
+    attackerIdent: string;
+    attackerName: string;
+    moveName: string;
+  } | null = null;
+
+  function flushPendingCharge() {
+    if (!pendingCharge) return;
+    const c = pendingCharge;
+    pendingCharge = null;
+    const instId = getInstanceId(c.attackerIdent);
+    pushLog({
+      round: c.round,
+      attackerInstanceId: instId,
+      attackerName: c.attackerName,
+      moveName: c.moveName,
+      targetInstanceId: instId,
+      targetName: c.attackerName,
+      damage: 0,
+      effectiveness: null,
+      targetFainted: false,
+      message: `${c.attackerName} used ${c.moveName}!`,
+    });
+  }
+
   function flushPendingMove() {
+    flushPendingCharge();
     if (!pendingMove) return;
     const m = pendingMove;
     const attackerInstId = getInstanceId(m.attackerIdent);
@@ -390,9 +471,9 @@ function parseProtocol(
         const hpStr = parts[4] || '100/100';
         const { hp, maxHp } = parseHPString(hpStr);
         const parsed = parsePokemonIdent(ident);
-        const instId = getInstanceId(ident);
+        const instId = assignSlot(ident);
 
-        pokemonState[ident] = { hp, maxHp, side: parsed.side, name: parsed.name, species: detailParts[0] };
+        pokemonState[instId] = { hp, maxHp, side: parsed.side, name: parsed.name, species: detailParts[0] };
         knownMaxHp[instId] = maxHp;
 
         // Log replacement if this is mid-battle (after turn 0)
@@ -416,32 +497,36 @@ function parseProtocol(
 
       case 'replace': {
         // Illusion broken: |replace|p1a: Zoroark|Zoroark, L50, M
-        // Remap the ident — previous events used the disguise name
+        // The slot (p1a) already points to the real Pokemon's instanceId — the
+        // roster was claimed correctly at assignSlot-time thanks to the Illusion
+        // fallback. We just need to refresh the displayed name/species.
         flushPendingMove();
-        const replaceIdent = parts[2]; // "p1a: Zoroark" (real identity)
+        const replaceIdent = parts[2];
         const replaceParsed = parsePokemonIdent(replaceIdent);
         const replaceDetails = parts[3]?.split(', ') || [];
         const realSpecies = replaceDetails[0] || replaceParsed.name;
+        const prefix = slotPrefix(replaceIdent);
+        const instId = activeSlot[prefix] || getInstanceId(replaceIdent);
 
-        // Find the old ident for this slot (the disguise)
-        const slotPrefix = replaceIdent.split(':')[0]; // "p1a"
-        for (const [oldIdent, state] of Object.entries(pokemonState)) {
-          if (oldIdent.startsWith(slotPrefix + ':') && oldIdent !== replaceIdent) {
-            // Transfer HP state from disguise to real identity
-            pokemonState[replaceIdent] = { ...state, name: replaceParsed.name, species: realSpecies };
-            // Remap instance ID: the disguise ident pointed to wrong pokemon
-            const correctIdx = replaceParsed.side === 'left'
-              ? leftNameToIdx[replaceParsed.name]
-              : rightNameToIdx[replaceParsed.name];
-            if (correctIdx !== undefined) {
-              identToInstanceId[replaceIdent] = `${replaceParsed.side === 'left' ? 'l' : 'r'}${correctIdx}`;
-              // Also fix the old ident to point to the correct ID
-              identToInstanceId[oldIdent] = identToInstanceId[replaceIdent];
-            }
-            delete pokemonState[oldIdent];
-            break;
-          }
+        if (pokemonState[instId]) {
+          pokemonState[instId].name = replaceParsed.name;
+          pokemonState[instId].species = realSpecies;
         }
+        identToInstanceId[replaceIdent] = instId;
+
+        // Notify the client so it can swap the sprite/name mid-battle.
+        pushLog({
+          round: currentRound,
+          attackerInstanceId: '', attackerName: '',
+          moveName: '', targetInstanceId: instId, targetName: replaceParsed.name,
+          damage: 0, effectiveness: null, targetFainted: false,
+          message: `${replaceParsed.name}'s Illusion wore off!`,
+          illusionBroken: {
+            instanceId: instId,
+            name: replaceParsed.name,
+            sprite: instanceIdToSprite[instId] || '',
+          },
+        });
         break;
       }
 
@@ -457,25 +542,19 @@ function parseProtocol(
         const targetIdent = parts[4] || '';
         // Check for [miss] tag in remaining parts
         const hasMissTag = parts.slice(5).some(p => p === '[miss]');
-        // Check for [still] tag (charge turn, no real action yet)
+        // Check for [still] tag (charge turn, OR same-turn fire signaled via subsequent -anim)
         const hasStillTag = parts.slice(5).some(p => p === '[still]');
 
         if (hasStillTag || !targetIdent) {
-          // Charge turn (Fly, Dig, Bounce, etc.) — just emit a preparation message
+          // Ambiguous: buffer as potential charge log. A follow-up |-anim| will
+          // cancel this and start a real pendingMove for the damage phase.
           const attackerParsed = parsePokemonIdent(attackerIdent);
-          pushLog({
+          pendingCharge = {
             round: currentRound,
-            attackerInstanceId: getInstanceId(attackerIdent),
+            attackerIdent,
             attackerName: attackerParsed.name,
             moveName,
-            targetInstanceId: getInstanceId(attackerIdent),
-            targetName: attackerParsed.name,
-            damage: 0,
-            effectiveness: null,
-            targetFainted: false,
-            message: `${attackerParsed.name} used ${moveName}!`,
-          });
-          // Don't set pendingMove — next events (like -prepare) are informational
+          };
           break;
         }
 
@@ -500,7 +579,37 @@ function parseProtocol(
       }
 
       case '-prepare': {
-        // Charge turn preparation (Fly, Dig, etc.) — already handled by 'move' with [still]
+        // Charge-turn preparation text — harmless; leave pendingCharge buffered.
+        // A subsequent |-anim| (sun-powered Solar Beam etc.) will cancel the buffer.
+        break;
+      }
+
+      case '-anim': {
+        // |-anim|attacker|MoveName|target — explicit animation cue. Used when
+        // Showdown suppressed the |move| line's animation via [still]. We treat
+        // this as the actual move execution and let damage flow normally.
+        const animAttackerIdent = parts[2];
+        const animMoveName = parts[3];
+        const animTargetIdent = parts[4] || '';
+        // Cancel any deferred charge log for this attacker+move — the move is firing now.
+        if (pendingCharge && pendingCharge.attackerIdent === animAttackerIdent && pendingCharge.moveName === animMoveName) {
+          pendingCharge = null;
+        } else {
+          flushPendingCharge();
+        }
+        flushPendingMove();
+        if (animTargetIdent) {
+          const attackerParsed = parsePokemonIdent(animAttackerIdent);
+          const targetParsed = parsePokemonIdent(animTargetIdent);
+          pendingMove = {
+            round: currentRound,
+            attackerIdent: animAttackerIdent,
+            attackerName: attackerParsed.name,
+            moveName: animMoveName,
+            targetIdent: animTargetIdent,
+            targetName: targetParsed.name,
+          };
+        }
         break;
       }
 
@@ -509,7 +618,8 @@ function parseProtocol(
         const hpStr = parts[3];
         const source = parts[4] || '';
         const { hp, maxHp } = parseHPString(hpStr);
-        const prev = pokemonState[dmgIdent];
+        const dmgInstId = getInstanceId(dmgIdent);
+        const prev = pokemonState[dmgInstId];
 
         if (pendingMove) {
           // Damage from the pending move
@@ -551,7 +661,8 @@ function parseProtocol(
         const healIdent = parts[2];
         const hpStr = parts[3];
         const { hp, maxHp } = parseHPString(hpStr);
-        const prev = pokemonState[healIdent];
+        const healInstId = getInstanceId(healIdent);
+        const prev = pokemonState[healInstId];
         const healAmount = prev ? hp - prev.hp : 0;
         if (prev) {
           prev.hp = hp;
@@ -613,8 +724,9 @@ function parseProtocol(
       case 'faint': {
         const faintIdent = parts[2];
         const faintParsed = parsePokemonIdent(faintIdent);
-        if (pokemonState[faintIdent]) {
-          pokemonState[faintIdent].hp = 0;
+        const faintInstId = getInstanceId(faintIdent);
+        if (pokemonState[faintInstId]) {
+          pokemonState[faintInstId].hp = 0;
         }
         // Mark the pending move's target as fainted if it matches
         if (pendingMove && pendingMove.targetIdent === faintIdent) {
