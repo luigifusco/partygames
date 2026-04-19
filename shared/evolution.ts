@@ -1,4 +1,5 @@
-// Evolution rules: tokens-based shortcut + bond-XP path.
+// Evolution rules: bond-XP path only. Shards (tokens) no longer
+// participate in evolution but are kept as items for future use.
 // Keep in sync between client and server.
 
 import type { BoxTier } from './types';
@@ -103,14 +104,12 @@ export function bondThresholdForStep(targetTier: BoxTier, step?: EvolutionStep):
 
 export function evolveGate(input: EvolveGateInput): EvolveGate {
   const bondNeeded = bondThresholdForStep(input.targetTier, input.step);
-  const tokensNeeded = tokenCost(input.targetTier);
   const bondMet = input.bondXp >= bondNeeded;
-  const tokensMet = input.tokens >= tokensNeeded;
   return {
-    canEvolve: bondMet || tokensMet,
+    canEvolve: bondMet,
     bondMet,
-    tokensMet,
+    tokensMet: false,
     bondNeeded,
-    tokensNeeded,
+    tokensNeeded: 0,
   };
 }

@@ -181,7 +181,7 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'info', infoTitle: 'Bond XP — Unlocked!', infoIcon: '💞', lines: [
         "Your Pokémon now earn Bond XP from every battle.",
-        "Higher bond + thematic tokens → evolution.",
+        "Higher bond → evolution.",
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "We will meet again, trainer. The world is larger than you realize. Until then... listen to your Pokémon. They have so much to say."

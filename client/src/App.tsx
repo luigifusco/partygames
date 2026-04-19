@@ -86,28 +86,14 @@ export default function App() {
     const evolved = POKEMON_BY_ID[targetId];
     if (!evolved) return;
 
-    // Determine which gate is satisfied (bond or tokens).
-    const tokenId = String(pokemon.id);
-    const matchingTokens = items.filter((i) => i.itemType === 'token' && i.itemData === tokenId);
     const step = evolutionStepFor(pokemon) ?? undefined;
     const gate = evolveGate({
       bondXp: instance.bondXp ?? 0,
-      tokens: matchingTokens.length,
+      tokens: 0,
       targetTier: evolved.tier,
       step,
     });
     if (!gate.canEvolve) return;
-
-    // Prefer the bond path when available (saves the player's tokens).
-    const consumeTokens = !gate.bondMet && gate.tokensMet;
-    if (consumeTokens) {
-      const tokensToRemove = matchingTokens.slice(0, gate.tokensNeeded);
-      const removedIds = new Set(tokensToRemove.map((t) => t.id));
-      setItems((prev) => prev.filter((i) => !removedIds.has(i.id)));
-      if (player) {
-        removeItemsFromServer(player.id, 'token', tokenId, gate.tokensNeeded);
-      }
-    }
 
     // Carry over bond XP above the step-aware threshold for this evolution.
     const leftoverBond = Math.max(0, (instance.bondXp ?? 0) - bondThresholdForStep(evolved.tier, step));

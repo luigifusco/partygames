@@ -59,15 +59,14 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const { pokemon, ivs, nature } = inst;
   const natureData = NATURE_BY_NAME[nature];
 
-  // Compute evo/shard data
+  // Compute evo data (bond gate only; tokens no longer used for evolution).
   const evoTargets = (pokemon.evolutionTo ?? [])
     .map((id) => POKEMON_BY_ID[id])
     .filter(Boolean);
-  const tokenCount = items.filter((i) => i.itemType === 'token' && i.itemData === String(pokemon.id)).length;
   const bondXp = inst.bondXp ?? 0;
   const firstTarget = evoTargets[0];
   const gate = firstTarget
-    ? evolveGate({ bondXp, tokens: tokenCount, targetTier: firstTarget.tier, step: evolutionStepFor(pokemon) ?? undefined })
+    ? evolveGate({ bondXp, tokens: 0, targetTier: firstTarget.tier, step: evolutionStepFor(pokemon) ?? undefined })
     : null;
   const canEvolve = evoTargets.length > 0 && !!gate && gate.canEvolve;
   const bondPct = gate ? Math.min(100, Math.round((bondXp / gate.bondNeeded) * 100)) : 0;
@@ -169,9 +168,6 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
               {gate.bondMet && <span className="detail-bond-met">✓ ready</span>}
             </div>
             <div className="detail-bond-track"><div className="detail-bond-fill" style={{ width: `${bondPct}%` }} /></div>
-            <div className="detail-bond-hint">
-              or spend <strong>{gate.tokensNeeded}</strong> {pokemon.name} token{gate.tokensNeeded > 1 ? 's' : ''} ({tokenCount}/{gate.tokensNeeded})
-            </div>
           </div>
         )}
 

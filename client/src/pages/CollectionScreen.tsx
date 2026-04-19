@@ -37,15 +37,6 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
   const [shardSelected, setShardSelected] = useState<Set<string>>(new Set());
   const [shardPreview, setShardPreview] = useState<PokemonInstance[] | null>(null);
 
-  // Count tokens per pokemon id
-  const tokenCounts = new Map<number, number>();
-  for (const item of items) {
-    if (item.itemType === 'token') {
-      const pid = Number(item.itemData);
-      tokenCounts.set(pid, (tokenCounts.get(pid) ?? 0) + 1);
-    }
-  }
-
   const filtered = collection
     .filter((inst) => filter === 'all' || inst.pokemon.tier === filter)
     .sort((a, b) => {
@@ -123,11 +114,10 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
       ) : (
         <div className="collection-grid">
           {filtered.map((inst) => {
-            const tokens = tokenCounts.get(inst.pokemon.id) ?? 0;
             const targets = getEvoTargets(inst.pokemon);
             const firstTarget = targets[0];
             const gate = firstTarget
-              ? evolveGate({ bondXp: inst.bondXp ?? 0, tokens, targetTier: firstTarget.tier, step: evolutionStepFor(inst.pokemon) ?? undefined })
+              ? evolveGate({ bondXp: inst.bondXp ?? 0, tokens: 0, targetTier: firstTarget.tier, step: evolutionStepFor(inst.pokemon) ?? undefined })
               : null;
             const canEvolve = !!gate && gate.canEvolve && targets.length > 0;
             const bondXp = inst.bondXp ?? 0;
@@ -160,7 +150,7 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
                   <div className="collection-evolve-pill">EVOLVE</div>
                 )}
                 {!shardMode && bondUnlocked && gate && targets.length > 0 && !canEvolve && (
-                  <div className="collection-bond-bar" title={`Bond ${bondXp}/${gate.bondNeeded} · Tokens ${tokens}/${gate.tokensNeeded}`}>
+                  <div className="collection-bond-bar" title={`Bond ${bondXp}/${gate.bondNeeded}`}>
                     <div className="collection-bond-fill" style={{ width: `${bondPct}%` }} />
                     <span className="collection-bond-text">{bondXp}/{gate.bondNeeded}</span>
                   </div>
