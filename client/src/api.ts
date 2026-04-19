@@ -102,13 +102,13 @@ export async function evolvePokemonOnServer(playerId: string, instanceId: string
   });
 }
 
-export async function reawakenPokemonOnServer(playerId: string, instanceId: string):
+export async function reawakenPokemonOnServer(playerId: string, pokemonId: number):
   Promise<{ ok: true; cost: { tokens: number; essence: number }; newInstance: any } | { ok: false; error: string }>
 {
   const res = await fetch(`${API_BASE}/api/player/${playerId}/pokemon/reawaken`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ instanceId }),
+    body: JSON.stringify({ pokemonId }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, error: (data && (data as any).error) || 'Reawakening failed' };

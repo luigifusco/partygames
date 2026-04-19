@@ -474,13 +474,14 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/evolve`, (req, res) => {
   return res.json({ ok: true, bondXp: leftover });
 });
 
-// Reawaken: release a specimen and generate a fresh one of the same
-// species (new nature, IVs, ability, moves). Gated by N's Reawakening
-// storyline. Costs 1 species token + tier-scaled essence. The old
-// instance is deleted; the held item (if any) returns to inventory.
+// Reawaken: consume one species Memory (internally still item_type
+// 'token') plus tier-scaled essence and create a fresh specimen of
+// that species (new nature, IVs, ability, moves). Gated by N's
+// Reawakening storyline.
 app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
-  const { instanceId } = req.body;
-  if (typeof instanceId !== 'string') {
+  const { pokemonId } = req.body;
+  const pid = Number(pokemonId);
+  if (!Number.isFinite(pid) || pid <= 0) {
     return res.status(400).json({ error: 'Invalid params' });
   }
   const playerId = req.params.id;
@@ -493,14 +494,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
     return res.status(403).json({ error: 'Reawakening has not been taught yet.' });
   }
 
-  const pokemon = db.prepare(
-    'SELECT id, pokemon_id, held_item, favorite, character FROM owned_pokemon WHERE id = ? AND player_id = ?'
-  ).get(instanceId, playerId) as any;
-  if (!pokemon) {
-    return res.status(404).json({ error: 'Pokemon not found' });
-  }
-
-  const species = POKEMON_BY_ID[pokemon.pokemon_id];
+  const species = POKEMON_BY_ID[pid];
   if (!species) return res.status(404).json({ error: 'Unknown species' });
 
   const cost = reawakenCost({
@@ -516,29 +510,17 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
     return res.status(400).json({ error: 'Not enough essence', required: cost });
   }
 
-  // Verify a matching species token
+  // Verify a matching species memory (item_type 'token' in DB)
   const tokenRow = db.prepare(
     'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT 1'
   ).get(playerId, 'token', String(species.id)) as any;
   if (!tokenRow) {
-    return res.status(400).json({ error: `You need a ${species.name} token.`, required: cost });
+    return res.status(400).json({ error: `You need a ${species.name} Memory.`, required: cost });
   }
 
-  // Deduct essence + token, release held item, delete old, insert new.
-  // Use an ad-hoc transaction by running in order; node:sqlite doesn't
-  // expose db.transaction the same way better-sqlite3 does, but the
-  // operations here are idempotent enough on failure.
+  // Deduct essence + memory, insert fresh specimen.
   db.prepare('UPDATE players SET essence = essence - ? WHERE id = ?').run(cost.essence, playerId);
   db.prepare('DELETE FROM owned_items WHERE id = ?').run(tokenRow.id);
-
-  if (pokemon.held_item) {
-    const returnedId = uuidv4();
-    db.prepare(
-      'INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)'
-    ).run(returnedId, playerId, 'held_item', pokemon.held_item);
-  }
-
-  db.prepare('DELETE FROM owned_pokemon WHERE id = ?').run(pokemon.id);
 
   const newId = uuidv4();
   const nature = randomNature();

@@ -6,19 +6,26 @@ import type { StatKey } from '@shared/boost-data';
 import { HELD_ITEMS_BY_ID, getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import { STAT_LABELS } from '@shared/natures';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
-import type { OwnedItem, PokemonInstance } from '@shared/types';
+import { reawakenCost } from '@shared/evolution';
+import { REAWAKEN_UNLOCK_CHAPTER } from '@shared/story-data';
+import type { OwnedItem, PokemonInstance, Pokemon } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
 import { canLearnMove } from '@shared/tm-learnsets';
 import PokemonIcon from '../components/PokemonIcon';
+import ReawakenConfirmModal from '../components/ReawakenConfirmModal';
+import { useStoryChapters } from '../hooks/useStoryChapters';
 import './ItemsScreen.css';
 
 interface ItemsScreenProps {
   items: OwnedItem[];
   collection: PokemonInstance[];
+  essence: number;
+  playerId?: string;
   onTeachTM: (instance: PokemonInstance, moveName: string, moveSlot: 0 | 1) => void;
   onUseBoost: (instance: PokemonInstance, stat: StatKey) => void;
   onGiveHeldItem: (instance: PokemonInstance, itemId: string) => void;
   onTakeHeldItem: (instance: PokemonInstance) => void;
+  onReawaken: (pokemonId: number) => Promise<{ ok: true; newInstanceId: string; index: number } | { ok: false; error: string }>;
 }
 
 interface TMGroup {
@@ -54,13 +61,18 @@ interface HeldItemGroup {
   count: number;
 }
 
-export default function ItemsScreen({ items, collection, onTeachTM, onUseBoost, onGiveHeldItem, onTakeHeldItem }: ItemsScreenProps) {
+export default function ItemsScreen({ items, collection, essence, playerId, onTeachTM, onUseBoost, onGiveHeldItem, onTakeHeldItem, onReawaken }: ItemsScreenProps) {
   const navigate = useNavigate();
+  const chapters = useStoryChapters(playerId);
+  const reawakenUnlocked = chapters.has(REAWAKEN_UNLOCK_CHAPTER);
   const [teachPhase, setTeachPhase] = useState<TeachPhase | null>(null);
   const [heldItemPhase, setHeldItemPhase] = useState<HeldItemPhase | null>(null);
   const [boostPhase, setBoostPhase] = useState<BoostPhase | null>(null);
   const [successAnim, setSuccessAnim] = useState<{ icon: string; text: string; pokemonSprite: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'tms' | 'boosts' | 'held' | 'tokens'>('tms');
+  const [reawakenPrompt, setReawakenPrompt] = useState<Pokemon | null>(null);
+  const [reawakenError, setReawakenError] = useState<string | null>(null);
+  const [reawakening, setReawakening] = useState<{ species: Pokemon } | null>(null);
 
   const showSuccess = (icon: string, text: string, pokemonSprite: string) => {
     setSuccessAnim({ icon, text, pokemonSprite });
@@ -200,27 +212,66 @@ export default function ItemsScreen({ items, collection, onTeachTM, onUseBoost, 
               <button
                 className={`ds-tab ${activeTab === 'tokens' ? 'ds-tab-active' : ''}`}
                 onClick={() => setActiveTab('tokens')}
-              >Tokens{tokenGroups.length > 0 ? ` · ${tokenGroups.length}` : ''}</button>
+              >Memories{tokenGroups.length > 0 ? ` · ${tokenGroups.length}` : ''}</button>
             </div>
           </div>
 
           <div className="items-scroll">
             {activeTab === 'tokens' && (
               tokenGroups.length > 0 ? (
-                <div className="items-grid">
-                  {tokenGroups.map(({ pokemonId, pokemonName, count }) => (
-                    <div key={`token-${pokemonId}`} className="item-card token-card">
-                      <div className="token-icon-wrapper">
-                        <PokemonIcon pokemonId={pokemonId} />
-                      </div>
-                      {count > 1 && <div className="item-count">×{count}</div>}
-                      <div className="item-name">{pokemonName}</div>
-                      <div className="item-type token-badge">Token</div>
+                <>
+                  {!reawakenUnlocked && (
+                    <div className="items-reawaken-hint">
+                      A Memory lingers here from each Pokémon you've sharded. Something in N's forest may yet teach you how to call them back…
                     </div>
-                  ))}
-                </div>
+                  )}
+                  {reawakenUnlocked && (
+                    <div className="items-reawaken-hint items-reawaken-hint-unlocked">
+                      🌙 Tap a Memory to perform N's Reawakening rite — a fresh Pokémon of that species will emerge.
+                    </div>
+                  )}
+                  <div className="items-grid">
+                    {tokenGroups.map(({ pokemonId, pokemonName, count }) => {
+                      const species = POKEMON_BY_ID[pokemonId];
+                      const rCost = species ? reawakenCost({
+                        tier: species.tier,
+                        evolutionFrom: species.evolutionFrom,
+                        evolutionTo: species.evolutionTo,
+                      }) : null;
+                      const canReawakenCard = reawakenUnlocked && !!species && !!rCost && count >= rCost.tokens && essence >= rCost.essence;
+                      return (
+                        <div
+                          key={`token-${pokemonId}`}
+                          className={`item-card token-card ${reawakenUnlocked ? 'memory-usable' : ''} ${reawakenUnlocked && !canReawakenCard ? 'memory-short' : ''}`}
+                          onClick={() => {
+                            if (!reawakenUnlocked || !species) return;
+                            setReawakenError(null);
+                            setReawakenPrompt(species);
+                          }}
+                          title={
+                            !reawakenUnlocked ? 'A fading memory of a Pokémon you once knew.' :
+                            !rCost ? '' :
+                            canReawakenCard ? `Reawaken a ${pokemonName} (✦ ${rCost.essence.toLocaleString()})` :
+                            essence < (rCost?.essence ?? 0) ? `Need ✦ ${rCost.essence.toLocaleString()} essence` :
+                            `Need ${rCost.tokens} Memory`
+                          }
+                        >
+                          <div className="token-icon-wrapper">
+                            <PokemonIcon pokemonId={pokemonId} />
+                          </div>
+                          {count > 1 && <div className="item-count">×{count}</div>}
+                          <div className="item-name">{pokemonName}</div>
+                          <div className="item-type token-badge">Memory</div>
+                          {reawakenUnlocked && rCost && (
+                            <div className="memory-cost-badge">🌙 1 · ✦ {rCost.essence.toLocaleString()}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               ) : (
-                <div className="items-empty"><div className="items-empty-icon">🪙</div><div>No tokens yet</div></div>
+                <div className="items-empty"><div className="items-empty-icon">🌙</div><div>No Memories yet — shard a Pokémon to keep its Memory.</div></div>
               )
             )}
 
@@ -455,6 +506,92 @@ export default function ItemsScreen({ items, collection, onTeachTM, onUseBoost, 
             <img src={successAnim.pokemonSprite} alt="" className="item-success-sprite" />
             <div className="item-success-icon">{successAnim.icon}</div>
             <div className="item-success-text">{successAnim.text}</div>
+          </div>
+        </div>
+      )}
+
+      {reawakenPrompt && (() => {
+        const species = reawakenPrompt;
+        const rCost = reawakenCost({
+          tier: species.tier,
+          evolutionFrom: species.evolutionFrom,
+          evolutionTo: species.evolutionTo,
+        });
+        const memoryCount = items.filter((it) => it.itemType === 'token' && it.itemData === String(species.id)).length;
+        return (
+          <ReawakenConfirmModal
+            species={species}
+            essence={essence}
+            memoryCount={memoryCount}
+            cost={rCost}
+            onCancel={() => setReawakenPrompt(null)}
+            onConfirm={() => {
+              setReawakenPrompt(null);
+              setReawakenError(null);
+              setReawakening({ species });
+              // Let the fade-out play, then call server, then hold the reveal, then navigate.
+              setTimeout(async () => {
+                const res = await onReawaken(species.id);
+                setTimeout(() => {
+                  setReawakening(null);
+                  if (res.ok) {
+                    navigate(`/pokemon/${res.index}`);
+                  } else {
+                    setReawakenError(res.error);
+                  }
+                }, 1600);
+              }, 1800);
+            }}
+          />
+        );
+      })()}
+
+      {reawakenError && (
+        <div className="item-success-overlay" onClick={() => setReawakenError(null)}>
+          <div className="item-success-content">
+            <div className="item-success-icon">⚠️</div>
+            <div className="item-success-text">{reawakenError}</div>
+          </div>
+        </div>
+      )}
+
+      {reawakening && (
+        <div className="reawaken-overlay">
+          <div className="reawaken-stage">
+            <div className="reawaken-aurora" />
+            <div className="reawaken-forest" aria-hidden="true">
+              <span className="reawaken-tree reawaken-tree-1" />
+              <span className="reawaken-tree reawaken-tree-2" />
+              <span className="reawaken-tree reawaken-tree-3" />
+              <span className="reawaken-tree reawaken-tree-4" />
+            </div>
+            <img
+              className="reawaken-sprite reawaken-sprite-from"
+              src={reawakening.species.sprite}
+              alt={reawakening.species.name}
+            />
+            <img
+              className="reawaken-sprite reawaken-sprite-to"
+              src={reawakening.species.sprite}
+              alt={reawakening.species.name}
+            />
+            <div className="reawaken-motes" aria-hidden="true">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="reawaken-mote"
+                  style={{ ['--i' as string]: i } as React.CSSProperties}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="reawaken-caption">
+            <div className="reawaken-caption-line reawaken-caption-release">
+              A Memory of {reawakening.species.name} stirred beneath the moon…
+            </div>
+            <div className="reawaken-caption-line reawaken-caption-return">
+              …and a new {reawakening.species.name} answered the call.
+            </div>
           </div>
         </div>
       )}

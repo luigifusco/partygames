@@ -1,56 +1,54 @@
-import type { PokemonInstance } from '@shared/types';
-import { getEffectiveMoves } from '@shared/types';
+import type { Pokemon } from '@shared/types';
 import RarityStars from './RarityStars';
 import './ReawakenConfirmModal.css';
 
 interface ReawakenConfirmModalProps {
-  instance: PokemonInstance;
+  species: Pokemon;
   essence: number;
-  tokenCount: number;
+  memoryCount: number;
   cost: { tokens: number; essence: number };
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export default function ReawakenConfirmModal({ instance, essence, tokenCount, cost, onConfirm, onCancel }: ReawakenConfirmModalProps) {
-  const moves = getEffectiveMoves(instance);
-  const canAfford = essence >= cost.essence && tokenCount >= cost.tokens;
+export default function ReawakenConfirmModal({ species, essence, memoryCount, cost, onConfirm, onCancel }: ReawakenConfirmModalProps) {
+  const canAfford = essence >= cost.essence && memoryCount >= cost.tokens;
 
   return (
     <div className="reawaken-modal-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="reawaken-modal">
         <div className="reawaken-modal-header">
-          <h3>Reawaken {instance.pokemon.name}?</h3>
+          <h3>Reawaken a {species.name}?</h3>
           <button className="reawaken-modal-close" onClick={onCancel} aria-label="Close">✕</button>
         </div>
 
         <div className="reawaken-modal-body">
           <p className="reawaken-modal-flavor">
-            Let this partner return to the wild for one night. They will come back the version of themselves they were meant to be — fresh nature, new potential, new muscles, new moves learned under the stars.
+            Offer this Memory to the stars. A fresh {species.name} will emerge — a new nature, new potential, new muscles, new moves learned under the moon.
           </p>
 
           <div className="reawaken-preview">
             <div className="reawaken-preview-sprite-wrap">
-              <img src={instance.pokemon.sprite} alt={instance.pokemon.name} className="reawaken-preview-sprite" />
-              <RarityStars tier={instance.pokemon.tier} size="md" />
+              <img src={species.sprite} alt={species.name} className="reawaken-preview-sprite" />
+              <RarityStars tier={species.tier} size="md" />
             </div>
             <div className="reawaken-preview-info">
-              <div className="reawaken-preview-name">{instance.pokemon.name}</div>
+              <div className="reawaken-preview-name">{species.name}</div>
               <div className="reawaken-preview-meta">
-                {instance.nature} · {instance.ability}
+                {species.types.join(' · ')}
               </div>
               <div className="reawaken-preview-meta reawaken-preview-moves">
-                {moves.join(' · ')}
+                Nature, IVs, ability and moves will be re-rolled.
               </div>
             </div>
           </div>
 
           <div className="reawaken-cost">
-            <div className={`reawaken-cost-row ${tokenCount >= cost.tokens ? 'ok' : 'short'}`}>
-              <span className="reawaken-cost-icon">🪙</span>
-              <span className="reawaken-cost-label">{instance.pokemon.name} token</span>
+            <div className={`reawaken-cost-row ${memoryCount >= cost.tokens ? 'ok' : 'short'}`}>
+              <span className="reawaken-cost-icon">🌙</span>
+              <span className="reawaken-cost-label">{species.name} Memory</span>
               <span className="reawaken-cost-value">
-                {cost.tokens} <span className="reawaken-cost-have">(have {tokenCount})</span>
+                {cost.tokens} <span className="reawaken-cost-have">(have {memoryCount})</span>
               </span>
             </div>
             <div className={`reawaken-cost-row ${essence >= cost.essence ? 'ok' : 'short'}`}>
@@ -63,7 +61,7 @@ export default function ReawakenConfirmModal({ instance, essence, tokenCount, co
           </div>
 
           <div className="reawaken-warning">
-            This specimen's current nature, IVs, ability, moves, and bond XP will be released with them.
+            The Memory will be consumed. A brand new {species.name} will join your collection.
           </div>
         </div>
 

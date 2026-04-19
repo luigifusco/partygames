@@ -137,34 +137,26 @@ export default function App() {
     }
   };
 
-  const reawakenPokemon = async (instance: PokemonInstance): Promise<{ ok: true; newInstanceId: string } | { ok: false; error: string }> => {
+  const reawakenPokemon = async (pokemonId: number): Promise<{ ok: true; newInstanceId: string; index: number } | { ok: false; error: string }> => {
     if (!player) return { ok: false, error: 'No player' };
-    const res = await reawakenPokemonOnServer(player.id, instance.instanceId);
+    const res = await reawakenPokemonOnServer(player.id, pokemonId);
     if (!res.ok) return { ok: false, error: res.error };
-    // Server deducted essence + 1 token + returned held item to inventory
-    // and deleted the old instance. Reflect that locally.
     const cost = res.cost;
     setEssence((e) => Math.max(0, e - cost.essence));
     setItems((prev) => {
       const next = [...prev];
-      // Remove one token of this species
-      const tokenIdx = next.findIndex((it) => it.itemType === 'token' && it.itemData === String(instance.pokemon.id));
-      if (tokenIdx >= 0) next.splice(tokenIdx, 1);
-      // Returned held item (if any)
-      if (instance.heldItem) {
-        next.push(buildItem({ id: 'ret-' + Math.random().toString(36).slice(2), item_type: 'held_item', item_data: instance.heldItem }));
-      }
+      const memIdx = next.findIndex((it) => it.itemType === 'token' && it.itemData === String(pokemonId));
+      if (memIdx >= 0) next.splice(memIdx, 1);
       return next;
     });
     const built = buildInstance({ ...res.newInstance });
+    if (!built) return { ok: false, error: 'Could not build new instance' };
+    let newIndex = 0;
     setCollection((c) => {
-      const idx = c.findIndex((x) => x.instanceId === instance.instanceId);
-      if (idx < 0 || !built) return c.filter((x) => x.instanceId !== instance.instanceId);
-      const next = [...c];
-      next[idx] = built;
-      return next;
+      newIndex = c.length;
+      return [...c, built];
     });
-    return { ok: true, newInstanceId: built?.instanceId ?? '' };
+    return { ok: true, newInstanceId: built.instanceId, index: newIndex };
   };
 
   const teachTM = async (instance: PokemonInstance, moveName: string, moveSlot: 0 | 1) => {
@@ -392,11 +384,11 @@ export default function App() {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/notifications" element={<NotificationsScreen notifications={notifications} onAccept={handleAcceptNotification} onDismiss={dismissNotification} />} />
         <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} />} />
-        <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} essence={essence} onShard={shardPokemon} onEvolve={evolvePokemon} onReawaken={reawakenPokemon} onToggleFavorite={toggleFavorite} playerId={player.id} />} />
+        <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} playerId={player.id} />} />
         <Route path="/pokedex" element={<PokedexScreen discovered={discovered} />} />
         <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
         <Route path="/shop" element={<ShopScreen essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
-        <Route path="/items" element={<ItemsScreen items={items} collection={collection} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} />} />
+        <Route path="/items" element={<ItemsScreen items={items} collection={collection} essence={essence} playerId={player.id} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} onReawaken={reawakenPokemon} />} />
         <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
         <Route path="/battle" element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
         <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />

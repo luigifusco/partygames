@@ -74,7 +74,7 @@ export default function ShardConfirmModal({ instances, onConfirm, onCancel }: Sh
           )}
 
           <div className="shard-preview-reward">
-            You will receive <strong>{totalTokens} token{totalTokens > 1 ? 's' : ''}</strong>.
+            You will receive <strong>{totalTokens} Memor{totalTokens > 1 ? 'ies' : 'y'}</strong>.
           </div>
         </div>
 
