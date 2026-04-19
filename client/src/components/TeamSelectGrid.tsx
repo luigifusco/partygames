@@ -159,16 +159,22 @@ export default function TeamSelectGrid({
               const info = PROFILE_INFO[resolved];
               return (
                 <div key={`sel-${idx}`} className="team-select-chosen-card" onClick={() => onToggle(idx)}>
-                  <img src={p.sprite} alt={p.name} />
                   <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
-                  <span className="team-select-chosen-name">{p.name}</span>
+                  {inst.heldItem && (
+                    <span
+                      className="team-select-chosen-held"
+                      title={getHeldItemName(inst.heldItem)}
+                      aria-label={getHeldItemName(inst.heldItem)}
+                    >
+                      <img src={getHeldItemSprite(inst.heldItem)} alt="" />
+                    </span>
+                  )}
                   <span
                     className="team-select-chosen-character"
                     title={`${info.label}: ${info.blurb}`}
                     style={{ color: info.color }}
                   >
                     <span className="team-select-chosen-character-icon">{info.icon}</span>
-                    <span className="team-select-chosen-character-label"> {info.label}</span>
                   </span>
                 </div>
               );

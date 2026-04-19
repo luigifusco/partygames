@@ -292,11 +292,10 @@
 }
 
 .team-select-chosen-card {
-  width: 28vw;
-  max-width: 100px;
+  width: 56px;
+  height: 56px;
   aspect-ratio: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
@@ -308,7 +307,7 @@
               background var(--duration-fast) var(--ease-out);
   flex-shrink: 0;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   padding: 0;
 }
 
@@ -317,20 +316,13 @@
   background: var(--color-surface-3);
 }
 
-.team-select-chosen-card img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: scale-down;
-  image-rendering: pixelated;
-}
-
-.team-select-chosen-card .team-select-chosen-name {
-  font-size: 10px;
-  font-weight: 700;
+.team-select-chosen-card .team-select-sprite-icon {
+  display: block;
   position: absolute;
-  bottom: 2px;
-  text-shadow: 0 0 4px #000, 0 0 4px #000;
-  z-index: 1;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1.25);
+  transform-origin: center;
 }
 
 .team-select-chosen-card.empty {
@@ -341,48 +333,10 @@
   box-shadow: none;
 }
 
-/* Compact mode: teams of 5+ get tiny icon-only cards so they don't
- * overflow the bar horizontally. */
+/* Compact mode (teams of 5+): wrap lines so cards don't overflow. */
 .team-select-chosen.compact {
   gap: 4px;
   flex-wrap: wrap;
-}
-.team-select-chosen.compact .team-select-chosen-card {
-  width: 44px;
-  max-width: 44px;
-  height: 44px;
-}
-.team-select-chosen.compact .team-select-chosen-card > img {
-  display: none;
-}
-.team-select-chosen.compact .team-select-sprite-icon {
-  display: block;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-.team-select-chosen.compact .team-select-chosen-name {
-  display: none;
-}
-.team-select-chosen.compact .team-select-chosen-character {
-  position: absolute;
-  top: auto;
-  left: auto;
-  bottom: -2px;
-  right: -2px;
-  width: auto;
-  font-size: 12px;
-  line-height: 1;
-  padding: 0;
-  background: transparent;
-  border-radius: 0;
-  text-shadow: 0 0 3px #000, 0 0 3px #000;
-  z-index: 2;
-  overflow: visible;
-}
-.team-select-chosen.compact .team-select-chosen-character-label {
-  display: none !important;
 }
 
 .team-select-scroll {
@@ -749,21 +703,41 @@
 /* ─── Character pick badge on chosen-bar card ─── */
 .team-select-chosen-card .team-select-chosen-character {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  right: 2px;
-  bottom: auto;
-  font-size: 9px;
-  font-weight: 700;
-  text-align: center;
-  background: rgba(0,0,0,0.65);
-  border-radius: 4px;
-  padding: 2px 4px;
-  z-index: 2;
-  text-shadow: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  bottom: -3px;
+  right: -3px;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  z-index: 3;
+  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000;
+  overflow: visible;
+  pointer-events: none;
+}
+.team-select-chosen-card .team-select-chosen-character-label {
+  display: none;
+}
+
+.team-select-chosen-held {
+  position: absolute;
+  bottom: -3px;
+  left: -3px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))
+          drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+}
+.team-select-chosen-held img {
+  width: 18px;
+  height: 18px;
+  image-rendering: pixelated;
+  object-fit: contain;
 }
 
 /* ─── Character picker modal ─── */
