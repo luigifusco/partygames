@@ -715,7 +715,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
       {anim.finished && snapshot.winner && (() => {
         const playerWon = snapshot.winner === 'left';
-        const awards = (bondAwards ?? []).filter((a) => a.delta > 0);
+        const awards = playerWon ? (bondAwards ?? []).filter((a) => a.delta > 0) : [];
         return (
           <div className="battle-result-overlay">
             <div className={`battle-result-card ${playerWon ? 'win' : 'loss'}`}>

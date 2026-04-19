@@ -42,6 +42,7 @@ export interface BondAwardInput {
 }
 
 export function computeBondXp(input: BondAwardInput): number {
+  if (!input.won) return 0;
   const base = 10;
   const survivedBonus = input.survived ? 10 : 0;
   const winBonus = input.won ? 10 : 0;
