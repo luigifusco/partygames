@@ -96,14 +96,42 @@ export function buildChoice(battle: any, sideIndex: number, opts: AIOptions = {}
       return t === 'normal' || t === 'any' || t === 'adjacentFoe';
     };
 
+    // In triples, "normal"/"adjacentFoe" can only hit adjacent foes. Adjacency
+    // for the foe in slot `foePos` from our slot `i` (fieldSize = numSlots):
+    //   |i + foePos + 1 - fieldSize| <= 1
+    // If we target a non-adjacent foe, Showdown rejects the choice and falls
+    // back to getRandomTarget, which under triples with all adjacent foes
+    // fainted returns the slot directly across — often a long-dead Pokémon.
+    const fieldSize = oppSide.active.length;
+    const needsAdjacency = (m: any) => m.target === 'normal' || m.target === 'adjacentFoe';
+    const isAdjacentFoe = (foePos: number) => Math.abs(i + foePos + 1 - fieldSize) <= 1;
+    const targetSlotsFor = (m: any) =>
+      needsAdjacency(m) ? livingOppSlots.filter(isAdjacentFoe) : livingOppSlots;
+
     // Map from move → { bestSlot, bestScore, ctx used for filtering }
     const bestTargetByMove = new Map<any, { slot: number; score: number }>();
     const scored = usable.map((m: any) => {
-      if (isMulti && isSingleFoeMove(m) && livingOppSlots.length > 1) {
+      if (isMulti && isSingleFoeMove(m)) {
+        const validSlots = targetSlotsFor(m);
+        if (validSlots.length === 0) {
+          // No valid target exists for this move — tank its score so pickMove
+          // won't choose it, and no entry is added to bestTargetByMove. If it
+          // still ends up picked (e.g., all moves are like this), we emit the
+          // move without a target and let Showdown's fallback handle it.
+          const s = scoreMove(m, defaultCtx);
+          return { ...s, score: -Infinity };
+        }
+        if (validSlots.length === 1) {
+          const only = validSlots[0];
+          const ctxForTarget = makeCtx(oppSide.active[only]);
+          const s = scoreMove(m, ctxForTarget);
+          bestTargetByMove.set(m, { slot: only, score: s.score });
+          return s;
+        }
         let bestScore = -Infinity;
-        let bestSlot = livingOppSlots[0];
+        let bestSlot = validSlots[0];
         let bestScored: any = null;
-        for (const slot of livingOppSlots) {
+        for (const slot of validSlots) {
           const ctxForTarget = makeCtx(oppSide.active[slot]);
           const s = scoreMove(m, ctxForTarget);
           if (s.score > bestScore) {
@@ -126,8 +154,9 @@ export function buildChoice(battle: any, sideIndex: number, opts: AIOptions = {}
       for (const s of scored) {
         const md = dex.moves.get(s.move.id);
         if (!md || (md.priority || 0) <= 0 || s.score <= 0) continue;
-        const slot = bestTargetByMove.get(s.move)?.slot ?? livingOppSlots[0];
-        const ctxForTarget = makeCtx(oppSide.active[slot]);
+        const entry = bestTargetByMove.get(s.move);
+        if (!entry) continue;
+        const ctxForTarget = makeCtx(oppSide.active[entry.slot]);
         const candidate = priorityKOBypass([s], ctxForTarget);
         if (candidate && (!bypass || candidate.score > bypass.score)) bypass = candidate;
       }
@@ -138,13 +167,15 @@ export function buildChoice(battle: any, sideIndex: number, opts: AIOptions = {}
     const moveIdx = active.moves.indexOf(pick.move) + 1;
 
     // Friendly-fire avoidance / focus-fire targeting. For single-foe moves
-    // in multi, use the target slot that scored best for this move.
+    // in multi, use the target slot that scored best for this move (already
+    // filtered for adjacency).
     if (isMulti && isSingleFoeMove(pick.move)) {
-      if (livingOppSlots.length > 0) {
-        const tgt = bestTargetByMove.get(pick.move);
-        const slot = tgt ? tgt.slot : livingOppSlots[0];
-        choices.push(`move ${moveIdx} ${slot + 1}`);
+      const tgt = bestTargetByMove.get(pick.move);
+      if (tgt) {
+        choices.push(`move ${moveIdx} ${tgt.slot + 1}`);
       } else {
+        // No valid target was found for this move (all adjacent foes dead).
+        // Emit without an explicit target so Showdown handles redirection.
         choices.push(`move ${moveIdx}`);
       }
     } else {
