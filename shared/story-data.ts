@@ -391,7 +391,7 @@ export const STORYLINES: Storyline[] = [
     id: 'team-rocket', title: 'Team Rocket Hideout',
     description: 'Silph Co. has gone dark. Something very old, and very patient, has crawled out of retirement.',
     region: 'Kanto', difficulty: 'advanced', icon: '🚀', regionLock: 'Kanto',
-    requires: ['kanto-gyms'],
+    requires: ['kanto-gyms', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Prof. Oak', sprite: sp('oak'), lines: [
         "I got your message. And yes — it's them again.",
@@ -487,7 +487,7 @@ export const STORYLINES: Storyline[] = [
     id: 'aqua-magma', title: 'Aqua vs Magma',
     description: 'Two teams. One sea, one mountain. Neither willing to listen. And Hoenn in the middle.',
     region: 'Hoenn', difficulty: 'advanced', icon: '🌋', regionLock: 'Hoenn',
-    requires: ['hoenn-gyms'],
+    requires: ['hoenn-gyms', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Steven', sprite: sp('steven'), lines: [
         "You picked a bad week to finish the gym circuit. Or a good one, depending on how brave you are.",
@@ -593,7 +593,7 @@ export const STORYLINES: Storyline[] = [
     id: 'team-rocket-revival', title: 'The Signal Under Johto',
     description: 'Giovanni is gone, but his company isn\'t. Someone is broadcasting his voice out of Goldenrod — and the Pokémon are listening.',
     region: 'Johto', difficulty: 'advanced', icon: '📡', regionLock: 'Johto',
-    requires: ['johto-gyms', 'team-rocket'],
+    requires: ['johto-gyms', 'team-rocket', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Prof. Oak', sprite: sp('oak'), lines: [
         "It's happening again. But not how you'd expect.",
@@ -677,7 +677,7 @@ export const STORYLINES: Storyline[] = [
     id: 'team-galactic', title: 'The World Without Spirit',
     description: 'A quiet man in Sinnoh is trying to unmake the sky. He believes he is saving everyone.',
     region: 'Sinnoh', difficulty: 'advanced', icon: '🌌', regionLock: 'Sinnoh',
-    requires: ['sinnoh-gyms'],
+    requires: ['sinnoh-gyms', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
         "I came back to Sinnoh because I felt the sky lean.",
@@ -760,7 +760,7 @@ export const STORYLINES: Storyline[] = [
     id: 'team-plasma', title: 'The King and the Harness',
     description: "Ghetsis never stopped speaking for N. Someone has to shut him up.",
     region: 'Unova', difficulty: 'expert', icon: '⚜️', regionLock: 'Unova',
-    requires: ['unova-gyms', 'n-styles-revealed'],
+    requires: ['unova-gyms', 'n-styles-revealed', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "I would not have come for this if I could have helped it.",
@@ -849,22 +849,22 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'n-reawakening', title: 'A Second Chance',
     description: "N has one more question — whether a bond can survive being let go.",
-    region: 'Unova', difficulty: 'expert', icon: '✨',
-    requires: ['team-plasma'],
+    region: 'Unova', difficulty: 'advanced', icon: '✨',
+    requires: ['kanto-gyms', 'johto-gyms', 'hoenn-gyms', 'sinnoh-gyms', 'unova-gyms'], requiresCount: 1,
     steps: [
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
-        "Will you meet me in the clearing outside Opelucid? The one with the white birches. I would like to show you something quiet.",
-        "I have been thinking, since that night, about what he said. *A harness.* He said it so certainly. I almost believed him — for a minute, I almost did.",
-        "And then I remembered a thing I learned from my Zorua when I was six. She walked away from me, once. For three full days. I sat in the snow and I did not call her. She came back because she wanted to, and I have never, in my life, held anything as tightly as I held her that evening.",
-        "That is the test, isn't it? Not whether a Pokémon stays. Whether it comes back.",
+        "You have badges on you now. I can tell from a distance — the way Pokémon meet your eye before they meet your hand.",
+        "Will you meet me in a clearing I know? The one with the white birches, outside the old road. I would like to show you something quiet — before the harder part of your journey begins.",
+        "I have been thinking, again, about a thing I learned from my Zorua when I was six. She walked away from me, once. For three full days. I sat in the snow and I did not call her. She came back because she wanted to, and I have never, in my life, held anything as tightly as I held her that evening.",
+        "That is the test, isn't it? Not whether a Pokémon stays. Whether something of them comes back.",
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
-        "I want to propose an experiment. A gift, if you win it.",
+        "I want to propose an experiment. A gift, if you win it — and you will need it, for what comes after the gyms.",
         "When a trainer shards a partner, most people think that's the ending. A handful of dust, a small hurt, and the world forgets.",
         "My grandmother's generation knew better. They knew that what remains of a Pokémon after the sharding isn't nothing. They called it a **Memory** — the shape their kind leaves on the world. Carry it long enough, and it grows heavy with wanting to come back.",
         "There is a rite for that. A quiet offering under open sky. The Memory answers — not the same partner, no; that one is gone, and we do not lie about that — but a *new one of the same kind*, awake and yours, drawn here by the pattern of the one that was.",
-        "My teachers called it **Reawakening**. Ghetsis forbade it, because a king cannot allow his subjects to choose him twice.",
-        "Battle me. If you win, I will teach it to you. And I will believe, for the rest of my life, that what you have is not a harness.",
+        "My teachers called it **Reawakening**. The old kings forbade it — they could not abide subjects who chose them twice.",
+        "Battle me. If you win, I will teach it to you. And I will trust you to carry it into the storms ahead.",
       ]},
       { type: 'battle', trainerName: 'N', trainerTitle: 'Seeker of Truth', team: [571, 625, 601, 553, 567, 635], fieldSize: 3, essenceReward: 1500 },
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
@@ -872,7 +872,7 @@ export const STORYLINES: Storyline[] = [
         "I watched your Pokémon through that battle, and I watched them watching *you*, and I am satisfied. The thread holds.",
         "The rite is yours. When a companion has already passed on — sharded and scattered — only their **Memory** remains: the shape their kind leaves on the world. Take that Memory somewhere quiet. Thank it. Offer it to the stars.",
         "A new one of their kind will answer: fresh nature, fresh potential, fresh muscles, new moves learned under the moon. The stronger the family, the more essence the rite asks of you; the world is careful with its rare ones.",
-        "Go. Somewhere in the night, a Memory is waiting to become someone again.",
+        "Go now. There are people out there who have forgotten the difference between a bond and a harness — and they will test you on it soon. Somewhere in the night, a Memory is waiting to become someone again.",
       ]},
     ],
     completionReward: { essence: 2000, pack: 'rare' },
