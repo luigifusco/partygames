@@ -389,8 +389,8 @@
 
 .detail-move-card {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
   padding: var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -403,22 +403,90 @@
   background: var(--color-surface-2);
 }
 
-/* When the move card is rendered as a <button> for click-to-inspect, keep
- * the visual identical to the previous div and make it feel tappable. */
-.detail-move-card-button {
-  appearance: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  text-align: center;
-  width: 100%;
+.detail-move-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
-.detail-move-card-button:focus-visible {
-  outline: 2px solid var(--color-primary, #a96bff);
-  outline-offset: 2px;
+
+.detail-move-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
-.detail-move-card-button:active {
-  transform: translateY(1px);
+
+.detail-move-type-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.detail-move-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.detail-move-cat-physical {
+  background: rgba(220, 90, 60, 0.15);
+  color: #ffb29a;
+  border-color: rgba(220, 90, 60, 0.45);
+}
+.detail-move-cat-special {
+  background: rgba(95, 140, 230, 0.15);
+  color: #b7cdff;
+  border-color: rgba(95, 140, 230, 0.45);
+}
+.detail-move-cat-status {
+  background: rgba(180, 180, 200, 0.14);
+  color: #dadcea;
+  border-color: rgba(180, 180, 200, 0.4);
+}
+
+.detail-move-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  font-variant-numeric: tabular-nums;
+}
+.detail-move-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.detail-move-stat-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint, rgba(255, 255, 255, 0.55));
+  font-weight: 700;
+}
+.detail-move-stat-value {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--color-text, #fff);
+}
+
+.detail-move-desc {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--color-text-dim, rgba(255, 255, 255, 0.75));
 }
 
 .detail-move-name {
@@ -434,6 +502,9 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .detail-ability-name {
@@ -445,29 +516,10 @@
   color: transparent;
 }
 
-/* Button-form of the ability label for tap-to-inspect. Preserves the
- * gradient text styling from .detail-ability-name. */
-.detail-ability-name-button {
-  appearance: none;
-  border: none;
-  background: var(--grad-teal);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  font: inherit;
-  font-weight: 700;
-  font-size: var(--text-base);
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-}
-.detail-ability-name-button:focus-visible {
-  outline: 2px solid var(--color-primary, #a96bff);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.detail-ability-name-button:hover {
-  filter: brightness(1.1);
+.detail-ability-desc {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--color-text-dim, rgba(255, 255, 255, 0.75));
 }
 
 /* --- Held item --- */

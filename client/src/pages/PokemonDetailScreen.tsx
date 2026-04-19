@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { BASE_PATH } from '../config';
 import type { PokemonInstance, Stats, OwnedItem } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
@@ -11,7 +12,6 @@ import { BOND_UNLOCK_CHAPTER } from '@shared/story-data';
 import RarityStars from '../components/RarityStars';
 import ShardConfirmModal from '../components/ShardConfirmModal';
 import EvolvePreviewModal from '../components/EvolvePreviewModal';
-import DexInfoModal from '../components/DexInfoModal';
 import { useStoryChapters } from '../hooks/useStoryChapters';
 import './PokemonDetailScreen.css';
 
@@ -42,15 +42,50 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const [shardConfirm, setShardConfirm] = useState(false);
   const [evoPreview, setEvoPreview] = useState(false);
   const [evolving, setEvolving] = useState<{ from: PokemonInstance; toId: number } | null>(null);
-  const [dexInfo, setDexInfo] = useState<
-    | { kind: 'move'; name: string }
-    | { kind: 'ability'; name: string }
-    | null
-  >(null);
+
+  type MoveDex = { name: string; type: string; category: 'Physical' | 'Special' | 'Status'; basePower: number; accuracy: number | null; pp: number | null; priority: number; shortDesc: string; desc: string };
+  type AbilityDex = { name: string; shortDesc: string; desc: string };
+  const [moveDex, setMoveDex] = useState<Record<string, MoveDex>>({});
+  const [abilityDex, setAbilityDex] = useState<Record<string, AbilityDex>>({});
 
   const index = parseInt(idx ?? '', 10);
   const inst = collection[index]
     ?? (idx ? collection.find((c) => c.instanceId === idx) : undefined);
+
+  // Derive move/ability list for the lookup effect (stable deps via join)
+  // so hooks stay before any early returns.
+  const effectiveMoves = inst ? getEffectiveMoves(inst) : [];
+  const abilityName = inst?.ability ?? '';
+  const movesKey = effectiveMoves.join('|');
+
+  useEffect(() => {
+    if (!inst) return;
+    const movesNeeded = effectiveMoves.filter((m) => !moveDex[m]);
+    const abilityNeeded = abilityName && !abilityDex[abilityName] ? [abilityName] : [];
+    if (movesNeeded.length === 0 && abilityNeeded.length === 0) return;
+    let alive = true;
+    fetch(BASE_PATH + '/api/dex/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ moves: movesNeeded, abilities: abilityNeeded }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!alive || !data) return;
+        if (data.moves && Object.keys(data.moves).length > 0) {
+          setMoveDex((prev) => ({ ...prev, ...data.moves }));
+        }
+        if (data.abilities && Object.keys(data.abilities).length > 0) {
+          setAbilityDex((prev) => ({ ...prev, ...data.abilities }));
+        }
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+    // `moveDex` / `abilityDex` intentionally left out — we only want to
+    // fetch when the Pokémon's moves or ability change, not when we've
+    // just filled the cache.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movesKey, abilityName]);
 
   if (!inst) {
     return (
@@ -215,29 +250,64 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
 
         <div className="detail-section-title">Moves</div>
         <div className="detail-moves">
-          {getEffectiveMoves(inst).map((moveName, i) => (
-            <button
-              key={i}
-              type="button"
-              className="detail-move-card detail-move-card-button"
-              onClick={() => setDexInfo({ kind: 'move', name: moveName })}
-              aria-label={`Show details for ${moveName}`}
-            >
-              <span className="detail-move-name">{moveName}</span>
-            </button>
-          ))}
+          {getEffectiveMoves(inst).map((moveName, i) => {
+            const mi = moveDex[moveName];
+            return (
+              <div key={i} className="detail-move-card">
+                <div className="detail-move-head">
+                  <span className="detail-move-name">{moveName}</span>
+                  {mi && (
+                    <div className="detail-move-chips">
+                      <span
+                        className="detail-move-type-chip"
+                        style={{ background: TYPE_COLORS[mi.type.toLowerCase()] || '#888' }}
+                      >
+                        {mi.type}
+                      </span>
+                      <span className={`detail-move-cat-chip detail-move-cat-${mi.category.toLowerCase()}`}>
+                        {mi.category}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {mi && (
+                  <>
+                    <div className="detail-move-stats">
+                      <span className="detail-move-stat">
+                        <span className="detail-move-stat-label">Power</span>
+                        <span className="detail-move-stat-value">{mi.basePower > 0 ? mi.basePower : '—'}</span>
+                      </span>
+                      <span className="detail-move-stat">
+                        <span className="detail-move-stat-label">Acc</span>
+                        <span className="detail-move-stat-value">{mi.accuracy == null ? '—' : `${mi.accuracy}%`}</span>
+                      </span>
+                      <span className="detail-move-stat">
+                        <span className="detail-move-stat-label">PP</span>
+                        <span className="detail-move-stat-value">{mi.pp ?? '—'}</span>
+                      </span>
+                      {mi.priority !== 0 && (
+                        <span className="detail-move-stat">
+                          <span className="detail-move-stat-label">Prio</span>
+                          <span className="detail-move-stat-value">
+                            {mi.priority > 0 ? `+${mi.priority}` : mi.priority}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                    {mi.desc && <div className="detail-move-desc">{mi.desc}</div>}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="detail-section-title">Ability</div>
         <div className="detail-ability">
-          <button
-            type="button"
-            className="detail-ability-name detail-ability-name-button"
-            onClick={() => setDexInfo({ kind: 'ability', name: inst.ability })}
-            aria-label={`Show details for ${inst.ability}`}
-          >
-            {inst.ability}
-          </button>
+          <div className="detail-ability-name">{inst.ability}</div>
+          {abilityDex[inst.ability]?.desc && (
+            <div className="detail-ability-desc">{abilityDex[inst.ability].desc}</div>
+          )}
         </div>
 
         <div className="detail-section-title">Held Item</div>
@@ -300,12 +370,6 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
           </div>
         );
       })()}
-      {dexInfo && dexInfo.kind === 'move' && (
-        <DexInfoModal kind="move" moveName={dexInfo.name} onClose={() => setDexInfo(null)} />
-      )}
-      {dexInfo && dexInfo.kind === 'ability' && (
-        <DexInfoModal kind="ability" abilityName={dexInfo.name} onClose={() => setDexInfo(null)} />
-      )}
     </div>
   );
 }

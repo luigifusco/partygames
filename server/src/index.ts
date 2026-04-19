@@ -747,6 +747,45 @@ app.get(`${BASE_PATH}/api/dex/ability/:name`, (req, res) => {
   });
 });
 
+// Batched lookup — used by the Pokémon detail screen to fetch every move
+// and the ability for a single specimen in one round-trip.
+app.post(`${BASE_PATH}/api/dex/lookup`, (req, res) => {
+  const body: any = req.body || {};
+  const moves: string[] = Array.isArray(body.moves) ? body.moves.slice(0, 20) : [];
+  const abilities: string[] = Array.isArray(body.abilities) ? body.abilities.slice(0, 10) : [];
+  const moveOut: Record<string, any> = {};
+  for (const raw of moves) {
+    if (typeof raw !== 'string' || !raw.trim()) continue;
+    let m: any = GEN5_DEX.moves.get(raw);
+    if (!m || !m.exists) m = ShowdownDex.moves.get(raw);
+    if (!m || !m.exists) continue;
+    moveOut[raw] = {
+      name: m.name,
+      type: m.type,
+      category: m.category,
+      basePower: m.basePower ?? 0,
+      accuracy: m.accuracy === true ? null : (m.accuracy ?? null),
+      pp: m.pp ?? null,
+      priority: m.priority ?? 0,
+      shortDesc: m.shortDesc || '',
+      desc: m.desc || m.shortDesc || '',
+    };
+  }
+  const abilityOut: Record<string, any> = {};
+  for (const raw of abilities) {
+    if (typeof raw !== 'string' || !raw.trim()) continue;
+    let a: any = GEN5_DEX.abilities.get(raw);
+    if (!a || !a.exists) a = ShowdownDex.abilities.get(raw);
+    if (!a || !a.exists) continue;
+    abilityOut[raw] = {
+      name: a.name,
+      shortDesc: a.shortDesc || '',
+      desc: a.desc || a.shortDesc || '',
+    };
+  }
+  return res.json({ moves: moveOut, abilities: abilityOut });
+});
+
 // Get leaderboard (ranked by Elo)
 app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
   const players = db.prepare(`
