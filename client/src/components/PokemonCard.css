@@ -68,8 +68,10 @@
   flex-shrink: 0;
 }
 
+/* Cards showing instance info need more vertical room for
+ * nature + ability + two moves beneath the sprite. */
 .pkmn-card:has(.pkmn-card-info) {
-  min-height: auto;
+  min-height: 200px;
 }
 
 /* When the card shows instance info below, keep the sprite overlap
