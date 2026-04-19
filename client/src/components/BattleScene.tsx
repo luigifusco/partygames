@@ -13,7 +13,7 @@ interface BattleSceneProps {
   essenceGained?: number;
   trainerId?: string;
   /** XP (bond) awards for the left-side team, keyed by instanceId. Shown on the result card. */
-  bondAwards?: { instanceId: string; slot: number; delta: number; total: number }[];
+  bondAwards?: { instanceId: string; slot: number; delta: number; total: number; threshold?: number | null; previous?: number }[];
   onFinished?: () => void;
   /** Optional callback invoked when the user clicks the result card's primary button. */
   onContinue?: () => void;
@@ -736,11 +736,43 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
                     {awards.map((a) => {
                       const p = snapshot.left[a.slot];
                       if (!p) return null;
+                      const hasThreshold = typeof a.threshold === 'number' && a.threshold > 0;
+                      const threshold = hasThreshold ? (a.threshold as number) : 0;
+                      const previous = a.previous ?? Math.max(0, a.total - a.delta);
+                      const prevClamped = hasThreshold ? Math.min(previous, threshold) : previous;
+                      const totalClamped = hasThreshold ? Math.min(a.total, threshold) : a.total;
+                      const pct = hasThreshold ? (totalClamped / threshold) * 100 : 100;
+                      const prevPct = hasThreshold ? (prevClamped / threshold) * 100 : 0;
+                      const justCrossed = hasThreshold && previous < threshold && a.total >= threshold;
+                      const alreadyReady = hasThreshold && previous >= threshold;
                       return (
-                        <li key={a.instanceId} className="battle-result-xp-row">
+                        <li key={a.instanceId} className={'battle-result-xp-row' + (justCrossed ? ' just-ready' : '')}>
                           <img src={p.sprite} alt={p.name} className="battle-result-xp-sprite" />
-                          <span className="battle-result-xp-name">{p.name}</span>
-                          <span className="battle-result-xp-delta">+{a.delta}</span>
+                          <div className="battle-result-xp-info">
+                            <div className="battle-result-xp-info-top">
+                              <span className="battle-result-xp-name">{p.name}</span>
+                              <span className="battle-result-xp-delta">+{a.delta}</span>
+                            </div>
+                            {hasThreshold ? (
+                              <>
+                                <div className="battle-result-xp-bar" style={{ ['--xp-prev' as any]: prevPct + '%', ['--xp-now' as any]: pct + '%' }}>
+                                  <div className="battle-result-xp-bar-prev" />
+                                  <div className="battle-result-xp-bar-fill" />
+                                </div>
+                                <div className="battle-result-xp-meter">
+                                  {(justCrossed || alreadyReady) ? (
+                                    <span className="battle-result-xp-ready">✨ Ready to evolve!</span>
+                                  ) : (
+                                    <span>{a.total} / {threshold}</span>
+                                  )}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="battle-result-xp-meter">
+                                <span>Total bond {a.total}</span>
+                              </div>
+                            )}
+                          </div>
                         </li>
                       );
                     })}

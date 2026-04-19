@@ -194,7 +194,18 @@ function flipSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
 
 // --- Bond XP (Evolution 2.0) ---
 
-interface BondAward { instanceId: string; slot: number; delta: number; total: number; }
+interface BondAward {
+  instanceId: string;
+  slot: number;
+  delta: number;
+  total: number;
+  /** Bond XP required to unlock the next evolution, or null when the
+   *  pokemon has no further evolutions. */
+  threshold: number | null;
+  /** Bond XP before this battle's award was added — lets the client
+   *  animate the delta and detect when the threshold was just crossed. */
+  previous: number;
+}
 
 // Special story chapter that, once completed, unlocks Bond XP gain
 // for the player. Until N has been defeated in his first appearance,
@@ -216,7 +227,7 @@ function awardBondXp(
   if (!instanceIds || instanceIds.length === 0) return [];
   if (!hasBondUnlocked(playerId)) return [];
   const awards: BondAward[] = [];
-  const selectById = db.prepare('SELECT bond_xp FROM owned_pokemon WHERE id = ? AND player_id = ?');
+  const selectById = db.prepare('SELECT bond_xp, pokemon_id FROM owned_pokemon WHERE id = ? AND player_id = ?');
   const update = db.prepare('UPDATE owned_pokemon SET bond_xp = bond_xp + ? WHERE id = ? AND player_id = ?');
   for (let i = 0; i < instanceIds.length; i++) {
     const instanceId = instanceIds[i];
@@ -228,7 +239,17 @@ function awardBondXp(
     const row = selectById.get(instanceId, playerId) as any;
     if (!row) continue; // pokemon was deleted/traded in-between
     update.run(delta, instanceId, playerId);
-    awards.push({ instanceId, slot: i, delta, total: (row.bond_xp ?? 0) + delta });
+    const previous = row.bond_xp ?? 0;
+    const total = previous + delta;
+    const species = POKEMON_BY_ID[row.pokemon_id];
+    let threshold: number | null = null;
+    if (species) {
+      const step = evolutionStepFor(species) ?? undefined;
+      const firstTargetId = species.evolutionTo?.[0];
+      const targetSpecies = firstTargetId != null ? POKEMON_BY_ID[firstTargetId] : undefined;
+      if (targetSpecies) threshold = bondThresholdForStep(targetSpecies.tier, step);
+    }
+    awards.push({ instanceId, slot: i, delta, total, threshold, previous });
   }
   return awards;
 }
