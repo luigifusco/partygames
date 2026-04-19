@@ -153,6 +153,58 @@ function playUrl(url: string, volume = 0.4, playbackRate = 1.0): boolean {
   }
 }
 
+// Decoded AudioBuffer cache — used for channel-swapped playback when a
+// move originates from the opponent's side. Falls back to HTMLAudio if
+// decoding fails or Web Audio is unavailable.
+const bufferCache = new Map<string, Promise<AudioBuffer | null>>();
+
+function loadBuffer(url: string): Promise<AudioBuffer | null> {
+  const cached = bufferCache.get(url);
+  if (cached) return cached;
+  const ac = getCtx();
+  if (!ac) return Promise.resolve(null);
+  const p = fetch(url)
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('bad'))))
+    .then((ab) => ac.decodeAudioData(ab))
+    .catch(() => null);
+  bufferCache.set(url, p);
+  return p;
+}
+
+/** Play a sound with L/R channels swapped — used when the attacker is on
+ *  the right side of the arena, so the stereo pan tracks left→right. */
+function playUrlReversed(url: string, volume = 0.4, playbackRate = 1.0): boolean {
+  if (sfxMuted) return true;
+  const ac = getCtx();
+  if (!ac) return playUrl(url, volume, playbackRate);
+  loadBuffer(url).then((buf) => {
+    if (!buf) { playUrl(url, volume, playbackRate); return; }
+    try {
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = playbackRate;
+      const gain = ac.createGain();
+      gain.gain.value = Math.max(0, Math.min(1, volume));
+      if (buf.numberOfChannels >= 2) {
+        const splitter = ac.createChannelSplitter(2);
+        const merger = ac.createChannelMerger(2);
+        src.connect(splitter);
+        // swap: L(0) → merger.R(1), R(1) → merger.L(0)
+        splitter.connect(merger, 0, 1);
+        splitter.connect(merger, 1, 0);
+        merger.connect(gain).connect(ac.destination);
+      } else {
+        // mono: nothing to swap, just play
+        src.connect(gain).connect(ac.destination);
+      }
+      src.start();
+    } catch {
+      playUrl(url, volume, playbackRate);
+    }
+  });
+  return true;
+}
+
 /** Preload a list of URLs into the cache. Safe to call multiple times. */
 export function preloadAudio(urls: string[]): void {
   for (const url of urls) getOrCreate(url);
@@ -268,9 +320,11 @@ function moveSfxUrl(moveName: string): string {
   return `${BASE_PATH}/sfx/${encodeURIComponent(moveName)}.mp3`;
 }
 
-export function playMoveSfx(moveName: string, volume = 0.35): void {
+export function playMoveSfx(moveName: string, volume = 0.35, reversed = false): void {
   if (!moveName) return;
-  playUrl(moveSfxUrl(moveName), volume);
+  const url = moveSfxUrl(moveName);
+  if (reversed) playUrlReversed(url, volume);
+  else playUrl(url, volume);
 }
 
 // ─── Hit sounds (effectiveness) ──────────────────────────────────────────
@@ -281,10 +335,11 @@ const HIT_SOUNDS: Record<string, string> = {
   'neutral':  `${BASE_PATH}/hit-normal-damage.mp3`,
 };
 
-export function playHitSound(effectiveness: 'super' | 'neutral' | 'not-very' | 'immune' | null, volume = 0.4): void {
+export function playHitSound(effectiveness: 'super' | 'neutral' | 'not-very' | 'immune' | null, volume = 0.4, reversed = false): void {
   if (!effectiveness || effectiveness === 'immune') return;
   const url = HIT_SOUNDS[effectiveness] ?? HIT_SOUNDS['neutral'];
-  playUrl(url, volume);
+  if (reversed) playUrlReversed(url, volume);
+  else playUrl(url, volume);
 }
 
 export function preloadHitSounds(): void {

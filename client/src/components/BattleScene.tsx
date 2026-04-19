@@ -253,11 +253,13 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   const initialBoosts: Record<string, Record<string, number>> = {};
   const initialStatus: Record<string, string> = {};
   const initialItems: Record<string, string | null> = {};
+  const sideOf: Record<string, 'left' | 'right'> = {};
   for (const p of [...snapshot.left, ...snapshot.right]) {
     initialHp[p.instanceId] = p.maxHp;
     initialBoosts[p.instanceId] = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
     initialStatus[p.instanceId] = '';
     initialItems[p.instanceId] = p.heldItem ?? null;
+    sideOf[p.instanceId] = p.side;
   }
 
   const [anim, setAnim] = useState<AnimationState>({
@@ -544,7 +546,9 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       await new Promise((r) => setTimeout(r, 500));
 
       // 2. Play move sound effect and animation
-      if (entry.moveName) playMoveSfx(entry.moveName);
+      const attackerSide = sideOf[entry.attackerInstanceId];
+      const reversed = attackerSide === 'right';
+      if (entry.moveName) playMoveSfx(entry.moveName, undefined, reversed);
       const animConfig = getMoveAnim(entry.moveName);
       const attackerEl = cardRefs.current[entry.attackerInstanceId];
       const defenderEl = cardRefs.current[entry.targetInstanceId];
@@ -555,7 +559,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
       // 3. Play hit sound after animation, as HP bar starts draining
       if (entry.damage > 0) {
-        playHitSound(entry.effectiveness);
+        playHitSound(entry.effectiveness, undefined, reversed);
         if (defenderEl) {
           animateHit(defenderEl, attackerEl, !!entry.crit);
         }
