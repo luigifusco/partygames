@@ -413,6 +413,13 @@ export const STORYLINES: Storyline[] = [
         "I watched your Pokémon through that battle, and I watched them watching *you*, and I am satisfied. The thread holds.",
         "The rite is yours. When a companion has already passed on — sharded and scattered — only their **Memory** remains: the shape their kind leaves on the world. Take that Memory somewhere quiet. Thank it. Offer it to the stars.",
         "A new one of their kind will answer: fresh nature, fresh potential, fresh muscles, new moves learned under the moon. The stronger the family, the more essence the rite asks of you; the world is careful with its rare ones.",
+      ]},
+      { type: 'info', infoTitle: 'Reawakening — Unlocked!', infoIcon: '🌙', lines: [
+        "Shard a Pokémon to leave a Memory behind — find your Memories in the Items screen.",
+        "Tap a Memory and spend essence to Reawaken: a new specimen of that kind, with fresh nature, ability, IVs, and moves.",
+        "Rarer families ask for more essence. The rite is patient.",
+      ]},
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "Go now. There are people out there who have forgotten the difference between a bond and a harness — and they will test you on it soon. Somewhere in the night, a Memory is waiting to become someone again.",
       ]},
     ],
