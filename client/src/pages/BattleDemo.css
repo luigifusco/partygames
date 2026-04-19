@@ -316,18 +316,22 @@
 }
 .team-select-chosen.compact .team-select-chosen-character {
   position: absolute;
+  top: auto;
+  left: auto;
   bottom: -2px;
   right: -2px;
+  width: auto;
   font-size: 12px;
   line-height: 1;
-  padding: 1px 3px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.75);
-  text-shadow: 0 0 3px #000;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
   z-index: 2;
+  overflow: visible;
 }
 .team-select-chosen.compact .team-select-chosen-character-label {
-  display: none;
+  display: none !important;
 }
 
 .team-select-scroll {
