@@ -56,51 +56,94 @@ export function buildChoice(battle: any, sideIndex: number, opts: AIOptions = {}
     const selfPkmn = side.active[i];
     const selfHpPct = selfPkmn ? selfPkmn.hp / selfPkmn.maxhp : 1;
 
-    const opponents = oppSide.active.filter((p: any) => p && !p.fainted);
-    const primaryTarget = isMulti && opponents.length > 0
-      ? opponents.reduce((a: any, b: any) => (a.hp / a.maxhp) < (b.hp / b.maxhp) ? a : b)
-      : oppSide.active[0];
+    const livingOppSlots: number[] = [];
+    for (let j = 0; j < oppSide.active.length; j++) {
+      const opp = oppSide.active[j];
+      if (opp && !opp.fainted && opp.hp > 0) livingOppSlots.push(j);
+    }
+    const opponents = livingOppSlots.map((s) => oppSide.active[s]);
 
     // Resolve profile for this pokemon
     const speciesName = selfPkmn?.species?.name || selfPkmn?.speciesid || '';
     const characterOverride = opts.getCharacter?.(selfPkmn?.id, speciesName);
     const profile: CharacterProfile = resolveProfile(characterOverride, speciesName);
 
-    const ctx: MoveCtx = {
+    const makeCtx = (tgt: any): MoveCtx => ({
       battle,
       dex,
       side,
       oppSide,
       selfPkmn,
-      target: primaryTarget && !primaryTarget.fainted ? primaryTarget : null,
+      target: tgt && !tgt.fainted ? tgt : null,
       opponents,
       isMulti,
       selfHpPct,
       oppAlive,
       profile,
+    });
+
+    // For single-target foe moves in multi, score each move against every
+    // living opponent and pick the best (move, target) pair. Otherwise
+    // score once with the default (lowest-HP) primary target.
+    const defaultTarget =
+      opponents.length > 0
+        ? opponents.reduce((a: any, b: any) => (a.hp / a.maxhp) < (b.hp / b.maxhp) ? a : b)
+        : oppSide.active[0];
+    const defaultCtx = makeCtx(defaultTarget);
+
+    const isSingleFoeMove = (m: any) => {
+      const t = m.target;
+      return t === 'normal' || t === 'any' || t === 'adjacentFoe';
     };
 
-    const scored = usable.map((m: any) => scoreMove(m, ctx));
-    const bypass = ctx.target ? priorityKOBypass(scored, ctx) : null;
+    // Map from move → { bestSlot, bestScore, ctx used for filtering }
+    const bestTargetByMove = new Map<any, { slot: number; score: number }>();
+    const scored = usable.map((m: any) => {
+      if (isMulti && isSingleFoeMove(m) && livingOppSlots.length > 1) {
+        let bestScore = -Infinity;
+        let bestSlot = livingOppSlots[0];
+        let bestScored: any = null;
+        for (const slot of livingOppSlots) {
+          const ctxForTarget = makeCtx(oppSide.active[slot]);
+          const s = scoreMove(m, ctxForTarget);
+          if (s.score > bestScore) {
+            bestScore = s.score;
+            bestSlot = slot;
+            bestScored = s;
+          }
+        }
+        bestTargetByMove.set(m, { slot: bestSlot, score: bestScore });
+        return bestScored || scoreMove(m, defaultCtx);
+      }
+      return scoreMove(m, defaultCtx);
+    });
+
+    // priorityKOBypass needs a ctx with a concrete target. For multi, evaluate
+    // per-move against that move's best target so we don't miss KOs on the
+    // non-primary opponent.
+    let bypass: any = null;
+    if (isMulti && livingOppSlots.length > 1) {
+      for (const s of scored) {
+        const md = dex.moves.get(s.move.id);
+        if (!md || (md.priority || 0) <= 0 || s.score <= 0) continue;
+        const slot = bestTargetByMove.get(s.move)?.slot ?? livingOppSlots[0];
+        const ctxForTarget = makeCtx(oppSide.active[slot]);
+        const candidate = priorityKOBypass([s], ctxForTarget);
+        if (candidate && (!bypass || candidate.score > bypass.score)) bypass = candidate;
+      }
+    } else if (defaultCtx.target) {
+      bypass = priorityKOBypass(scored, defaultCtx);
+    }
     const pick = bypass || pickMove(scored, profile.temperature);
     const moveIdx = active.moves.indexOf(pick.move) + 1;
 
-    // Friendly-fire avoidance / focus-fire targeting (unchanged policy)
-    if (isMulti && (pick.move.target === 'normal' || pick.move.target === 'any' || pick.move.target === 'adjacentFoe')) {
-      const livingOppSlots: number[] = [];
-      for (let j = 0; j < oppSide.active.length; j++) {
-        const opp = oppSide.active[j];
-        if (opp && !opp.fainted && opp.hp > 0) livingOppSlots.push(j);
-      }
+    // Friendly-fire avoidance / focus-fire targeting. For single-foe moves
+    // in multi, use the target slot that scored best for this move.
+    if (isMulti && isSingleFoeMove(pick.move)) {
       if (livingOppSlots.length > 0) {
-        let bestSlot = livingOppSlots[0];
-        let bestHpPct = 1;
-        for (const slot of livingOppSlots) {
-          const opp = oppSide.active[slot];
-          const pct = opp.hp / opp.maxhp;
-          if (pct < bestHpPct) { bestHpPct = pct; bestSlot = slot; }
-        }
-        choices.push(`move ${moveIdx} ${bestSlot + 1}`);
+        const tgt = bestTargetByMove.get(pick.move);
+        const slot = tgt ? tgt.slot : livingOppSlots[0];
+        choices.push(`move ${moveIdx} ${slot + 1}`);
       } else {
         choices.push(`move ${moveIdx}`);
       }
