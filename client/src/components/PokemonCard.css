@@ -72,7 +72,6 @@
   min-height: auto;
   height: auto;
   align-self: start;
-  overflow: visible;
 }
 
 /* When the card shows instance info below, keep the sprite overlap
