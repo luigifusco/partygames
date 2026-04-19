@@ -1238,8 +1238,151 @@ interface ActiveTrade {
 const activeTrades = new Map<string, ActiveTrade>();
 
 // --- Tournament system ---
-import type { Tournament, TournamentMatch, TournamentSummary, TournamentPrizes } from '../../shared/tournament-types.js';
+import type { Tournament, TournamentMatch, TournamentSummary, TournamentPrizes, FrozenPokemon, TournamentDraftState } from '../../shared/tournament-types.js';
 import { DEFAULT_PRIZES } from '../../shared/tournament-types.js';
+
+/** Per-match draft progression. Keyed by matchId. Only used in pickMode='draft'. */
+interface DraftInfo {
+  tournamentId: string;
+  matchId: string;
+  player1: string;
+  player2: string;
+  totalPokemon: number;
+  /** Indices into each player's frozen team, in the order the player is revealing them. */
+  p1Order: number[];
+  p2Order: number[];
+  currentPicker: 'p1' | 'p2' | null;
+}
+const activeDrafts = new Map<string, DraftInfo>();
+
+/** Build the per-player battle inputs from their frozen team, in the provided slot order. */
+function frozenToBattle(frozen: FrozenPokemon[], order: number[]) {
+  const ordered = order.map(i => frozen[i]);
+  return {
+    team: ordered.map(f => f.pokemonId),
+    heldItems: ordered.map(f => f.heldItem),
+    moves: ordered.map(f => f.moves),
+    abilities: ordered.map(f => f.ability),
+    characters: ordered.map(f => f.character ?? null),
+  };
+}
+
+function makeDraftState(t: Tournament, d: DraftInfo): TournamentDraftState {
+  return {
+    tournamentId: t.id,
+    matchId: d.matchId,
+    player1: d.player1,
+    player2: d.player2,
+    p1Order: d.p1Order.slice(),
+    p2Order: d.p2Order.slice(),
+    currentPicker: d.currentPicker,
+    totalPokemon: d.totalPokemon,
+    p1Team: t.frozenTeams[d.player1] ?? [],
+    p2Team: t.frozenTeams[d.player2] ?? [],
+  };
+}
+
+function broadcastDraftState(t: Tournament, d: DraftInfo) {
+  const state = makeDraftState(t, d);
+  const s1 = connectedPlayers.get(d.player1);
+  const s2 = connectedPlayers.get(d.player2);
+  if (s1) io.to(s1).emit('tournament:draftState', state);
+  if (s2) io.to(s2).emit('tournament:draftState', state);
+}
+
+/** Record one side's finalized ordered team for an active tournament match, then run
+ *  the battle if both sides are ready. Shared between blind-pick and draft completion. */
+interface SubmittedTeam {
+  team: number[];
+  heldItems: (string | null)[] | undefined;
+  moves: any;
+  abilities: any;
+  characters: (string | null)[] | undefined;
+  instanceIds: string[] | undefined;
+}
+function handleTournamentTeamSubmission(
+  t: Tournament,
+  match: TournamentMatch,
+  playerName: string,
+  submitted: SubmittedTeam,
+  notifySocket?: import('socket.io').Socket,
+) {
+  const tournamentId = t.id;
+  const matchId = match.id;
+  let battle = activeBattles.get(matchId);
+  if (!battle) {
+    battle = {
+      id: matchId, player1: match.player1!, player2: match.player2!,
+      player1Team: null, player2Team: null,
+      fieldSize: t.fieldSize, totalPokemon: t.totalPokemon,
+      allowLegendaries: t.allowLegendaries,
+    };
+    activeBattles.set(matchId, battle);
+  }
+
+  if (playerName === battle.player1) {
+    battle.player1Team = submitted.team;
+    battle.player1HeldItems = submitted.heldItems;
+    battle.player1Moves = submitted.moves;
+    battle.player1Abilities = submitted.abilities;
+    (battle as any).player1Characters = submitted.characters;
+    battle.player1InstanceIds = submitted.instanceIds;
+  } else {
+    battle.player2Team = submitted.team;
+    battle.player2HeldItems = submitted.heldItems;
+    battle.player2Moves = submitted.moves;
+    battle.player2Abilities = submitted.abilities;
+    (battle as any).player2Characters = submitted.characters;
+    battle.player2InstanceIds = submitted.instanceIds;
+  }
+
+  if (!battle.player1Team || !battle.player2Team) {
+    if (notifySocket) notifySocket.emit('tournament:waitingOpponent');
+    return;
+  }
+
+  // Both ready — simulate.
+  const snapshot = simulateBattleFromIds(
+    battle.player1Team, battle.player2Team, t.fieldSize,
+    battle.player1HeldItems, battle.player2HeldItems,
+    battle.player1Moves, battle.player2Moves,
+    battle.player1Abilities, battle.player2Abilities,
+    (battle as any).player1Characters, (battle as any).player2Characters,
+  );
+
+  const winnerName = snapshot.winner === 'left' ? battle.player1 : battle.player2;
+  match.winner = winnerName;
+  match.status = 'completed';
+  saveTournament(t);
+
+  const s1 = connectedPlayers.get(battle.player1);
+  const s2 = connectedPlayers.get(battle.player2);
+  if (s1) io.to(s1).emit('tournament:battleStart', { tournamentId, matchId, snapshot });
+  if (s2) {
+    const flipped = {
+      ...snapshot,
+      left: snapshot.right.map((p: any) => ({ ...p, side: 'left' })),
+      right: snapshot.left.map((p: any) => ({ ...p, side: 'right' })),
+      winner: snapshot.winner === 'left' ? 'right' : snapshot.winner === 'right' ? 'left' : null,
+    };
+    io.to(s2).emit('tournament:battleStart', { tournamentId, matchId, snapshot: flipped });
+  }
+
+  const p1Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player1) as any;
+  const p2Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player2) as any;
+  const p1Won = snapshot.winner === 'left';
+  if (p1Row) {
+    const p1Awards = awardBondXp(p1Row.id, battle.player1InstanceIds, snapshot.left, snapshot.round, p1Won, 'tournament');
+    if (s1 && p1Awards.length) io.to(s1).emit('battle:bondUpdate', { awards: p1Awards });
+  }
+  if (p2Row) {
+    const p2Awards = awardBondXp(p2Row.id, battle.player2InstanceIds, snapshot.right, snapshot.round, !p1Won, 'tournament');
+    if (s2 && p2Awards.length) io.to(s2).emit('battle:bondUpdate', { awards: p2Awards });
+  }
+
+  activeBattles.delete(matchId);
+  advanceTournament(t);
+}
 
 function loadTournament(id: string): Tournament | null {
   const row = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id) as any;
@@ -1251,6 +1394,7 @@ function loadTournament(id: string): Tournament | null {
     currentRound: row.current_round, winner: row.winner ?? undefined, createdAt: new Date(row.created_at).getTime(),
     fixedTeam: !!row.fixed_team, publicTeams: !!row.public_teams,
     allowLegendaries: row.allow_legendaries == null ? true : !!row.allow_legendaries,
+    pickMode: row.pick_mode === 'draft' ? 'draft' : 'blind',
     frozenTeams: JSON.parse(row.frozen_teams || '{}'),
     prizes: JSON.parse(row.prizes || '{}'), runnerUp: row.runner_up ?? undefined,
   };
@@ -1267,6 +1411,7 @@ function broadcastTournamentUpdate(t: Tournament) {
     participantCount: t.participants.length, participants: t.participants.slice(), registrationEnd: t.registrationEnd,
     currentRound: t.currentRound, winner: t.winner, fixedTeam: t.fixedTeam, publicTeams: t.publicTeams,
     allowLegendaries: t.allowLegendaries,
+    pickMode: t.pickMode,
     prizes: t.prizes,
   };
   io.emit('tournament:updated', summary);
@@ -1526,6 +1671,7 @@ app.get(`${BASE_PATH}/api/tournaments`, (_req, res) => {
       participantCount: participants.length, participants, registrationEnd: r.registration_end,
       currentRound: r.current_round, winner: r.winner ?? undefined, fixedTeam: !!r.fixed_team, publicTeams: !!r.public_teams,
       allowLegendaries: r.allow_legendaries == null ? true : !!r.allow_legendaries,
+      pickMode: r.pick_mode === 'draft' ? 'draft' : 'blind',
       prizes: JSON.parse(r.prizes || '{}'),
     };
   });
@@ -1539,14 +1685,16 @@ app.get(`${BASE_PATH}/api/tournament/:id`, (req, res) => {
 });
 
 app.post(`${BASE_PATH}/api/admin/tournament/create`, (req, res) => {
-  const { name, fieldSize, totalPokemon, registrationMinutes, matchTimeLimit, fixedTeam, publicTeams, allowLegendaries, prizes } = req.body;
+  const { name, fieldSize, totalPokemon, registrationMinutes, matchTimeLimit, publicTeams, allowLegendaries, pickMode, prizes } = req.body;
   const id = uuidv4();
   const regEnd = Date.now() + (registrationMinutes ?? 10) * 60 * 1000;
   const finalPrizes = prizes ?? DEFAULT_PRIZES;
   const allowLeg = allowLegendaries === false ? 0 : 1;
+  const pm = pickMode === 'draft' ? 'draft' : 'blind';
+  // Tournaments are always fixed-team now (frozen teams), with per-match ordering.
   db.prepare(
-    'INSERT INTO tournaments (id, name, field_size, total_pokemon, registration_end, match_time_limit, fixed_team, public_teams, allow_legendaries, prizes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, name ?? 'Tournament', fieldSize ?? 1, totalPokemon ?? 3, regEnd, matchTimeLimit ?? 300, fixedTeam ? 1 : 0, publicTeams ? 1 : 0, allowLeg, JSON.stringify(finalPrizes));
+    'INSERT INTO tournaments (id, name, field_size, total_pokemon, registration_end, match_time_limit, fixed_team, public_teams, allow_legendaries, pick_mode, prizes) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)'
+  ).run(id, name ?? 'Tournament', fieldSize ?? 1, totalPokemon ?? 3, regEnd, matchTimeLimit ?? 300, publicTeams ? 1 : 0, allowLeg, pm, JSON.stringify(finalPrizes));
   const t = loadTournament(id)!;
   // Broadcast to all connected players
   io.emit('tournament:created', { id: t.id, name: t.name, registrationEnd: t.registrationEnd, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon });
@@ -1900,7 +2048,7 @@ io.on('connection', (socket) => {
     broadcastTournamentUpdate(t);
   });
 
-  socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities, characters }: any) => {
+  socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities, characters, slotOrder }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
     if (!t || t.status !== 'active') return;
@@ -1908,12 +2056,19 @@ io.on('connection', (socket) => {
     if (!match || match.status !== 'active') return;
     if (match.player1 !== playerName && match.player2 !== playerName) return;
 
+    // Draft tournaments must use the draft handler.
+    if (t.fixedTeam && t.pickMode === 'draft') {
+      socket.emit('tournament:invalidTeam', { tournamentId, reason: 'draft-required' });
+      return;
+    }
+
     if (!t.allowLegendaries && !(t.fixedTeam && t.frozenTeams[playerName]) && Array.isArray(team) && team.some((id: number) => POKEMON_BY_ID[id]?.tier === 'legendary')) {
       socket.emit('tournament:invalidTeam', { tournamentId, reason: 'legendaries-banned' });
       return;
     }
 
-    // For fixed-team tournaments, override with frozen team data
+    // For fixed-team tournaments, build battle inputs from the frozen team
+    // in the order supplied by the client (blind pick).
     let finalTeam = team;
     let finalHeldItems = heldItems;
     let finalMoves = moves;
@@ -1922,90 +2077,104 @@ io.on('connection', (socket) => {
     let finalInstanceIds: string[] | undefined = instanceIds;
     if (t.fixedTeam && t.frozenTeams[playerName]) {
       const frozen = t.frozenTeams[playerName];
-      finalTeam = frozen.map(f => f.pokemonId);
-      finalHeldItems = frozen.map(f => f.heldItem);
-      finalMoves = frozen.map(f => f.moves);
-      finalAbilities = frozen.map(f => f.ability);
-      finalCharacters = frozen.map((f: any) => f.character ?? null);
+      // Expect a permutation of slot indices; fall back to stored order if absent or invalid.
+      let order: number[];
+      if (Array.isArray(slotOrder) && slotOrder.length === frozen.length &&
+          slotOrder.every((n: any) => Number.isInteger(n) && n >= 0 && n < frozen.length) &&
+          new Set(slotOrder).size === frozen.length) {
+        order = slotOrder;
+      } else {
+        order = frozen.map((_, i) => i);
+      }
+      const built = frozenToBattle(frozen, order);
+      finalTeam = built.team;
+      finalHeldItems = built.heldItems;
+      finalMoves = built.moves;
+      finalAbilities = built.abilities;
+      finalCharacters = built.characters;
       finalInstanceIds = undefined; // frozen teams don't carry live instance ids — skip bond xp
     }
 
-    // Use matchId as battle key
-    let battle = activeBattles.get(matchId);
-    if (!battle) {
-      battle = {
-        id: matchId, player1: match.player1!, player2: match.player2!,
-        player1Team: null, player2Team: null,
-        fieldSize: t.fieldSize, totalPokemon: t.totalPokemon,
-        allowLegendaries: t.allowLegendaries,
+    handleTournamentTeamSubmission(t, match, playerName, {
+      team: finalTeam, heldItems: finalHeldItems, moves: finalMoves,
+      abilities: finalAbilities, characters: finalCharacters, instanceIds: finalInstanceIds,
+    }, socket);
+  });
+
+  /** Draft pick: picker selects which slot of their own frozen team to reveal next. */
+  socket.on('tournament:draftPick', ({ tournamentId, matchId, slotIndex }: any) => {
+    if (!playerName) return;
+    const t = loadTournament(tournamentId);
+    if (!t || t.status !== 'active' || t.pickMode !== 'draft') return;
+    const match = t.bracket.find(m => m.id === matchId);
+    if (!match || match.status !== 'active') return;
+    if (match.player1 !== playerName && match.player2 !== playerName) return;
+    if (!t.frozenTeams[match.player1!] || !t.frozenTeams[match.player2!]) return;
+
+    let d = activeDrafts.get(matchId);
+    if (!d) {
+      d = {
+        tournamentId, matchId,
+        player1: match.player1!, player2: match.player2!,
+        totalPokemon: t.totalPokemon,
+        p1Order: [], p2Order: [],
+        currentPicker: 'p1',
       };
-      activeBattles.set(matchId, battle);
+      activeDrafts.set(matchId, d);
     }
 
-    if (playerName === battle.player1) {
-      battle.player1Team = finalTeam;
-      battle.player1HeldItems = finalHeldItems;
-      battle.player1Moves = finalMoves;
-      battle.player1Abilities = finalAbilities;
-      (battle as any).player1Characters = finalCharacters;
-      battle.player1InstanceIds = finalInstanceIds;
+    const isP1 = playerName === d.player1;
+    if ((isP1 && d.currentPicker !== 'p1') || (!isP1 && d.currentPicker !== 'p2')) {
+      return; // not your turn
+    }
+    const frozen = isP1 ? t.frozenTeams[d.player1] : t.frozenTeams[d.player2];
+    const order = isP1 ? d.p1Order : d.p2Order;
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= frozen.length) return;
+    if (order.includes(slotIndex)) return; // already picked
+    order.push(slotIndex);
+
+    // Alternate picker; draft is complete when both orders are full.
+    if (d.p1Order.length >= d.totalPokemon && d.p2Order.length >= d.totalPokemon) {
+      d.currentPicker = null;
+    } else if (d.p1Order.length > d.p2Order.length) {
+      d.currentPicker = 'p2';
     } else {
-      battle.player2Team = finalTeam;
-      battle.player2HeldItems = finalHeldItems;
-      battle.player2Moves = finalMoves;
-      battle.player2Abilities = finalAbilities;
-      (battle as any).player2Characters = finalCharacters;
-      battle.player2InstanceIds = finalInstanceIds;
+      d.currentPicker = 'p1';
     }
 
-    if (battle.player1Team && battle.player2Team) {
-      // Both ready — simulate
-      const snapshot = simulateBattleFromIds(
-        battle.player1Team, battle.player2Team, t.fieldSize,
-        battle.player1HeldItems, battle.player2HeldItems,
-        battle.player1Moves, battle.player2Moves,
-        battle.player1Abilities, battle.player2Abilities,
-        (battle as any).player1Characters, (battle as any).player2Characters,
-      );
+    broadcastDraftState(t, d);
 
-      const winnerName = snapshot.winner === 'left' ? battle.player1 : battle.player2;
-      match.winner = winnerName;
-      match.status = 'completed';
-      saveTournament(t);
-
-      // Send battle to both players
-      const s1 = connectedPlayers.get(battle.player1);
-      const s2 = connectedPlayers.get(battle.player2);
-      if (s1) io.to(s1).emit('tournament:battleStart', { tournamentId, matchId, snapshot });
-      if (s2) {
-        // Flip snapshot for player2
-        const flipped = {
-          ...snapshot,
-          left: snapshot.right.map((p: any) => ({ ...p, side: 'left' })),
-          right: snapshot.left.map((p: any) => ({ ...p, side: 'right' })),
-          winner: snapshot.winner === 'left' ? 'right' : snapshot.winner === 'right' ? 'left' : null,
-        };
-        io.to(s2).emit('tournament:battleStart', { tournamentId, matchId, snapshot: flipped });
-      }
-
-      // Award Bond XP (Evolution 2.0) — tournament mode
-      const p1Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player1) as any;
-      const p2Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player2) as any;
-      const p1Won = snapshot.winner === 'left';
-      if (p1Row) {
-        const p1Awards = awardBondXp(p1Row.id, battle.player1InstanceIds, snapshot.left, snapshot.round, p1Won, 'tournament');
-        if (s1 && p1Awards.length) io.to(s1).emit('battle:bondUpdate', { awards: p1Awards });
-      }
-      if (p2Row) {
-        const p2Awards = awardBondXp(p2Row.id, battle.player2InstanceIds, snapshot.right, snapshot.round, !p1Won, 'tournament');
-        if (s2 && p2Awards.length) io.to(s2).emit('battle:bondUpdate', { awards: p2Awards });
-      }
-
-      activeBattles.delete(matchId);
-      advanceTournament(t);
-    } else {
-      socket.emit('tournament:waitingOpponent');
+    if (d.currentPicker === null) {
+      // Draft complete — build battle inputs and finalize.
+      const p1Built = frozenToBattle(t.frozenTeams[d.player1], d.p1Order);
+      const p2Built = frozenToBattle(t.frozenTeams[d.player2], d.p2Order);
+      // Seed both sides into activeBattles and run the match.
+      handleTournamentTeamSubmission(t, match, d.player1, { ...p1Built, instanceIds: undefined } as any);
+      handleTournamentTeamSubmission(t, match, d.player2, { ...p2Built, instanceIds: undefined } as any);
+      activeDrafts.delete(matchId);
     }
+  });
+
+  /** Client pull of the current draft state (e.g. on reconnect / mount). */
+  socket.on('tournament:draftJoin', ({ tournamentId, matchId }: any) => {
+    if (!playerName) return;
+    const t = loadTournament(tournamentId);
+    if (!t || t.pickMode !== 'draft') return;
+    const match = t.bracket.find(m => m.id === matchId);
+    if (!match || match.status !== 'active') return;
+    if (match.player1 !== playerName && match.player2 !== playerName) return;
+    let d = activeDrafts.get(matchId);
+    if (!d) {
+      d = {
+        tournamentId, matchId,
+        player1: match.player1!, player2: match.player2!,
+        totalPokemon: t.totalPokemon,
+        p1Order: [], p2Order: [],
+        currentPicker: 'p1',
+      };
+      activeDrafts.set(matchId, d);
+    }
+    socket.emit('tournament:draftState', makeDraftState(t, d));
   });
 
   socket.on('disconnect', () => {

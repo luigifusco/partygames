@@ -195,7 +195,7 @@ export default function AdminPanel() {
   const [tournamentPokemon, setTournamentPokemon] = useState(3);
   const [tournamentRegMinutes, setTournamentRegMinutes] = useState(10);
   const [tournamentMatchTime, setTournamentMatchTime] = useState(300);
-  const [tournamentFixedTeam, setTournamentFixedTeam] = useState(false);
+  const [tournamentPickMode, setTournamentPickMode] = useState<'blind' | 'draft'>('blind');
   const [tournamentPublicTeams, setTournamentPublicTeams] = useState(false);
   const [tournamentAllowLegendaries, setTournamentAllowLegendaries] = useState(true);
   const [tournamentPrizes, setTournamentPrizes] = useState<{ essence: number; pack: string; pokemonIds: number[] }[]>([]);
@@ -254,7 +254,7 @@ export default function AdminPanel() {
         totalPokemon: tournamentPokemon,
         registrationMinutes: tournamentRegMinutes,
         matchTimeLimit: tournamentMatchTime,
-        fixedTeam: tournamentFixedTeam,
+        pickMode: tournamentPickMode,
         publicTeams: tournamentPublicTeams,
         allowLegendaries: tournamentAllowLegendaries,
         prizes,
@@ -370,17 +370,27 @@ export default function AdminPanel() {
             <h3 className="admin-card-title">Flags</h3>
             <div className="admin-field-row">
               <div className="admin-field-label">
-                Fixed team
-                <span className="admin-field-desc">Players lock their team before bracket</span>
+                Pick mode
+                <span className="admin-field-desc">
+                  Blind: both players order their team hidden. Draft: alternating reveal.
+                </span>
               </div>
-              <label className="ds-toggle admin-field-control">
-                <input
-                  type="checkbox"
-                  checked={tournamentFixedTeam}
-                  onChange={e => setTournamentFixedTeam(e.target.checked)}
-                />
-                <span className="ds-toggle-slider" />
-              </label>
+              <div className="admin-field-control" style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <button
+                  type="button"
+                  className={'ds-btn ds-btn-sm' + (tournamentPickMode === 'blind' ? ' ds-btn-primary' : ' ds-btn-ghost')}
+                  onClick={() => setTournamentPickMode('blind')}
+                >
+                  Blind
+                </button>
+                <button
+                  type="button"
+                  className={'ds-btn ds-btn-sm' + (tournamentPickMode === 'draft' ? ' ds-btn-primary' : ' ds-btn-ghost')}
+                  onClick={() => setTournamentPickMode('draft')}
+                >
+                  Draft
+                </button>
+              </div>
             </div>
             <div className="admin-field-row">
               <div className="admin-field-label">

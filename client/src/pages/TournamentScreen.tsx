@@ -20,7 +20,7 @@ interface TournamentScreenProps {
   playerId?: string;
 }
 
-type Phase = 'list' | 'detail' | 'lockTeam' | 'teamSelect' | 'waitingOpponent' | 'battle';
+type Phase = 'list' | 'detail' | 'lockTeam' | 'teamSelect' | 'blindOrder' | 'draft' | 'waitingOpponent' | 'battle';
 
 export default function TournamentScreen({ playerName, collection, playerId }: TournamentScreenProps) {
   const navigate = useNavigate();
@@ -37,6 +37,10 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
   const [battleFinished, setBattleFinished] = useState(false);
   const [viewingTeamOf, setViewingTeamOf] = useState<string | null>(null);
   const [playerPictures, setPlayerPictures] = useState<Record<string, string | null>>({});
+  // Per-match ordering state (blind pick): indices into the frozen team in chosen order.
+  const [pickOrder, setPickOrder] = useState<number[]>([]);
+  // Draft state (updated by server).
+  const [draftState, setDraftState] = useState<any>(null);
   // Tick once a second so all deadline countdowns re-render live.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -102,12 +106,14 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
 
     const onWaiting = () => setPhase('waitingOpponent');
     const onTeamLocked = () => setTeamLocked(true);
+    const onDraftState = (state: any) => setDraftState(state);
 
     socket.on('tournament:updated', onUpdated);
     socket.on('tournament:matchReady', onMatchReady);
     socket.on('tournament:battleStart', onBattleStart);
     socket.on('tournament:waitingOpponent', onWaiting);
     socket.on('tournament:teamLocked', onTeamLocked);
+    socket.on('tournament:draftState', onDraftState);
 
     return () => {
       socket.off('tournament:updated', onUpdated);
@@ -115,6 +121,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
       socket.off('tournament:battleStart', onBattleStart);
       socket.off('tournament:waitingOpponent', onWaiting);
       socket.off('tournament:teamLocked', onTeamLocked);
+      socket.off('tournament:draftState', onDraftState);
     };
   }, [activeTournament, phase, fetchDetail]);
 
@@ -142,16 +149,45 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
     setActiveMatchId(matchId);
     setSelected([]);
     setSelectedCharacters([]);
-    // For fixed-team tournaments, skip team select — auto-submit with frozen team
+    setPickOrder([]);
+    setDraftState(null);
+    // Fixed-team tournaments: enter the per-match ordering phase (blind or draft).
     if (activeTournament?.fixedTeam) {
-      socket.emit('tournament:selectTeam', {
-        tournamentId: activeTournament.id,
-        matchId,
-        team: [], heldItems: [], moves: [], abilities: [],
-      });
+      if (activeTournament.pickMode === 'draft') {
+        socket.emit('tournament:draftJoin', { tournamentId: activeTournament.id, matchId });
+        setPhase('draft');
+      } else {
+        setPhase('blindOrder');
+      }
       return;
     }
     setPhase('teamSelect');
+  };
+
+  const submitBlindOrder = () => {
+    if (!activeTournament || !activeMatchId) return;
+    const frozen = activeTournament.frozenTeams[playerName];
+    if (!frozen || pickOrder.length !== frozen.length) return;
+    socket.emit('tournament:selectTeam', {
+      tournamentId: activeTournament.id,
+      matchId: activeMatchId,
+      slotOrder: pickOrder,
+      // legacy fields for older servers; server will rebuild from frozen team using slotOrder
+      team: pickOrder.map(i => frozen[i].pokemonId),
+      heldItems: pickOrder.map(i => frozen[i].heldItem),
+      moves: pickOrder.map(i => frozen[i].moves),
+      abilities: pickOrder.map(i => frozen[i].ability),
+      characters: pickOrder.map(i => frozen[i].character ?? null),
+    });
+  };
+
+  const draftPick = (slotIndex: number) => {
+    if (!activeTournament || !activeMatchId) return;
+    socket.emit('tournament:draftPick', {
+      tournamentId: activeTournament.id,
+      matchId: activeMatchId,
+      slotIndex,
+    });
   };
 
   const submitTeam = () => {
@@ -291,6 +327,152 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
     );
   }
 
+  // ─── Blind Order (fixed-team, blind pick mode) ───
+  if (phase === 'blindOrder' && activeTournament) {
+    const frozen = activeTournament.frozenTeams[playerName] ?? [];
+    const myMatch = findMyMatch();
+    const togglePick = (idx: number) => {
+      setPickOrder(prev => {
+        const pos = prev.indexOf(idx);
+        if (pos !== -1) return prev.filter(x => x !== idx);
+        if (prev.length >= frozen.length) return prev;
+        return [...prev, idx];
+      });
+    };
+    const canSubmit = pickOrder.length === frozen.length;
+    return (
+      <div className="ds-screen">
+        <div className="ds-topbar">
+          <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => setPhase('detail')}>← Back</button>
+          <div className="ds-topbar-title">Order Your Team</div>
+        </div>
+        <div className="ds-screen-scroll">
+          <div className="tournament-pick-help">
+            Click your Pokémon in the order you want them to battle. Your order is hidden from your opponent.
+            {myMatch?.deadline && (
+              <span className={`tournament-countdown tournament-countdown-inline ${urgencyClass(myMatch.deadline)}`}>
+                <span className="tournament-countdown-icon">⏱️</span>
+                {timeLeft(myMatch.deadline)} left
+              </span>
+            )}
+          </div>
+          <div className="tournament-pick-grid">
+            {frozen.map((f, i) => {
+              const pos = pickOrder.indexOf(i);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className={'tournament-pick-card' + (pos >= 0 ? ' picked' : '')}
+                  onClick={() => togglePick(i)}
+                >
+                  {pos >= 0 && <div className="tournament-pick-badge">#{pos + 1}</div>}
+                  <img src={f.sprite} alt={f.name} className="tournament-pick-sprite" />
+                  <div className="tournament-pick-name">{f.name}</div>
+                  {f.ability && <div className="tournament-pick-detail">{f.ability}</div>}
+                  {f.moves && <div className="tournament-pick-detail">{f.moves[0]} / {f.moves[1]}</div>}
+                  {f.heldItem && <div className="tournament-pick-detail">@ {f.heldItem}</div>}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            className="ds-btn ds-btn-primary ds-btn-block ds-btn-lg"
+            onClick={submitBlindOrder}
+            disabled={!canSubmit}
+          >
+            {canSubmit ? 'Lock In Order' : `Pick ${frozen.length - pickOrder.length} more…`}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Draft Pick (fixed-team, draft mode) ───
+  if (phase === 'draft' && activeTournament) {
+    const t = activeTournament;
+    const d = draftState;
+    const myMatch = findMyMatch();
+    const oppName = myMatch ? (myMatch.player1 === playerName ? myMatch.player2 : myMatch.player1) : null;
+    const myFrozen = t.frozenTeams[playerName] ?? [];
+    const oppFrozen = oppName ? (t.frozenTeams[oppName] ?? []) : [];
+    const isP1 = d ? d.player1 === playerName : true;
+    const myOrder: number[] = d ? (isP1 ? d.p1Order : d.p2Order) : [];
+    const oppOrder: number[] = d ? (isP1 ? d.p2Order : d.p1Order) : [];
+    const myTurn = d && ((isP1 && d.currentPicker === 'p1') || (!isP1 && d.currentPicker === 'p2'));
+    const myPickedSet = new Set(myOrder);
+    return (
+      <div className="ds-screen">
+        <div className="ds-topbar">
+          <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => setPhase('detail')}>← Back</button>
+          <div className="ds-topbar-title">Draft Pick</div>
+        </div>
+        <div className="ds-screen-scroll">
+          <div className="tournament-pick-help">
+            {myTurn
+              ? 'Your turn — click which Pokémon to send out next.'
+              : d?.currentPicker === null
+                ? 'Draft complete. Battle starting…'
+                : `Waiting for ${oppName} to pick…`}
+            {myMatch?.deadline && (
+              <span className={`tournament-countdown tournament-countdown-inline ${urgencyClass(myMatch.deadline)}`}>
+                <span className="tournament-countdown-icon">⏱️</span>
+                {timeLeft(myMatch.deadline)} left
+              </span>
+            )}
+          </div>
+
+          {/* Opponent's revealed picks */}
+          <div className="ds-section-title">{oppName ?? 'Opponent'}</div>
+          <div className="tournament-draft-row">
+            {oppOrder.map((slotIdx, pos) => {
+              const f = oppFrozen[slotIdx];
+              if (!f) return null;
+              return (
+                <div key={pos} className="tournament-pick-card picked opponent-pick">
+                  <div className="tournament-pick-badge">#{pos + 1}</div>
+                  <img src={f.sprite} alt={f.name} className="tournament-pick-sprite" />
+                  <div className="tournament-pick-name">{f.name}</div>
+                </div>
+              );
+            })}
+            {Array.from({ length: t.totalPokemon - oppOrder.length }).map((_, i) => (
+              <div key={'q' + i} className="tournament-pick-card hidden-pick">
+                <div className="tournament-pick-badge">#{oppOrder.length + i + 1}</div>
+                <div className="tournament-pick-hidden">?</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Your roster */}
+          <div className="ds-section-title">Your roster</div>
+          <div className="tournament-pick-grid">
+            {myFrozen.map((f, i) => {
+              const pos = myOrder.indexOf(i);
+              const picked = pos >= 0;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className={'tournament-pick-card' + (picked ? ' picked' : '') + (!myTurn || myPickedSet.has(i) ? ' disabled' : '')}
+                  onClick={() => myTurn && !picked && draftPick(i)}
+                  disabled={!myTurn || picked}
+                >
+                  {picked && <div className="tournament-pick-badge">#{pos + 1}</div>}
+                  <img src={f.sprite} alt={f.name} className="tournament-pick-sprite" />
+                  <div className="tournament-pick-name">{f.name}</div>
+                  {f.ability && <div className="tournament-pick-detail">{f.ability}</div>}
+                  {f.moves && <div className="tournament-pick-detail">{f.moves[0]} / {f.moves[1]}</div>}
+                  {f.heldItem && <div className="tournament-pick-detail">@ {f.heldItem}</div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ─── Team Select ───
   if (phase === 'teamSelect' && activeTournament) {
     const teamSize = activeTournament.totalPokemon;
@@ -348,6 +530,9 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
             <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
             <span>{t.participants.length} players</span>
             {t.fixedTeam && <span className="ds-badge ds-badge-gold">Fixed Team</span>}
+            <span className={'ds-badge ' + (t.pickMode === 'draft' ? 'ds-badge-accent' : '')}>
+              {t.pickMode === 'draft' ? 'Draft Pick' : 'Blind Pick'}
+            </span>
             {t.publicTeams && <span className="ds-badge ds-badge-accent">Public Teams</span>}
             {t.allowLegendaries === false && <span className="ds-badge ds-badge-gold">No Legendaries</span>}
           </div>
@@ -530,6 +715,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
                     <span>{t.fieldSize}v{t.fieldSize} · {t.totalPokemon} pkm</span>
                     <span>· {t.participantCount} players</span>
                     {t.fixedTeam && <span className="ds-badge ds-badge-gold">Fixed</span>}
+                    {t.pickMode === 'draft' && <span className="ds-badge ds-badge-accent">Draft</span>}
                   </div>
                   {t.status === 'registration' && t.registrationEnd && (
                     <div className={`tournament-card-countdown ${urgencyClass(t.registrationEnd)}`}>

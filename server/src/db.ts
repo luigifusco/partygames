@@ -206,9 +206,10 @@ export function initDb() {
       participants TEXT NOT NULL DEFAULT '[]',
       current_round INTEGER NOT NULL DEFAULT 0,
       winner TEXT,
-      fixed_team INTEGER NOT NULL DEFAULT 0,
+      fixed_team INTEGER NOT NULL DEFAULT 1,
       public_teams INTEGER NOT NULL DEFAULT 0,
       allow_legendaries INTEGER NOT NULL DEFAULT 1,
+      pick_mode TEXT NOT NULL DEFAULT 'blind',
       frozen_teams TEXT NOT NULL DEFAULT '{}',
       prizes TEXT NOT NULL DEFAULT '{}',
       runner_up TEXT,
@@ -231,6 +232,9 @@ export function initDb() {
   }
   if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'allow_legendaries')) {
     db.exec(`ALTER TABLE tournaments ADD COLUMN allow_legendaries INTEGER NOT NULL DEFAULT 1`);
+  }
+  if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'pick_mode')) {
+    db.exec(`ALTER TABLE tournaments ADD COLUMN pick_mode TEXT NOT NULL DEFAULT 'blind'`);
   }
 
   return db;
