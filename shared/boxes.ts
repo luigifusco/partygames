@@ -87,13 +87,17 @@ export function openPack(packId: PackId, tierId: PackTierId): PackResult {
   }
 
   // Pity: Ultra/Master guarantee at least one epic+ card when the pool can
-  // supply one.
+  // supply one. Weight the upgrade strongly toward epic so it doesn't
+  // accidentally bump the legendary rate.
   if (tier.guaranteedHighTier && picked.length > 0) {
     const hasHigh = picked.some((p) => p.tier === 'epic' || p.tier === 'legendary');
     if (!hasHigh) {
       const upgradePool = pool.filter((p) => p.tier === 'epic' || p.tier === 'legendary');
       if (upgradePool.length > 0) {
-        const upgrade = upgradePool[Math.floor(Math.random() * upgradePool.length)];
+        const pityWeights: Record<BoxTier, number> = {
+          common: 0, uncommon: 0, rare: 0, epic: 99, legendary: 1,
+        };
+        const upgrade = weightedPickFromPool(upgradePool, pityWeights) ?? upgradePool[0];
         picked[picked.length - 1] = upgrade;
       }
     }
