@@ -68,13 +68,18 @@ export default function TeamSelectGrid({
 
   const recentSet = new Set(recentPokemonIds ?? []);
   const normalizedQuery = nameQuery.trim().toLowerCase();
+  const matchesQuery = (inst: PokemonInstance) => {
+    if (normalizedQuery === '') return true;
+    const q = normalizedQuery;
+    if (inst.pokemon.name.toLowerCase().includes(q)) return true;
+    if ((inst.ability ?? '').toLowerCase().includes(q)) return true;
+    if ((inst.nature ?? '').toLowerCase().includes(q)) return true;
+    const moves = getEffectiveMoves(inst);
+    return moves.some((m) => m.toLowerCase().includes(q));
+  };
   const sortedIndices = instances
     .map((_, i) => i)
-    .filter((i) =>
-      normalizedQuery === ''
-        ? true
-        : instances[i].pokemon.name.toLowerCase().includes(normalizedQuery),
-    )
+    .filter((i) => matchesQuery(instances[i]))
     .sort((a, b) => {
     const aFav = instances[a].favorite ? 0 : 1;
     const bFav = instances[b].favorite ? 0 : 1;
@@ -196,7 +201,7 @@ export default function TeamSelectGrid({
         <input
           type="search"
           className="team-select-search-input"
-          placeholder="Search by name…"
+          placeholder="Search name, move, ability, nature…"
           value={nameQuery}
           onChange={(e) => setNameQuery(e.target.value)}
           aria-label="Search Pokémon by name"

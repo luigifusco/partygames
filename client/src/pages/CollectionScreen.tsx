@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { PokemonInstance, Pokemon, BoxTier, OwnedItem } from '@shared/types';
+import { getEffectiveMoves } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import { evolveGate } from '@shared/evolution';
@@ -39,9 +40,18 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
   const [shardPreview, setShardPreview] = useState<PokemonInstance[] | null>(null);
 
   const normalizedQuery = nameQuery.trim().toLowerCase();
+  const matchesQuery = (inst: PokemonInstance) => {
+    if (normalizedQuery === '') return true;
+    const q = normalizedQuery;
+    if (inst.pokemon.name.toLowerCase().includes(q)) return true;
+    if ((inst.ability ?? '').toLowerCase().includes(q)) return true;
+    if ((inst.nature ?? '').toLowerCase().includes(q)) return true;
+    const moves = getEffectiveMoves(inst);
+    return moves.some((m) => m.toLowerCase().includes(q));
+  };
   const filtered = collection
     .filter((inst) => filter === 'all' || inst.pokemon.tier === filter)
-    .filter((inst) => normalizedQuery === '' || inst.pokemon.name.toLowerCase().includes(normalizedQuery))
+    .filter(matchesQuery)
     .sort((a, b) => {
       const aFav = a.favorite ? 0 : 1;
       const bFav = b.favorite ? 0 : 1;
@@ -106,7 +116,7 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
         <input
           type="search"
           className="collection-search-input"
-          placeholder="Search by name…"
+          placeholder="Search name, move, ability, nature…"
           value={nameQuery}
           onChange={(e) => setNameQuery(e.target.value)}
           aria-label="Search Pokémon by name"
