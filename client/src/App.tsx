@@ -13,6 +13,7 @@ import ShopScreen from './pages/ShopScreen';
 import TradeScreen from './pages/TradeScreen';
 import NotificationsScreen from './pages/NotificationsScreen';
 import type { Notification } from './pages/NotificationsScreen';
+import NotificationToasts from './components/NotificationToasts';
 import TVView from './pages/TVView';
 import AdminPanel from './pages/AdminPanel';
 import BackgroundsDemo from './pages/BackgroundsDemo';
@@ -456,6 +457,16 @@ export default function App() {
           }}
         />
       )}
+      <NotificationToasts
+        notifications={notifications}
+        onOpen={(n) => {
+          if (n.type === 'announcement') {
+            navigate('/notifications');
+          } else {
+            handleAcceptNotification(n);
+          }
+        }}
+      />
     </>
   );
 }
