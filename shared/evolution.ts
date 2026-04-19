@@ -53,9 +53,9 @@ export function computeBondXp(input: BondAwardInput): number {
     case 'pvp':
     case 'tournament': mult = 1.5; break;
     case 'ai':
-    case 'story':      mult = 1.0; break;
+    case 'story':
     case 'friendly':
-    case 'demo':       mult = 0.5; break;
+    case 'demo':       mult = 1.0; break;
   }
 
   return Math.round(raw * mult);
