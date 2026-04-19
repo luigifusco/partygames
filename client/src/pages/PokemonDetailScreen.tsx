@@ -43,7 +43,8 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const [evolving, setEvolving] = useState<{ from: PokemonInstance; toId: number } | null>(null);
 
   const index = parseInt(idx ?? '', 10);
-  const inst = collection[index];
+  const inst = collection[index]
+    ?? (idx ? collection.find((c) => c.instanceId === idx) : undefined);
 
   if (!inst) {
     return (

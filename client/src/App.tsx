@@ -151,11 +151,11 @@ export default function App() {
     });
     const built = buildInstance({ ...res.newInstance });
     if (!built) return { ok: false, error: 'Could not build new instance' };
-    let newIndex = 0;
-    setCollection((c) => {
-      newIndex = c.length;
-      return [...c, built];
-    });
+    // The new instance is appended to `collection`, so its index in the
+    // post-update array is the current length. Capture it before the async
+    // state update so navigation lands on the right Pokémon.
+    const newIndex = collection.length;
+    setCollection((c) => [...c, built]);
     return { ok: true, newInstanceId: built.instanceId, index: newIndex };
   };
 

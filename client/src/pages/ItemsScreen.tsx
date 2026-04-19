@@ -535,7 +535,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
                 setTimeout(() => {
                   setReawakening(null);
                   if (res.ok) {
-                    navigate(`/pokemon/${res.index}`);
+                    navigate(`/pokemon/${res.newInstanceId}`);
                   } else {
                     setReawakenError(res.error);
                   }
