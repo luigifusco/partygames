@@ -977,6 +977,38 @@
   transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
+/* Mute buttons use an overlay-slash so the width never changes between
+ * muted/unmuted states (prevents the whole controls row from shifting). */
+.playback-btn-mute {
+  width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mute-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  line-height: 1;
+}
+.mute-icon-base {
+  display: block;
+  line-height: 1;
+}
+.mute-icon-slash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.95em;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
+}
+
 .playback-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.10);
   color: #fff;

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { BattlePokemonState, BattleLogEntry, BattleSnapshot } from '@shared/battle-types';
 import { getMoveAnim } from '../data/moveAnimations';
 import { runMoveAnimation, animateHit, animateStatChange, animateStatusInflict } from './BattleAnimationEngine';
-import { playSfx, playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, preloadStatSounds, playStatChangeSfx, playStatusSfx, unlockAudio, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted, toggleSfxMute, isSfxMuted } from './BattleSounds';
+import { playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, preloadStatSounds, playStatChangeSfx, playStatusSfx, playFaintSfx, unlockAudio, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted, toggleSfxMute, isSfxMuted } from './BattleSounds';
 import { getHeldItemSprite } from '@shared/held-item-data';
 import BattleBackground, { pickPreset } from './BattleBackground';
 import './BattleScene.css';
@@ -493,7 +493,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // For status condition entries (no move), just show text
       if (!entry.moveName) {
         if (entry.targetFainted) {
-          playSfx('faint');
+          playFaintSfx();
           playCry(entry.targetName, 0.25, 0.6);
         }
         // Standalone stat changes (e.g., Intimidate, Sticky Web) — animate
@@ -602,7 +602,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
       // Play faint sounds before state update
       if (entry.targetFainted) {
-        playSfx('faint');
+        playFaintSfx();
         playCry(entry.targetName, 0.25, 0.6);
       }
 
@@ -814,10 +814,13 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         <button className="playback-btn" onClick={stepForward} disabled={anim.currentLogIndex >= snapshot.log.length - 1} title="Step forward">⏭</button>
         <span className="playback-counter">{anim.currentLogIndex + 1}/{snapshot.log.length}</span>
         <div className="battle-controls-sep" />
-        <button className="playback-btn" onClick={() => { toggleBgmMute(); setBgmMuted(isBgmMuted()); }} title={bgmMuted ? 'Unmute music' : 'Mute music'}>
-          {bgmMuted ? '🎵🚫' : '🎵'}
+        <button className="playback-btn playback-btn-mute" onClick={() => { toggleBgmMute(); setBgmMuted(isBgmMuted()); }} title={bgmMuted ? 'Unmute music' : 'Mute music'}>
+          <span className="mute-icon">
+            <span className="mute-icon-base">🎵</span>
+            {bgmMuted && <span className="mute-icon-slash">🚫</span>}
+          </span>
         </button>
-        <button className="playback-btn" onClick={() => { toggleSfxMute(); setSfxMuted(isSfxMuted()); }} title={sfxMuted ? 'Unmute effects' : 'Mute effects'}>
+        <button className="playback-btn playback-btn-mute" onClick={() => { toggleSfxMute(); setSfxMuted(isSfxMuted()); }} title={sfxMuted ? 'Unmute effects' : 'Mute effects'}>
           {sfxMuted ? '🔇' : '🔊'}
         </button>
         <button className="playback-btn playback-btn-subtle" onClick={() => setDebugView(!debugView)} title="Debug">

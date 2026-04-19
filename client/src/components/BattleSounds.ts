@@ -270,8 +270,7 @@ function moveSfxUrl(moveName: string): string {
 
 export function playMoveSfx(moveName: string, volume = 0.35): void {
   if (!moveName) return;
-  const ok = playUrl(moveSfxUrl(moveName), volume);
-  if (!ok) playSfx(getMoveSfxType(moveName));
+  playUrl(moveSfxUrl(moveName), volume);
 }
 
 // ─── Hit sounds (effectiveness) ──────────────────────────────────────────
@@ -300,20 +299,7 @@ const STAT_SFX: Record<'up' | 'down', string> = {
 };
 
 export function playStatChangeSfx(direction: 'up' | 'down', volume = 0.4): void {
-  const ok = playUrl(STAT_SFX[direction], volume);
-  if (!ok) {
-    const ac = getCtx();
-    if (!ac) return;
-    if (direction === 'up') {
-      playTone(ac, 500, 0.12, 'triangle', 0.18);
-      setTimeout(() => playTone(ac, 750, 0.12, 'triangle', 0.18), 80);
-      setTimeout(() => playTone(ac, 1000, 0.15, 'triangle', 0.18), 160);
-    } else {
-      playTone(ac, 800, 0.12, 'triangle', 0.18);
-      setTimeout(() => playTone(ac, 550, 0.12, 'triangle', 0.18), 80);
-      setTimeout(() => playTone(ac, 350, 0.15, 'triangle', 0.18), 160);
-    }
-  }
+  playUrl(STAT_SFX[direction], volume);
 }
 
 // ─── Status condition SFX ────────────────────────────────────────────────
@@ -328,16 +314,17 @@ const STATUS_SFX: Record<string, string> = {
 
 export function playStatusSfx(status: string, volume = 0.4): void {
   const url = STATUS_SFX[status];
-  if (url) {
-    const ok = playUrl(url, volume);
-    if (ok) return;
-  }
-  if (status === 'sleep') playSfx('psychic');
-  else playSfx('hit');
+  if (url) playUrl(url, volume);
+}
+
+const FAINT_SFX_URL = `${BASE_PATH}/sfx/${encodeURIComponent('In-Battle Faint No Health')}.mp3`;
+
+export function playFaintSfx(volume = 0.4): void {
+  playUrl(FAINT_SFX_URL, volume);
 }
 
 export function preloadStatSounds(): void {
-  preloadAudio([STAT_SFX.up, STAT_SFX.down, ...Object.values(STATUS_SFX)]);
+  preloadAudio([STAT_SFX.up, STAT_SFX.down, FAINT_SFX_URL, ...Object.values(STATUS_SFX)]);
 }
 
 // ─── Battle BGM ──────────────────────────────────────────────────────────
