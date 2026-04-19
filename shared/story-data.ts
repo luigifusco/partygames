@@ -110,7 +110,7 @@ export const STORYLINES: Storyline[] = [
       { type: 'battle', trainerName: 'Cynthia', trainerTitle: 'Champion', team: [443], teamMoves: [['Tackle', 'Sand Attack']], fieldSize: 1, essenceReward: 120 },
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
         "Thank you. That was a good conversation — and a better one than you realize.",
-        "Did you feel it? The way your Pokémon waited for you, then trusted you, then moved? That feeling has a name in some of the old stories. The people of Sinnoh called it the thread. Every time you and a Pokémon share a moment — a victory, a rescue, even just a long walk — a thread is spun between you. Over time, those threads weave together into something the world itself can feel.",
+        "Did you feel it? The way your Pokémon waited for you, then trusted you, then moved? That feeling has a name in some of the old stories. The people of Sinnoh called it *the thread*. Every time you and a Pokémon share a moment — a victory, a rescue, even just a long walk — a thread is spun between you. Over time, those threads weave together into something the world itself can feel.",
         "That's the real reason trainers exist. Not to collect Pokémon. Not even to win. It's to weave.",
       ]},
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
@@ -195,7 +195,7 @@ export const STORYLINES: Storyline[] = [
     steps: [
       { type: 'dialogue', speaker: 'May', sprite: sp('may'), lines: [
         "Hey! You're the trainer Dad's been going on about. Figures.",
-        "My dad runs the Petalburg Gym, so people expect a lot from me — but that's not why I'm out here. I'm out here because the ocean off Hoenn hums, and I want to know why.",
+        "My dad runs the Petalburg Gym, so people expect a lot from me — but that's not why I'm out here. I'm out here because the ocean off Hoenn *hums*, and I want to know why.",
         "Cynthia told me you'd be someone to test myself against. Ready?",
       ]},
       { type: 'battle', trainerName: 'May', trainerTitle: 'Hoenn Rival', team: [255, 261, 273], fieldSize: 1, essenceReward: 100 },
@@ -236,13 +236,13 @@ export const STORYLINES: Storyline[] = [
         "I've been watching. Your bond with your Pokémon — it's grown. But I've also noticed something curious.",
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
-        "Every trainer I've met fights differently. Some plan, some attack, some protect. Your Pokémon don't just listen to your moves — they listen to who you are in battle.",
+        "Every trainer I've met fights differently. Some plan, some attack, some protect. Your Pokémon don't just listen to your moves — they listen to *who you are* in battle.",
         "Tell me... do you even know what kind of trainer you've become? Show me. Battle me again, and let your style speak.",
       ]},
       { type: 'battle', trainerName: 'N', trainerTitle: 'Mysterious Trainer', team: [625, 533, 544], fieldSize: 1, essenceReward: 240 },
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "Yes... I see it now. You have a voice in battle, even if you've never heard it.",
-        "From now on, when you send out a Pokémon, choose how you show up too. Your style shapes their resolve. Their resolve shapes the fight.",
+        "From now on, when you send out a Pokémon, choose how *you* show up too. Your style shapes their resolve. Their resolve shapes the fight.",
       ]},
       { type: 'info', infoTitle: 'Battle Styles — Unlocked!', infoIcon: '🎭', lines: [
         "Pick a battle style for each Pokémon when you send it out.",
@@ -418,7 +418,7 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'Petrel', sprite: sp('petrel'), lines: [
         "Ahh, so this is the famous kid. Younger than I pictured. Meaner mouth, though — you looked at my face like I owed you something.",
-        "I do impressions, you know. Little hobby. Want to hear me do the boss? 'You're in my way.' Chilling, isn't it? I've been rehearsing for years.",
+        "I do impressions, you know. Little hobby. Want to hear me do the boss? *'You're in my way.'* Chilling, isn't it? I've been rehearsing for years.",
         "Enough warm-up. Let's see how you handle an actual rocket instead of the firecrackers downstairs."
       ]},
       { type: 'battle', trainerName: 'Petrel', trainerTitle: 'Team Rocket Executive', team: [42, 89, 110, 24], fieldSize: 2, essenceReward: 300 },
@@ -438,7 +438,7 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'Ariana', sprite: sp('ariana'), lines: [
         "Well. Look at you — climbing through our whole building in one afternoon.",
-        "You remind me of someone, actually. A boy I used to know. He was very sweet, very loud, and very dead by the time he was sixteen.",
+        "You remind me of someone, actually. A boy I used to know. He was very sweet, very *loud*, and very dead by the time he was sixteen.",
         "The problem with children like him, and like you, is you think being right is a shield. It isn't. It's a very pretty piece of glass."
       ]},
       { type: 'battle', trainerName: 'Ariana', trainerTitle: 'Team Rocket Executive', team: [59, 229, 31, 169], fieldSize: 2, essenceReward: 400 },
@@ -448,7 +448,7 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'Archer', sprite: sp('archer'), lines: [
         "Trainer. You must be tired. Please — sit if you like. You've earned it.",
-        "I am Archer. I am the hand that brought Team Rocket back together. Ariana calls me the one who believes in him, and I suppose that's right. Somebody had to.",
+        "I am Archer. I am the hand that brought Team Rocket back together. Ariana calls me the one who *believes* in him, and I suppose that's right. Somebody had to.",
         "I don't dislike you. I don't think Giovanni does either. You are simply the last lock on a door we've been opening for years. Locks don't mean to be inconvenient. They just are."
       ]},
       { type: 'battle', trainerName: 'Archer', trainerTitle: "Giovanni's Right Hand", team: [51, 93, 229, 68, 65], fieldSize: 2, essenceReward: 450 },
@@ -459,7 +459,7 @@ export const STORYLINES: Storyline[] = [
       { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: [
         "So — you are the child.",
         "I watched you through the cameras on every floor. You move well. Your Pokémon move better. That is rare.",
-        "Do you understand what I've spent my life doing? I have taken the strongest creatures on this continent and I have made them useful. Useful — that is the only honest word for what a Pokémon is to a person. Everything else is decoration."
+        "Do you understand what I've spent my life doing? I have taken the strongest creatures on this continent and I have made them useful. *Useful* — that is the only honest word for what a Pokémon is to a person. Everything else is decoration."
       ]},
       { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: [
         "Cynthia teaches children about threads and conversations. Professor Oak writes papers about friendship. I respect them. I do. They are the paint on the outside of a very expensive machine.",
@@ -470,13 +470,13 @@ export const STORYLINES: Storyline[] = [
       { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: [
         "...",
         "I felt that last hit. Not in my Pokémon. In me. How strange.",
-        "Perhaps I have been wrong about one thing. A machine does not flinch when it loses. You — and the small, stubborn creatures behind you — flinched together.",
+        "Perhaps I have been wrong about one thing. A machine does not flinch when it loses. You — and the small, stubborn creatures behind you — flinched *together*.",
         "Take the building. Take the company. Take the R on the door. I am done with them. They were never enough."
       ]},
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
         "I heard it from across the region. The whole Silph tower quietly unknotting itself.",
         "Remember what I told you at the crossroads? About a battle being a conversation?",
-        "He just had one. He'll spend the rest of his life trying to decide whether it was with you, or with the part of himself he gave up a long time ago. Either way — it wasn't about power. Not in the end.",
+        "He just had one. He'll spend the rest of his life trying to decide whether it was with you, or with the part of himself he gave up a long time ago. Either way — it wasn't *about* power. Not in the end.",
         "Go home, trainer. You did a rare thing today."
       ]},
     ],
@@ -491,12 +491,12 @@ export const STORYLINES: Storyline[] = [
       { type: 'dialogue', speaker: 'Steven', sprite: sp('steven'), lines: [
         "You picked a bad week to finish the gym circuit. Or a good one, depending on how brave you are.",
         "Team Aqua have taken the submarine bay at Slateport. Team Magma have taken the volcano at Mt. Chimney. Both of them are chasing the same pair of ancient Pokémon, from the two ends of a very old story.",
-        "The worst of it isn't that either team is cruel. It's that both of them think they're the kind one. Archie wants the sea to cover the world so people stop hurting the ocean. Maxie wants the land to swallow the sea so people stop drowning in storms.",
-        "Neither of them is listening to Hoenn itself. I need someone who will listen. Will you go?"
+        "The worst of it isn't that either team is cruel. It's that *both of them think they're the kind one*. Archie wants the sea to cover the world so people stop hurting the ocean. Maxie wants the land to swallow the sea so people stop drowning in storms.",
+        "Neither of them is listening to Hoenn itself. I need someone who *will* listen. Will you go?"
       ]},
       { type: 'dialogue', speaker: 'Aqua Grunt', sprite: sp('aquagrunt'), lines: [
         "Oi! No dry-landers past this point.",
-        "Archie is busy saving the world, and you're in our wake."
+        "Archie is busy *saving the world*, and you're in our wake."
       ]},
       { type: 'battle', trainerName: 'Aqua Grunt', trainerTitle: 'Team Aqua', team: [318, 320, 72], fieldSize: 2, essenceReward: 200 },
       { type: 'dialogue', speaker: 'Aqua Grunt', sprite: sp('aquagrunt'), lines: [
@@ -505,7 +505,7 @@ export const STORYLINES: Storyline[] = [
       { type: 'dialogue', speaker: 'Shelly', sprite: sp('shelly'), lines: [
         "You're the kid the gym leaders wouldn't shut up about. Smaller than I pictured.",
         "Let me make this short. The sea has been a garbage dump for a hundred years. Every coral I cut open has a cigarette in it. Every fish I tag has a story it shouldn't have.",
-        "Archie is going to wash all of that away. And yes, it will cost us some things. Land things. Your things. That is how a debt gets paid."
+        "Archie is going to wash all of that away. And yes, it will cost us some things. Land things. *Your* things. That is how a debt gets paid."
       ]},
       { type: 'battle', trainerName: 'Shelly', trainerTitle: 'Team Aqua Admin', team: [367, 319, 224, 73], fieldSize: 2, essenceReward: 350 },
       { type: 'dialogue', speaker: 'Shelly', sprite: sp('shelly'), lines: [
@@ -519,22 +519,22 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'battle', trainerName: 'Matt', trainerTitle: 'Team Aqua Admin', team: [319, 130, 34, 223], fieldSize: 2, essenceReward: 400 },
       { type: 'dialogue', speaker: 'Matt', sprite: sp('matt'), lines: [
-        "Hah! HAHA! Oh man, you got me! That was great!",
+        "Hah! HAHA! Oh man, you *got* me! That was great!",
         "Go see the boss. Tell him Matt said he's gonna like you. He won't, but tell him anyway."
       ]},
       { type: 'dialogue', speaker: 'Archie', sprite: sp('archie'), lines: [
         "You came all the way down here just to argue with me? I respect that, kid. I really do.",
-        "Look. I've spent my whole life on the water. I know what a dying sea sounds like. It's quieter every year. No whale song in the gulf anymore. No Wailord calling back. The old waters are starving.",
+        "Look. I've spent my whole life on the water. I know what a dying sea sounds like. It's quieter every year. No whale song in the gulf anymore. No Wailord calling back. The old waters are *starving*.",
         "I'm not a bad man. I'm just the only one who stopped pretending.",
       ]},
       { type: 'dialogue', speaker: 'Archie', sprite: sp('archie'), lines: [
         "Your teacher Cynthia would say I'm not listening. She's wrong. I've been listening my whole life. I just don't like the answer I got.",
-        "So let's have one of her conversations, then. You and me. Loud as you can."
+        "So let's have one of her *conversations*, then. You and me. Loud as you can."
       ]},
       { type: 'battle', trainerName: 'Archie', trainerTitle: 'Team Aqua Leader', team: [319, 130, 342, 73, 593, 321], fieldSize: 2, essenceReward: 700 },
       { type: 'dialogue', speaker: 'Archie', sprite: sp('archie'), lines: [
         "...",
-        "You fight like the ocean does. Not against me — around me. Taking what's weak and leaving the rest.",
+        "You fight like the ocean does. Not against me — *around* me. Taking what's weak and leaving the rest.",
         "Fine. Go stop Maxie too, if you still can. And after — come find me. There's a beach at Pacifidlog I haven't walked in years. I'd like to see it with someone who doesn't want anything."
       ]},
       { type: 'dialogue', speaker: 'Magma Grunt', sprite: sp('magmagrunt'), lines: [
@@ -547,7 +547,7 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'Courtney', sprite: sp('courtney'), lines: [
         "Target. Acquired.",
-        "I am Courtney. I am a researcher. I do not feel anger. I only feel pattern.",
+        "I am Courtney. I am a researcher. I do not feel anger. I only feel *pattern*.",
         "Pattern says: there is too much ocean. Pattern says: land must increase. Pattern says: obstacles are removed. You are an obstacle. This is not personal."
       ]},
       { type: 'battle', trainerName: 'Courtney', trainerTitle: 'Team Magma Admin', team: [37, 58, 156, 323], fieldSize: 2, essenceReward: 350 },
@@ -557,33 +557,33 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'Tabitha', sprite: sp('tabitha'), lines: [
         "You've made it further than any trainer has ever made it through Magma's ranks. Congratulations.",
-        "I don't intend to let you reach Maxie. Not because I dislike you — I barely know you — but because he is the only person in my life who has ever made me feel useful, and I owe him everything.",
+        "I don't intend to let you reach Maxie. Not because I dislike you — I barely know you — but because he is the only person in my life who has ever made me feel *useful*, and I owe him everything.",
         "A man who saves you from being nothing will set the world on fire for you if you ask. That is the secret nobody at the university wants to print."
       ]},
       { type: 'battle', trainerName: 'Tabitha', trainerTitle: 'Team Magma Admin', team: [324, 219, 59, 323], fieldSize: 2, essenceReward: 400 },
       { type: 'dialogue', speaker: 'Tabitha', sprite: sp('tabitha'), lines: [
-        "...You've won. I'm finished. I only ask that, whatever you say to him next, you say it gently. He does love us. He just loves the mountain a little more."
+        "...You've won. I'm finished. I only ask that, whatever you say to him next, you say it *gently*. He does love us. He just loves the mountain a little more."
       ]},
       { type: 'dialogue', speaker: 'Maxie', sprite: sp('maxie'), lines: [
         "Ah. You. I wondered whether the gym leaders would send you, or whether Archie would talk you into his version of it first.",
         "Look around, trainer. The caldera is warm. The mountain is awake. Do you know how many people drown every year in Hoenn? Seven hundred and twenty-nine, last count. Do you know how many burn?",
-        "Seven. Water has always killed more of us than fire. I am not a fanatic. I am a statistician."
+        "Seven. Water has always killed more of us than fire. I am not a fanatic. I am a *statistician*."
       ]},
       { type: 'dialogue', speaker: 'Maxie', sprite: sp('maxie'), lines: [
-        "Archie believes that if he drowns the world slowly, it will be kinder than if nature drowns it in pieces. He is sentimental. Magma would be quick. Magma would be final. Magma would be, in the cold end, merciful.",
+        "Archie believes that if he drowns the world slowly, it will be kinder than if nature drowns it in pieces. He is sentimental. Magma would be quick. Magma would be final. Magma would be, in the cold end, *merciful*.",
         "I will not convince you. I don't think you'd let me. So — let my Pokémon argue instead. They always say it better than I do."
       ]},
       { type: 'battle', trainerName: 'Maxie', trainerTitle: 'Team Magma Leader', team: [323, 229, 330, 324, 126, 219], fieldSize: 2, essenceReward: 700 },
       { type: 'dialogue', speaker: 'Maxie', sprite: sp('maxie'), lines: [
         "...",
-        "My numbers were clean. My reasoning was sound. And yet you've just... disproven me, with nothing more than a handful of ordinary Pokémon who happened to still be holding hands.",
+        "My numbers were clean. My reasoning was sound. And yet you've just... *disproven* me, with nothing more than a handful of ordinary Pokémon who happened to still be holding hands.",
         "There is a variable I did not account for. I'll have to start over.",
         "Go. Tell Archie he was also wrong. Maybe, if we are both wrong together, we can stop shouting."
       ]},
       { type: 'dialogue', speaker: 'Steven', sprite: sp('steven'), lines: [
         "You've quieted both volcanos. One of rock. One of men.",
         "Hoenn breathes easier tonight than it has in a decade. And the funny thing — neither of those two were lying. They were both telling a true story, with one bad ending.",
-        "Cynthia wrote me last week. She said you were the first trainer she'd met in a long time whose Pokémon would lose for you before they'd leave you. I didn't understand what she meant then. I do now."
+        "Cynthia wrote me last week. She said you were the first trainer she'd met in a long time whose Pokémon would *lose* for you before they'd leave you. I didn't understand what she meant then. I do now."
       ]},
     ],
     completionReward: { essence: 2200, pack: 'rare' },
@@ -601,7 +601,7 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "I came because the signal hurts.",
-        "I hear Pokémon the way you hear music. And tonight, in the low band, I hear them being tuned. Forced into a key they were not born in. It is the worst thing I have felt since I was a boy.",
+        "I hear Pokémon the way you hear music. And tonight, in the low band, I hear them being *tuned*. Forced into a key they were not born in. It is the worst thing I have felt since I was a boy.",
         "I can't fight the people who built it. I am not... that kind of person anymore. But you are a trainer, and the Pokémon at your side chose you freely. Walk me up the tower. I will tell you what I hear at every floor."
       ]},
       { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgrunt'), lines: [
@@ -614,14 +614,14 @@ export const STORYLINES: Storyline[] = [
         "Keep climbing. The next floor is louder."
       ]},
       { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgruntf'), lines: [
-        "You brought a guy with green hair up a radio tower? Huh. Weird date.",
+        "You brought a *guy* with green hair up a radio tower? Huh. Weird date.",
         "Team Rocket's back, kid. Giovanni or no Giovanni. Ideas don't need a face."
       ]},
       { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [19, 20, 48, 49], fieldSize: 2, essenceReward: 200 },
       { type: 'dialogue', speaker: 'Petrel', sprite: sp('petrel'), lines: [
-        "Well, hello again. Remember me? Silph tower, floor nine, the one with the voice.",
-        "Ahem. '...I do not need heroes. I need power. And you are in my way.' Still got it? Be honest.",
-        "I've been running this whole operation for months. The grunts think I am him. Archer even fell for it once. That's a man with his eyes closed and his ears open — the best kind of follower."
+        "Well, hello again. Remember me? Silph tower, floor nine, the one with the *voice*.",
+        "*Ahem.* '...I do not need heroes. I need power. And you are in my way.' Still got it? Be honest.",
+        "I've been running this whole operation for months. The grunts think I *am* him. Archer even fell for it once. That's a man with his eyes closed and his ears open — the best kind of follower."
       ]},
       { type: 'battle', trainerName: 'Petrel', trainerTitle: 'Team Rocket Executive', team: [43, 42, 110, 89], fieldSize: 2, essenceReward: 350 },
       { type: 'dialogue', speaker: 'Petrel', sprite: sp('petrel'), lines: [
@@ -640,7 +640,7 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'Ariana', sprite: sp('ariana'), lines: [
         "You're the child who finished my boss. I've thought about you every night since.",
-        "Do you know what it is to love a man who made you somebody? Before Giovanni, I was nothing — a waitress from Celadon with a bad temper and a cheap haircut. He looked at me for ten seconds and said, 'You will run my advertising department.' And I did. And I was good.",
+        "Do you know what it is to love a man who made you somebody? Before Giovanni, I was nothing — a waitress from Celadon with a bad temper and a cheap haircut. He looked at me for ten seconds and said, 'You will run my advertising department.' And I did. And I was *good*.",
         "He went quiet after you beat him. We didn't know what to do. So we built this — a signal that calls him home. If Pokémon can hear it, maybe he can too. Maybe he'll remember us."
       ]},
       { type: 'battle', trainerName: 'Ariana', trainerTitle: 'Team Rocket Executive', team: [229, 31, 59, 169, 432], fieldSize: 2, essenceReward: 500 },
@@ -651,8 +651,8 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'Archer', sprite: sp('archer'), lines: [
         "Trainer. I remember you.",
-        "At Silph I told you locks don't mean to be inconvenient. I've thought about that line for years. I was wrong. Locks do mean to be inconvenient. That is the whole point of a lock. That is what we were.",
-        "Without him, I had to choose what to love. I chose the shape of him. A voice. A signal. A broadcast. I taught it to every Pokémon in this building. I called it him.",
+        "At Silph I told you locks don't mean to be inconvenient. I've thought about that line for years. I was wrong. Locks *do* mean to be inconvenient. That is the whole point of a lock. That is what we were.",
+        "Without him, I had to choose what to love. I chose the *shape* of him. A voice. A signal. A broadcast. I taught it to every Pokémon in this building. I called it *him*.",
         "And then you came back. And I realised — the only person in the world who can tell a copy from the original is the person who once defeated the original."
       ]},
       { type: 'dialogue', speaker: 'Archer', sprite: sp('archer'), lines: [
@@ -666,7 +666,7 @@ export const STORYLINES: Storyline[] = [
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "The sky is quiet. The birds are flying the wrong direction — they are remembering where south is. It will take them a few hours.",
-        "Thank you for doing what I could not. I have spent so long being angry at men that I forget some of them are already in pain, and they make their monsters out of it.",
+        "Thank you for doing what I could not. I have spent so long being angry at *men* that I forget some of them are already in pain, and they make their monsters out of it.",
         "Walk home slowly. Hold your Pokémon's hands. The thread held tonight, and it was because of you."
       ]},
     ],
@@ -681,7 +681,7 @@ export const STORYLINES: Storyline[] = [
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
         "I came back to Sinnoh because I felt the sky lean.",
         "You won't find this in any newspaper yet. A man named Cyrus, who owns half of Veilstone, has been buying artifacts related to Dialga and Palkia for ten years. Quietly. Legally. Through thirty-one shell companies.",
-        "Last week one of his employees — a grey-haired researcher named Charon — filed a patent for a machine called the 'Red Chain.' The description says it resonates with the fabric of reality. It also says, in a footnote, that the intended purpose is to 'restart' said fabric.",
+        "Last week one of his employees — a grey-haired researcher named Charon — filed a patent for a machine called the 'Red Chain.' The description says it resonates with *the fabric of reality.* It also says, in a footnote, that the intended purpose is to 'restart' said fabric.",
         "I am not a detective, trainer. But I am very frightened. Would you walk with me?"
       ]},
       { type: 'dialogue', speaker: 'Galactic Grunt', sprite: sp('galacticgrunt'), lines: [
@@ -693,9 +693,9 @@ export const STORYLINES: Storyline[] = [
         "Lucky. The Commanders are on every floor above. You'll run out of luck on one of them."
       ]},
       { type: 'dialogue', speaker: 'Mars', sprite: sp('mars'), lines: [
-        "Well hey there! Don't tell me — you're the trainer! The one people gossip about!",
-        "You want to know a fun secret? I am Galactic's morale officer. My actual job is to make everyone here feel better about the fact that we are going to delete the universe. Cheering them up in the mess hall. Doing karaoke. I'm so good at it.",
-        "Cyrus doesn't smile. He said the mission didn't need it. I disagreed. I smile twice as much so the average comes out right."
+        "Well hey there! Don't tell me — you're the *trainer*! The one people gossip about!",
+        "You want to know a fun secret? I am Galactic's morale officer. My actual job is to make everyone here feel better about the fact that we are going to delete the universe. Cheering them up in the mess hall. Doing karaoke. I'm *so good* at it.",
+        "Cyrus doesn't smile. He said the mission didn't need it. I disagreed. I smile *twice* as much so the average comes out right."
       ]},
       { type: 'battle', trainerName: 'Mars', trainerTitle: 'Galactic Commander', team: [431, 510, 432, 405], fieldSize: 2, essenceReward: 400 },
       { type: 'dialogue', speaker: 'Mars', sprite: sp('mars'), lines: [
@@ -711,12 +711,12 @@ export const STORYLINES: Storyline[] = [
       { type: 'battle', trainerName: 'Jupiter', trainerTitle: 'Galactic Commander', team: [42, 452, 466, 461], fieldSize: 2, essenceReward: 450 },
       { type: 'dialogue', speaker: 'Jupiter', sprite: sp('jupiter'), lines: [
         "...I have lost. How strange. I will need to recalibrate.",
-        "Saturn is at the inner lab. He is the one who built what we are about to start. Talk to him, if you can. He listens. I never understood why."
+        "Saturn is at the inner lab. He is the one who *built* what we are about to start. Talk to him, if you can. He listens. I never understood why."
       ]},
       { type: 'dialogue', speaker: 'Saturn', sprite: sp('saturn'), lines: [
         "Trainer. Please — I have two minutes. The Red Chain is priming. I want to use them carefully.",
         "I was Cyrus's first employee. I was the one who wrote the specification for the Chain. I have thought every day for a year about whether it is right to finish it.",
-        "He is not cruel. Do you understand that? He is not angry. He has simply decided that every bad thing that has ever happened to a living creature in this universe happens because that creature can feel. Remove feeling, and suffering ends with it.",
+        "He is not cruel. Do you understand that? He is not angry. He has simply decided that every bad thing that has ever happened to a living creature in this universe happens *because* that creature can feel. Remove feeling, and suffering ends with it.",
         "I think he is wrong. I think he is beautifully, terribly wrong. But I am going to fight you anyway, because he asked me to, and I have not yet found the moment where I refuse him."
       ]},
       { type: 'battle', trainerName: 'Saturn', trainerTitle: 'Galactic Commander', team: [215, 452, 475, 426, 437], fieldSize: 2, essenceReward: 550 },
@@ -739,13 +739,13 @@ export const STORYLINES: Storyline[] = [
       { type: 'dialogue', speaker: 'Cyrus', sprite: sp('cyrus'), lines: [
         "...",
         "My Pokémon are not standing up. They are looking at me. I have never seen them look at me before.",
-        "Something in the model is wrong. Perhaps the thread is not the knot. Perhaps it is what keeps the universe from being a knot.",
-        "I... require time. I require thought. I require silence, which is the only emotion I was ever willing to admit to. Excuse me."
+        "Something in the model is wrong. Perhaps the thread is *not* the knot. Perhaps it is what keeps the universe from being a knot.",
+        "I... require time. I require thought. I require *silence*, which is the only emotion I was ever willing to admit to. Excuse me."
       ]},
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
         "...I watched the whole thing on the monitor. I do not think I breathed.",
-        "He spoke my words back to me, did you hear it? He took the thread and called it the knot. For a moment I thought — what if he's right? What if I've been teaching this to children for ten years and I've been the fool?",
-        "And then your Pokémon stood up. And looked at you. And I knew the answer. I watched it happen, and I knew.",
+        "He spoke my words back to me, did you hear it? He took the thread and called it the knot. For a moment I thought — *what if he's right? What if I've been teaching this to children for ten years and I've been the fool?*",
+        "And then your Pokémon stood up. And looked at you. And I knew the answer. I watched it *happen*, and I knew.",
         "The thread is what keeps the universe from being a knot. He had the geometry inside-out. That is a relief I will be drinking tea about for years."
       ]},
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
@@ -765,7 +765,7 @@ export const STORYLINES: Storyline[] = [
         "I would not have come for this if I could have helped it.",
         "You know the other half of my story, trainer. You have seen me at crossroads, at rivers, at the edge of forests where I could hear my Pokémon disagreeing with me. You have been very patient.",
         "There is one person I have not spoken to since I left him. He raised me. He dressed me in a crown I could not see the inside of. He put sages around me like a cage of reasonable men, and he taught me that every sentence I said was also his.",
-        "His name is Ghetsis. He is still broadcasting. He still has followers. And there is a cold brain called Colress testing their Pokémon in a lab outside Opelucid, to see if he can make them obey without any of what we used to call bonding. I cannot face any of them on my own. Please."
+        "His name is Ghetsis. He is still broadcasting. He still has followers. And there is a cold brain called Colress testing their Pokémon in a lab outside Opelucid, to see if he can make them obey without *any* of what we used to call bonding. I cannot face any of them on my own. Please."
       ]},
       { type: 'dialogue', speaker: 'Plasma Grunt', sprite: sp('plasmagrunt'), lines: [
         "Halt, trainer! Plasma demands the liberation of all Pokémon!",
@@ -776,7 +776,7 @@ export const STORYLINES: Storyline[] = [
         "Tch — fine, keep your stolen friends. The sages will sort you out."
       ]},
       { type: 'dialogue', speaker: 'Zinzolin', sprite: sp('zinzolin'), lines: [
-        "So. N's chosen trainer. I have heard the Lord speak of you. He does not like you.",
+        "So. N's *chosen trainer*. I have heard the Lord speak of you. He does not like you.",
         "I am one of the seven. I was with him before you were born. I helped write the speeches that raised that boy like a greenhouse flower — tall, beautiful, brittle, and useless outside the glass.",
         "You pulled the glass off him. For that I will not forgive you, and I will not lose."
       ]},
@@ -794,40 +794,40 @@ export const STORYLINES: Storyline[] = [
       { type: 'battle', trainerName: 'Rood', trainerTitle: 'Defected Sage', team: [553, 536, 563, 601, 611], fieldSize: 2, essenceReward: 600 },
       { type: 'dialogue', speaker: 'Rood', sprite: sp('rood'), lines: [
         "...You deserve to stand in front of him. Go.",
-        "One more thing — the cold man, Colress, is not Plasma. Not really. He is a scientist, and his currency is curiosity. He will be in the next chamber. He wishes to compare you with the boy he calls N. Oblige him, or don't. But do not underestimate him — he is the only one in that building who does not lie."
+        "One more thing — the cold man, Colress, is not Plasma. Not really. He is a scientist, and his currency is *curiosity*. He will be in the next chamber. He wishes to compare you with the boy he calls N. Oblige him, or don't. But do not underestimate him — he is the only one in that building who does not lie."
       ]},
       { type: 'dialogue', speaker: 'Colress', sprite: sp('colress'), lines: [
-        "Ah! The other trainer. Excellent. Excellent.",
+        "Ah! The *other* trainer. Excellent. Excellent.",
         "I am Colress. I have spent the better part of my career testing the hypothesis that the strength of a Pokémon is precisely equal to the strength of its bond with its trainer, weighted by the trainer's willpower and divided by the number of times the trainer has failed them publicly.",
-        "It is a messy equation. Your data, however — your data is remarkable. I have been tracking your battles from the league records. Your team's standard deviation is vanishingly low. That is, forgive me, beautiful.",
+        "It is a messy equation. Your data, however — your data is *remarkable*. I have been tracking your battles from the league records. Your team's standard deviation is vanishingly low. That is, forgive me, *beautiful*.",
         "I don't care about Ghetsis. I care about the graph. Lend me five more points of data, if you would."
       ]},
       { type: 'battle', trainerName: 'Colress', trainerTitle: 'Plasma Scientist', team: [598, 376, 462, 479, 613, 571], fieldSize: 2, essenceReward: 700 },
       { type: 'dialogue', speaker: 'Colress', sprite: sp('colress'), lines: [
-        "Ahh. Wonderful. The coefficient is clean. I will be writing about this battle for the next decade.",
-        "I owe you a favour. When you open the next door, Ghetsis will attempt to have his Hydreigon hit you before you finish your first sentence. I have subtly unplugged the projector he was going to use to intimidate you. He hates working without his projector. Enjoy."
+        "*Ahh.* Wonderful. The coefficient is clean. I will be writing about this battle for the next decade.",
+        "I owe you a favour. When you open the next door, Ghetsis will attempt to have his Hydreigon hit you before you finish your first sentence. I have *subtly* unplugged the projector he was going to use to intimidate you. He hates working without his projector. Enjoy."
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "He is on the other side of that door. I can hear him pacing. He paces when the lights go out — he always did.",
-        "Trainer. I have to ask you something difficult. I have spent six months watching you build a team that argues with you. Pokémon that refuse moves you pick, that glare at you when you heal them, that love you in spite of you. That is what I always wanted, and never dared to make.",
+        "Trainer. I have to ask you something difficult. I have spent six months watching you build a team that argues with you. Pokémon that refuse moves you pick, that glare at you when you heal them, that love you *in spite* of you. That is what I always wanted, and never dared to make.",
         "He will tell you the bond is a lie. He will tell you I am his. He will tell you that what you have is a puppet show and he is the only one who ever took off the gloves.",
-        "Please — do not listen. He is a very persuasive man. He made a king out of me without my knowing. He will not do that to you. Not today. Go."
+        "Please — do not listen. He is a very persuasive man. He made a *king* out of me without my knowing. He will not do that to you. Not today. Go."
       ]},
       { type: 'dialogue', speaker: 'Ghetsis', sprite: sp('ghetsis'), lines: [
-        "So. The other child.",
+        "So. The *other* child.",
         "N spoke of you on the rare occasions I could force him to speak at all. He spoke with a warmth I had not heard in him before, and it was — I will admit — deeply inconvenient.",
-        "You are the reason my kingdom did not happen. I had it all. A boy whose tongue I owned. Seven sages to nod at him. A continent that had forgotten what it was to say no. And then you walked into a forest clearing with a tired Oshawott and you asked him, 'Who are you?' Like it was a thing he was allowed to answer."
+        "You are the reason my kingdom did not happen. I had it all. A boy whose tongue I owned. Seven sages to nod at him. A continent that had forgotten what it was to say *no*. And then you walked into a forest clearing with a tired Oshawott and you asked him, *'Who are you?'* Like it was a thing he was allowed to answer."
       ]},
       { type: 'dialogue', speaker: 'Ghetsis', sprite: sp('ghetsis'), lines: [
-        "I am not going to repeat his arguments back to you. I do not agree with them. I never did. Plasma was my instrument; the philosophy was a leash. I used the language of liberation to build the tightest cage anyone in Unova has ever seen, and my boy wore it for ten years and thanked me every morning.",
-        "Bonds, trainer, are harnesses. The thing you call love between you and your Pokémon is merely the softest rope ever invented. I know this because I have pulled on it, and it has always come.",
+        "I am not going to repeat his arguments back to you. I do not agree with them. I never did. Plasma was *my* instrument; the philosophy was a leash. I used the language of liberation to build the tightest cage anyone in Unova has ever seen, and my boy wore it for ten years and thanked me every morning.",
+        "Bonds, trainer, are *harnesses*. The thing you call love between you and your Pokémon is merely the softest rope ever invented. I know this because I have pulled on it, and it has always come.",
         "Come, then. Pull on yours. Let us see if it snaps cleanly or takes a few tries."
       ]},
       { type: 'battle', trainerName: 'Ghetsis', trainerTitle: 'Team Plasma Lord', team: [635, 626, 563, 537, 625, 604], fieldSize: 2, essenceReward: 1200 },
       { type: 'dialogue', speaker: 'Ghetsis', sprite: sp('ghetsis'), lines: [
         "...",
-        "My Hydreigon will not rise. She is looking at me. She has never looked at me before. I have owned her for eleven years.",
-        "A harness does not look back at its rider. A harness is a harness. Unless it was something else, the whole time, and I simply failed to notice.",
+        "My Hydreigon will not rise. She is *looking at me*. She has never looked at me before. I have owned her for eleven years.",
+        "A harness does not look back at its rider. A harness is a *harness*. Unless it was something else, the whole time, and I simply failed to notice.",
         "No. No. I refuse this conclusion. I have worked too hard. Take my son if you must — he is already not mine. Take my team. Take my tower. I will not take the thought that I was wrong."
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
@@ -839,7 +839,7 @@ export const STORYLINES: Storyline[] = [
       { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
         "I watched this one from Sinnoh. Steven was sitting next to me. Neither of us spoke.",
         "You have now closed every loop the last generation of villains left open. Rocket. Aqua. Magma. Galactic. Plasma. Each of them thought they had found the one correct way to hold a Pokémon. Each of them was wrong, and each of them was wrong in a different interesting shape.",
-        "What you have, trainer, is the only correct answer. It is: you do not hold them. You stand next to them. You ask them things. They answer. That is enough.",
+        "What you have, trainer, is the only correct answer. It is: *you do not hold them*. You stand next to them. You ask them things. They answer. That is enough.",
         "It has always been enough. It was always going to be you who proved it."
       ]},
     ],
@@ -983,17 +983,17 @@ export const STORYLINES: Storyline[] = [
         "And still, I am not sure. Not yet. Because I have also heard — in older voices, in voices that were singing before the first human spoke — questions that no one alive has answered. I will ask them through three battles. Three questions, three teams. If you can hold your thread against all three, I will believe what I want to believe.",
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
-        "The first question — the simplest one. Is what you feel real, or is it only what you've trained them to feel? My partner will ask it for me. Don't be afraid.",
+        "The first question — the simplest one. *Is what you feel real, or is it only what you've trained them to feel?* My partner will ask it for me. Don't be afraid.",
       ]},
       { type: 'battle', trainerName: 'N', trainerTitle: 'Seeker of Truth', team: [643, 571, 567, 601, 584, 625], fieldSize: 3, essenceReward: 1500 },
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "...One truth is not enough. A trained ear can mistake a good mimic for a real voice.",
-        "The second question, then. The world you dream of sharing with them — would they choose it, if they could speak? Show me what you would want them to want.",
+        "The second question, then. *The world you dream of sharing with them — would they choose it, if they could speak?* Show me what you would want them to want.",
       ]},
       { type: 'battle', trainerName: 'N', trainerTitle: 'Keeper of Ideals', team: [644, 635, 637, 612, 579, 526], fieldSize: 3, essenceReward: 1500 },
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "...I think I'm smiling. I didn't expect to.",
-        "One last question. The oldest one. Neither of us has an answer to it — but I want to see what happens when we ask together. If the thread could be cut, and your Pokémon chose to stay anyway — would they?",
+        "One last question. The oldest one. Neither of us has an answer to it — but I want to see what happens when we ask together. *If the thread could be cut, and your Pokémon chose to stay anyway — would they?*",
         "Kyurem is the silence your thread is stretched across. The kami have come because the sky is listening. Fight me one more time.",
       ]},
       { type: 'battle', trainerName: 'N', trainerTitle: 'At the Crossroads', team: [646, 641, 642, 645, 638, 640], fieldSize: 3, essenceReward: 2000 },
