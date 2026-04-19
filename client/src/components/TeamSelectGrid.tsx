@@ -140,7 +140,7 @@ export default function TeamSelectGrid({
 
       {!disabled && (
         <>
-          <div className="team-select-chosen">
+          <div className={`team-select-chosen ${teamSize > 4 ? 'compact' : ''}`}>
             {selected.map((idx, i) => {
               const inst = instances[idx];
               const p = inst.pokemon;
