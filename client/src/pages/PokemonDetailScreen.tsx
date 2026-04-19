@@ -79,10 +79,13 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const handleEvolve = (targetId: number) => {
     setEvoPreview(false);
     setEvolving({ from: inst, toId: targetId });
+    // Keep the overlay in sync with the CSS animation (~4200ms total).
+    // Fire the actual evolve during the reveal phase so state updates
+    // don't re-mount the detail screen mid-animation.
     setTimeout(() => {
       onEvolve(inst, targetId);
       setTimeout(() => setEvolving(null), 1200);
-    }, 1500);
+    }, 3200);
   };
 
   return (
@@ -235,18 +238,42 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
         if (!target) return null;
         return (
           <div className="evolve-overlay">
-            <div className="evolve-animation">
-              <div className="evolve-from">
-                <img src={evolving.from.pokemon.sprite} alt={evolving.from.pokemon.name} />
-                <div>{evolving.from.pokemon.name}</div>
-              </div>
-              <div className="evolve-arrow">→</div>
-              <div className="evolve-to">
-                <img src={target.sprite} alt={target.name} />
-                <div>{target.name}</div>
+            <div className="evolve-stage">
+              <div className="evolve-bg-rays" />
+              <div className="evolve-ring evolve-ring-1" />
+              <div className="evolve-ring evolve-ring-2" />
+              <div className="evolve-ring evolve-ring-3" />
+              <img
+                className="evolve-sprite evolve-sprite-from"
+                src={evolving.from.pokemon.sprite}
+                alt={evolving.from.pokemon.name}
+              />
+              <img
+                className="evolve-sprite evolve-sprite-to"
+                src={target.sprite}
+                alt={target.name}
+              />
+              <div className="evolve-flash" />
+              <div className="evolve-sparkles" aria-hidden="true">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="evolve-sparkle"
+                    style={{ ['--i' as string]: i } as React.CSSProperties}
+                  >
+                    ✦
+                  </span>
+                ))}
               </div>
             </div>
-            <div className="evolve-text">Evolving!</div>
+            <div className="evolve-caption">
+              <div className="evolve-caption-line evolve-caption-evolving">
+                {evolving.from.pokemon.name} is evolving!
+              </div>
+              <div className="evolve-caption-line evolve-caption-done">
+                {evolving.from.pokemon.name} evolved into {target.name}!
+              </div>
+            </div>
           </div>
         );
       })()}
