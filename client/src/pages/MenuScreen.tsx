@@ -15,9 +15,10 @@ interface MenuScreenProps {
   collectionSize: number;
   itemCount: number;
   notificationCount: number;
+  onOpenNotifications: () => void;
 }
 
-export default function MenuScreen({ playerName, playerId, playerPicture, essence, elo, collectionSize, itemCount, notificationCount }: MenuScreenProps) {
+export default function MenuScreen({ playerName, playerId, playerPicture, essence, elo, collectionSize, itemCount, notificationCount, onOpenNotifications }: MenuScreenProps) {
   const navigate = useNavigate();
   const [tmShopEnabled, setTmShopEnabled] = useState(false);
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
@@ -46,12 +47,12 @@ export default function MenuScreen({ playerName, playerId, playerPicture, essenc
           </div>
         </div>
         {notificationCount > 0 && (
-          <button className="menu-notif-btn" onClick={() => navigate('/notifications')}>
+          <button className="menu-notif-btn" onClick={onOpenNotifications}>
             🔔<span className="notif-badge">{notificationCount}</span>
           </button>
         )}
         {notificationCount === 0 && (
-          <button className="menu-notif-btn menu-notif-empty" onClick={() => navigate('/notifications')}>🔔</button>
+          <button className="menu-notif-btn menu-notif-empty" onClick={onOpenNotifications}>🔔</button>
         )}
       </div>
 

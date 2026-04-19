@@ -11,9 +11,9 @@ import BattleDemo from './pages/BattleDemo';
 import BattleMultiplayer from './pages/BattleMultiplayer';
 import ShopScreen from './pages/ShopScreen';
 import TradeScreen from './pages/TradeScreen';
-import NotificationsScreen from './pages/NotificationsScreen';
 import type { Notification } from './pages/NotificationsScreen';
 import NotificationToasts from './components/NotificationToasts';
+import NotificationsModal from './components/NotificationsModal';
 import TVView from './pages/TVView';
 import AdminPanel from './pages/AdminPanel';
 import BackgroundsDemo from './pages/BackgroundsDemo';
@@ -46,6 +46,7 @@ export default function App() {
   const [collection, setCollection] = useState<PokemonInstance[]>([]);
   const [items, setItems] = useState<OwnedItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifModalOpen, setNotifModalOpen] = useState(false);
   const [discovered, setDiscovered] = useState<Set<number>>(new Set());
   const [recentPokemonIds, setRecentPokemonIds] = useState<number[]>([]);
   const [prizeQueue, setPrizeQueue] = useState<TournamentPrizeAward[]>([]);
@@ -387,6 +388,9 @@ export default function App() {
       trade: '/trade',
       tournament: '/tournaments',
     };
+    // Accepting takes the user somewhere else — close the overlay first
+    // so the destination screen isn't covered by it.
+    setNotifModalOpen(false);
     navigate(routes[notification.type], { state: { autoChallenge: notification.from } });
   }, [navigate]);
 
@@ -423,9 +427,9 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route path="/play" element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} />} />
+        <Route path="/play" element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} onOpenNotifications={() => setNotifModalOpen(true)} />} />
         <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/notifications" element={<NotificationsScreen notifications={notifications} onAccept={handleAcceptNotification} onDismiss={dismissNotification} />} />
+        <Route path="/notifications" element={<NotificationsRedirect onOpen={() => setNotifModalOpen(true)} />} />
         <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} />} />
         <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} playerId={player.id} />} />
         <Route path="/pokedex" element={<PokedexScreen discovered={discovered} />} />
@@ -461,12 +465,36 @@ export default function App() {
         notifications={notifications}
         onOpen={(n) => {
           if (n.type === 'announcement') {
-            navigate('/notifications');
+            // Announcements: open the overlay on top of the current screen
+            // so we don't kick the user out of a battle or tournament.
+            setNotifModalOpen(true);
           } else {
             handleAcceptNotification(n);
           }
         }}
       />
+      {notifModalOpen && (
+        <NotificationsModal
+          notifications={notifications}
+          onAccept={handleAcceptNotification}
+          onDismiss={dismissNotification}
+          onClose={() => setNotifModalOpen(false)}
+        />
+      )}
     </>
   );
+}
+
+/**
+ * Legacy route `/notifications` is no longer a full-page screen. If some
+ * flow still navigates here (or a user follows an old bookmark), open the
+ * overlay on top of the menu rather than showing a dead page.
+ */
+function NotificationsRedirect({ onOpen }: { onOpen: () => void }) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    onOpen();
+    navigate('/play', { replace: true });
+  }, [onOpen, navigate]);
+  return null;
 }
