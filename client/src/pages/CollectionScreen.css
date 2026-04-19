@@ -98,29 +98,31 @@
 }
 .collection-filters::-webkit-scrollbar { display: none; }
 
-.collection-search {
+.collection-search-row {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  margin-left: auto;
+  padding: var(--space-2) var(--space-4) 0;
   flex-shrink: 0;
 }
 .collection-search-icon {
   position: absolute;
-  left: 10px;
-  font-size: 0.85em;
+  left: calc(var(--space-4) + 12px);
+  font-size: 0.95em;
   pointer-events: none;
   opacity: 0.7;
 }
 .collection-search-input {
-  padding: 6px 28px 6px 28px;
-  font-size: var(--text-sm);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 36px 10px 36px;
+  /* 16px prevents iOS Safari from zooming on focus */
+  font-size: 16px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   background: var(--color-surface);
   color: var(--color-text);
   outline: none;
-  min-width: 180px;
   transition: border-color var(--duration-fast) var(--ease-out),
               box-shadow var(--duration-fast) var(--ease-out);
 }
@@ -130,9 +132,9 @@
 }
 .collection-search-clear {
   position: absolute;
-  right: 6px;
-  width: 20px;
-  height: 20px;
+  right: calc(var(--space-4) + 8px);
+  width: 22px;
+  height: 22px;
   border: none;
   border-radius: 50%;
   background: var(--color-surface-2);

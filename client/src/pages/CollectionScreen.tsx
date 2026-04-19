@@ -101,6 +101,27 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
           </button>
         )}
       </div>
+      <div className="collection-search-row">
+        <span className="collection-search-icon" aria-hidden>🔍</span>
+        <input
+          type="search"
+          className="collection-search-input"
+          placeholder="Search by name…"
+          value={nameQuery}
+          onChange={(e) => setNameQuery(e.target.value)}
+          aria-label="Search Pokémon by name"
+        />
+        {nameQuery && (
+          <button
+            type="button"
+            className="collection-search-clear"
+            onClick={() => setNameQuery('')}
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
+      </div>
       <div className="collection-filters">
         {TIERS.map((tier) => (
           <button
@@ -111,27 +132,6 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
             {tier === 'all' ? 'All' : tier.charAt(0).toUpperCase() + tier.slice(1)}
           </button>
         ))}
-        <div className="collection-search">
-          <span className="collection-search-icon" aria-hidden>🔍</span>
-          <input
-            type="search"
-            className="collection-search-input"
-            placeholder="Search by name…"
-            value={nameQuery}
-            onChange={(e) => setNameQuery(e.target.value)}
-            aria-label="Search Pokémon by name"
-          />
-          {nameQuery && (
-            <button
-              type="button"
-              className="collection-search-clear"
-              onClick={() => setNameQuery('')}
-              aria-label="Clear search"
-            >
-              ×
-            </button>
-          )}
-        </div>
       </div>
       {filtered.length === 0 ? (
         <div className="collection-empty">No Pokémon yet — visit the shop!</div>
