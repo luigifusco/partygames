@@ -70,8 +70,6 @@
 
 .pkmn-card:has(.pkmn-card-info) {
   min-height: auto;
-  height: auto;
-  align-self: start;
 }
 
 /* When the card shows instance info below, keep the sprite overlap
