@@ -64,9 +64,18 @@ export default function TeamSelectGrid({
   disallowLegendaries = false,
 }: TeamSelectGridProps) {
   const [pendingPick, setPendingPick] = useState<number | null>(null);
+  const [nameQuery, setNameQuery] = useState('');
 
   const recentSet = new Set(recentPokemonIds ?? []);
-  const sortedIndices = instances.map((_, i) => i).sort((a, b) => {
+  const normalizedQuery = nameQuery.trim().toLowerCase();
+  const sortedIndices = instances
+    .map((_, i) => i)
+    .filter((i) =>
+      normalizedQuery === ''
+        ? true
+        : instances[i].pokemon.name.toLowerCase().includes(normalizedQuery),
+    )
+    .sort((a, b) => {
     const aFav = instances[a].favorite ? 0 : 1;
     const bFav = instances[b].favorite ? 0 : 1;
     if (aFav !== bFav) return aFav - bFav;
@@ -176,6 +185,28 @@ export default function TeamSelectGrid({
         </>
       )}
 
+      <div className="team-select-search-row">
+        <span className="team-select-search-icon" aria-hidden>🔍</span>
+        <input
+          type="search"
+          className="team-select-search-input"
+          placeholder="Search by name…"
+          value={nameQuery}
+          onChange={(e) => setNameQuery(e.target.value)}
+          aria-label="Search Pokémon by name"
+        />
+        {nameQuery && (
+          <button
+            type="button"
+            className="team-select-search-clear"
+            onClick={() => setNameQuery('')}
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       <div className="team-select-scroll">
         {instances.length === 0 ? (
           <div className="team-select-empty">
@@ -183,6 +214,14 @@ export default function TeamSelectGrid({
             <div className="team-select-empty-title">No Pokémon yet</div>
             <div className="team-select-empty-hint">
               Head back and complete <b>Oak's Gift</b> first — you'll pick your starter team there.
+            </div>
+          </div>
+        ) : sortedIndices.length === 0 ? (
+          <div className="team-select-empty">
+            <div className="team-select-empty-icon">🔍</div>
+            <div className="team-select-empty-title">No matches</div>
+            <div className="team-select-empty-hint">
+              No Pokémon match <b>{nameQuery}</b>.
             </div>
           </div>
         ) : (
