@@ -48,6 +48,7 @@
   object-fit: scale-down;
   image-rendering: pixelated;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+  flex-shrink: 0;
 }
 
 .pkmn-card-name {
@@ -64,6 +65,13 @@
   letter-spacing: 0.01em;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.65);
   padding: 0 4px;
+  flex-shrink: 0;
+}
+
+/* When the card shows instance info below, don't pull the name up
+ * over the sprite — keep it on its own line above the info block. */
+.pkmn-card:has(.pkmn-card-info) .pkmn-card-name {
+  margin-top: 2px;
 }
 
 .pkmn-card-stars {
