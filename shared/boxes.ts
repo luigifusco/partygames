@@ -92,10 +92,17 @@ export function openPack(packId: PackId, tierId: PackTierId): PackResult {
   if (tier.guaranteedHighTier && picked.length > 0) {
     const hasHigh = picked.some((p) => p.tier === 'epic' || p.tier === 'legendary');
     if (!hasHigh) {
-      const upgradePool = pool.filter((p) => p.tier === 'epic' || p.tier === 'legendary');
+      // Respect the tier's own legendary weight: a pack that normally can't
+      // drop a legendary (e.g. Ultra) shouldn't sneak one in via the pity.
+      const legendaryAllowed = (tier.weights.legendary ?? 0) > 0;
+      const upgradePool = pool.filter((p) =>
+        p.tier === 'epic' || (legendaryAllowed && p.tier === 'legendary'),
+      );
       if (upgradePool.length > 0) {
         const pityWeights: Record<BoxTier, number> = {
-          common: 0, uncommon: 0, rare: 0, epic: 99, legendary: 1,
+          common: 0, uncommon: 0, rare: 0,
+          epic: 99,
+          legendary: legendaryAllowed ? 1 : 0,
         };
         const upgrade = weightedPickFromPool(upgradePool, pityWeights) ?? upgradePool[0];
         picked[picked.length - 1] = upgrade;
