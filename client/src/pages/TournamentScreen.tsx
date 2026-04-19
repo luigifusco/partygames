@@ -45,11 +45,14 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
   }, []);
 
   useEffect(() => {
-    fetch(API + '/api/players')
+    // Pull name→picture for every registered player (leaderboard is the only
+    // endpoint that returns the full roster, not just online users).
+    fetch(API + '/api/leaderboard')
       .then(r => r.json())
-      .then((rows: any[]) => {
+      .then((data: any) => {
+        const rows: any[] = data?.players ?? [];
         const map: Record<string, string | null> = {};
-        for (const r of rows ?? []) map[r.name] = r.picture ?? null;
+        for (const r of rows) map[r.name] = r.picture ?? null;
         setPlayerPictures(map);
       })
       .catch(() => {});
