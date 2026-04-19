@@ -68,6 +68,13 @@
   flex-shrink: 0;
 }
 
+.pkmn-card:has(.pkmn-card-info) {
+  min-height: auto;
+  height: auto;
+  align-self: start;
+  overflow: visible;
+}
+
 /* When the card shows instance info below, don't pull the name up
  * over the sprite — keep it on its own line above the info block. */
 .pkmn-card:has(.pkmn-card-info) .pkmn-card-name {
