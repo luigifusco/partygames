@@ -156,6 +156,9 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
                     <img src={getHeldItemSprite(inst.heldItem)} alt="" />
                   </div>
                 )}
+                {!shardMode && canEvolve && (
+                  <div className="collection-evolve-pill">EVOLVE</div>
+                )}
                 {!shardMode && bondUnlocked && gate && targets.length > 0 && !canEvolve && (
                   <div className="collection-bond-bar" title={`Bond ${bondXp}/${gate.bondNeeded} · Tokens ${tokens}/${gate.tokensNeeded}`}>
                     <div className="collection-bond-fill" style={{ width: `${bondPct}%` }} />

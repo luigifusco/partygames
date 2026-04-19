@@ -239,7 +239,7 @@ export const STORYLINES: Storyline[] = [
         "Every trainer I've met fights differently. Some plan, some attack, some protect. Your Pokémon don't just listen to your moves — they listen to *who you are* in battle.",
         "Tell me... do you even know what kind of trainer you've become? Show me. Battle me again, and let your style speak.",
       ]},
-      { type: 'battle', trainerName: 'N', trainerTitle: 'Mysterious Trainer', team: [624, 532, 543], fieldSize: 1, essenceReward: 180 },
+      { type: 'battle', trainerName: 'N', trainerTitle: 'Mysterious Trainer', team: [625, 533, 544], fieldSize: 1, essenceReward: 240 },
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
         "Yes... I see it now. You have a voice in battle, even if you've never heard it.",
         "From now on, when you send out a Pokémon, choose how *you* show up too. Your style shapes their resolve. Their resolve shapes the fight.",

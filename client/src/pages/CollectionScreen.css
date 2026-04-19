@@ -159,6 +159,34 @@
   50%      { box-shadow: 0 0 0 2px rgba(255, 220, 130, 0.65), 0 0 38px rgba(255, 200, 90, 0.70); }
 }
 
+/* Floating "EVOLVE" pill that overlaps the top of the card so the
+ * evolvable state is immediately obvious in the grid. */
+.collection-evolve-pill {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #3b2600;
+  background: linear-gradient(135deg, #ffe27a 0%, #ffb347 100%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 2px 8px rgba(255, 180, 70, 0.6), 0 0 14px rgba(255, 220, 130, 0.7);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: evolve-pill-bounce 1.8s ease-in-out infinite;
+}
+
+@keyframes evolve-pill-bounce {
+  0%, 100% { transform: translate(-50%, 0) scale(1); }
+  50%      { transform: translate(-50%, 2px) scale(1.06); }
+}
+
 @keyframes pulse-gold {
   0%, 100% { box-shadow: 0 2px 8px rgba(255, 180, 70, 0.45); }
   50%      { box-shadow: 0 4px 18px rgba(255, 180, 70, 0.85); }
