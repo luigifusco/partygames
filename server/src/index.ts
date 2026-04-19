@@ -631,7 +631,14 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/favorite`, (req, res) => {
 
 // Get leaderboard (ranked by Elo)
 app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
-  const players = db.prepare('SELECT id, name, elo, essence, picture FROM players ORDER BY elo DESC').all() as any[];
+  const players = db.prepare(`
+    SELECT p.id, p.name, p.elo, p.essence, p.picture,
+           (SELECT COUNT(DISTINCT pokemon_id) FROM pokedex px WHERE px.player_id = p.id) as pokedex_count,
+           (SELECT COUNT(*) FROM trades t WHERE t.player1_id = p.id OR t.player2_id = p.id) as trade_count,
+           (SELECT COUNT(*) FROM battles b WHERE b.winner_id = p.id OR b.loser_id = p.id) as battle_count
+    FROM players p
+    ORDER BY p.elo DESC
+  `).all() as any[];
   const topPokemonStmt = db.prepare(
     'SELECT pokemon_id FROM battle_pokemon_usage WHERE player_id = ? ORDER BY times_used DESC LIMIT 3'
   );
@@ -640,6 +647,9 @@ app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
     elo: p.elo,
     essence: p.essence,
     picture: p.picture ?? null,
+    pokedexCount: p.pokedex_count ?? 0,
+    tradeCount: p.trade_count ?? 0,
+    battleCount: p.battle_count ?? 0,
     topPokemon: (topPokemonStmt.all(p.id) as any[]).map((r: any) => r.pokemon_id),
   }));
   return res.json({ players: result });

@@ -431,3 +431,39 @@
   border-width: 2px !important;
   flex-shrink: 0;
 }
+
+/* === Ranking mode switcher === */
+.tv-mode-bar {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0.25rem 0 1.5rem;
+}
+.tv-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 1rem;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(240, 242, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.tv-mode-chip:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+.tv-mode-chip-active {
+  color: #0f0f1e;
+  background: linear-gradient(135deg, #ffd86b, #ff9ad5);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 18px rgba(255, 154, 213, 0.45);
+}
+.tv-mode-icon { font-size: 1.1em; }
