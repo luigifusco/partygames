@@ -504,11 +504,13 @@ console.log('Generated shared/species-data.ts');
 
 // ─── Update MOVE_TYPES section in shared/move-data.ts ───────────────────
 
-// Group used moves by type
+// Group ALL known moves (from GAME_MOVES) by type. We include every move in
+// GAME_MOVES — not just the ones rolled as starting pairs — because moves now
+// come from random level-up/TM pools when packs open, and any of them can be
+// displayed in the UI. Missing entries fall back to 'normal' in getMoveType(),
+// which visually broke Night Slash, Sucker Punch, etc.
 const movesByType = {};
-for (const moveName of [...usedMoves].sort()) {
-  const type = GAME_MOVES[moveName];
-  if (!type) continue;
+for (const [moveName, type] of Object.entries(GAME_MOVES)) {
   if (!movesByType[type]) movesByType[type] = [];
   movesByType[type].push(moveName);
 }
