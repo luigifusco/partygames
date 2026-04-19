@@ -879,7 +879,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'kanto-e4', title: 'Kanto Elite Four', description: 'Face the strongest trainers in Kanto.',
     region: 'Kanto', difficulty: 'advanced', icon: '⭐', regionLock: 'Kanto',
-    requires: ['kanto-gyms'],
+    requires: ['kanto-gyms', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Lance', sprite: sp('lance'), lines: ["The Elite Four awaits.", "Only the strongest may pass."] },
       { type: 'dialogue', speaker: 'Lorelei', sprite: sp('lorelei'), lines: ["Welcome, challenger.", "I, Lorelei of the Elite Four, will freeze you in your tracks."] },
@@ -900,7 +900,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'johto-e4', title: 'Johto Elite Four', description: 'Face the strongest trainers in Johto.',
     region: 'Johto', difficulty: 'advanced', icon: '⭐', regionLock: 'Johto',
-    requires: ['johto-gyms'],
+    requires: ['johto-gyms', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Will', sprite: sp('will'), lines: ["Welcome, I am Will.", "I have trained all around the world. My psychic Pokémon are unbeatable!"] },
       { type: 'battle', trainerName: 'Will', trainerTitle: 'Elite Four', team: [178, 80, 103, 196], fieldSize: 2, essenceReward: 300 },
@@ -919,7 +919,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'hoenn-e4', title: 'Hoenn Elite Four', description: 'Face the strongest trainers in Hoenn.',
     region: 'Hoenn', difficulty: 'advanced', icon: '⭐', regionLock: 'Hoenn',
-    requires: ['hoenn-gyms'],
+    requires: ['hoenn-gyms', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Sidney', sprite: sp('sidney'), lines: ["Heh, you got grit.", "I'm Sidney — Dark-type's the name, and I don't play nice."] },
       { type: 'battle', trainerName: 'Sidney', trainerTitle: 'Elite Four', team: [275, 319, 332, 359], fieldSize: 2, essenceReward: 300 },
@@ -938,7 +938,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'sinnoh-e4', title: 'Sinnoh Elite Four', description: 'Face the strongest trainers in Sinnoh.',
     region: 'Sinnoh', difficulty: 'advanced', icon: '⭐', regionLock: 'Sinnoh',
-    requires: ['sinnoh-gyms'],
+    requires: ['sinnoh-gyms', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Aaron', sprite: sp('aaron'), lines: ["Welcome to the Pokémon League.", "I'm Aaron — Bug-types are way stronger than people think!"] },
       { type: 'battle', trainerName: 'Aaron', trainerTitle: 'Elite Four', team: [416, 214, 469, 402], fieldSize: 2, essenceReward: 300 },
@@ -957,7 +957,7 @@ export const STORYLINES: Storyline[] = [
   {
     id: 'unova-e4', title: 'Unova Elite Four', description: 'Face the strongest trainers in Unova.',
     region: 'Unova', difficulty: 'advanced', icon: '⭐', regionLock: 'Unova',
-    requires: ['unova-gyms'],
+    requires: ['unova-gyms', 'n-reawakening'],
     steps: [
       { type: 'dialogue', speaker: 'Shauntal', sprite: sp('shauntal'), lines: ["You... are an inspiration for my next novel.", "Let my Ghost-types haunt the page!"] },
       { type: 'battle', trainerName: 'Shauntal', trainerTitle: 'Elite Four', team: [563, 571, 622, 593], fieldSize: 2, essenceReward: 300 },
