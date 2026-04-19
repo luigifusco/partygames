@@ -1818,6 +1818,10 @@ io.on('connection', (socket) => {
     t.frozenTeams[playerName] = team;
     saveTournament(t);
     socket.emit('tournament:teamLocked', { tournamentId });
+    // Also broadcast an update so every viewer (including the submitter)
+    // refreshes frozenTeams — otherwise the submitter keeps seeing the
+    // "Lock Team" button until they navigate away.
+    broadcastTournamentUpdate(t);
   });
 
   socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities, characters }: any) => {
