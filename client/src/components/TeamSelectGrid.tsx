@@ -152,13 +152,14 @@ export default function TeamSelectGrid({
                 <div key={`sel-${idx}`} className="team-select-chosen-card" onClick={() => onToggle(idx)}>
                   <img src={p.sprite} alt={p.name} />
                   <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
-                  <span>{p.name}</span>
+                  <span className="team-select-chosen-name">{p.name}</span>
                   <span
                     className="team-select-chosen-character"
                     title={`${info.label}: ${info.blurb}`}
                     style={{ color: info.color }}
                   >
-                    {info.icon} {info.label}
+                    <span className="team-select-chosen-character-icon">{info.icon}</span>
+                    <span className="team-select-chosen-character-label"> {info.label}</span>
                   </span>
                 </div>
               );

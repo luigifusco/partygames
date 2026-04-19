@@ -301,13 +301,32 @@
   max-width: 44px;
   height: 44px;
 }
-.team-select-chosen.compact .team-select-chosen-card img {
+.team-select-chosen.compact .team-select-chosen-card > img {
   display: none;
 }
 .team-select-chosen.compact .team-select-sprite-icon {
   display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
-.team-select-chosen.compact .team-select-chosen-card > span {
+.team-select-chosen.compact .team-select-chosen-name {
+  display: none;
+}
+.team-select-chosen.compact .team-select-chosen-character {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 12px;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.75);
+  text-shadow: 0 0 3px #000;
+  z-index: 2;
+}
+.team-select-chosen.compact .team-select-chosen-character-label {
   display: none;
 }
 
