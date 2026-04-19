@@ -335,8 +335,8 @@
 
 .evolve-stage {
   position: relative;
-  width: 260px;
-  height: 260px;
+  width: min(380px, 86vw);
+  height: min(380px, 86vw);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -370,8 +370,8 @@
   position: absolute;
   inset: 0;
   margin: auto;
-  width: 180px;
-  height: 180px;
+  width: 260px;
+  height: 260px;
   border-radius: 50%;
   border: 2px solid rgba(255, 220, 120, 0.55);
   box-shadow: 0 0 24px rgba(255, 220, 120, 0.35), inset 0 0 24px rgba(255, 220, 120, 0.25);
@@ -393,8 +393,10 @@
   position: absolute;
   inset: 0;
   margin: auto;
-  width: 192px;
-  height: 192px;
+  width: 280px;
+  height: 280px;
+  max-width: 78%;
+  max-height: 78%;
   object-fit: scale-down;
   image-rendering: pixelated;
 }
@@ -509,15 +511,21 @@
 .evolve-caption {
   position: relative;
   margin-top: var(--space-6);
-  min-height: 2.4em;
+  min-height: 3.2em;
   width: 100%;
+  max-width: min(92vw, 560px);
   text-align: center;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
 }
 .evolve-caption-line {
   position: absolute;
   left: 50%;
+  right: auto;
   transform: translate(-50%, 6px);
-  font-size: var(--text-xl);
+  width: calc(100% - var(--space-8));
+  max-width: 100%;
+  font-size: clamp(var(--text-lg), 4.5vw, var(--text-xl));
   font-weight: 900;
   letter-spacing: 0.03em;
   background: var(--grad-gold);
@@ -526,7 +534,10 @@
   color: transparent;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
   opacity: 0;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.2;
 }
 .evolve-caption-evolving { animation: evolve-cap-evolving 4200ms ease-out forwards; }
 .evolve-caption-done     { animation: evolve-cap-done     4200ms ease-out forwards; }
