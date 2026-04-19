@@ -33,12 +33,15 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
   const chapters = useStoryChapters(playerId);
   const bondUnlocked = chapters.has(BOND_UNLOCK_CHAPTER);
   const [filter, setFilter] = useState<BoxTier | 'all'>('all');
+  const [nameQuery, setNameQuery] = useState('');
   const [shardMode, setShardMode] = useState(false);
   const [shardSelected, setShardSelected] = useState<Set<string>>(new Set());
   const [shardPreview, setShardPreview] = useState<PokemonInstance[] | null>(null);
 
+  const normalizedQuery = nameQuery.trim().toLowerCase();
   const filtered = collection
     .filter((inst) => filter === 'all' || inst.pokemon.tier === filter)
+    .filter((inst) => normalizedQuery === '' || inst.pokemon.name.toLowerCase().includes(normalizedQuery))
     .sort((a, b) => {
       const aFav = a.favorite ? 0 : 1;
       const bFav = b.favorite ? 0 : 1;
@@ -108,6 +111,27 @@ export default function CollectionScreen({ collection, items, onShard, playerId 
             {tier === 'all' ? 'All' : tier.charAt(0).toUpperCase() + tier.slice(1)}
           </button>
         ))}
+        <div className="collection-search">
+          <span className="collection-search-icon" aria-hidden>🔍</span>
+          <input
+            type="search"
+            className="collection-search-input"
+            placeholder="Search by name…"
+            value={nameQuery}
+            onChange={(e) => setNameQuery(e.target.value)}
+            aria-label="Search Pokémon by name"
+          />
+          {nameQuery && (
+            <button
+              type="button"
+              className="collection-search-clear"
+              onClick={() => setNameQuery('')}
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
       {filtered.length === 0 ? (
         <div className="collection-empty">No Pokémon yet — visit the shop!</div>
