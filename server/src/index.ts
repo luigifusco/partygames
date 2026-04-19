@@ -700,7 +700,11 @@ app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
 app.get(`${BASE_PATH}/api/admin/players`, (_req, res) => {
   const players = db.prepare(`
     SELECT p.id, p.name, p.essence, p.elo, p.picture, p.created_at,
-           (SELECT COUNT(*) FROM owned_pokemon op WHERE op.player_id = p.id) as pokemon_count
+           (SELECT COUNT(*) FROM owned_pokemon op WHERE op.player_id = p.id) as pokemon_count,
+           (SELECT COUNT(DISTINCT pokemon_id) FROM pokedex px WHERE px.player_id = p.id) as pokedex_count,
+           (SELECT COUNT(*) FROM trades t WHERE t.player1_id = p.id OR t.player2_id = p.id) as trade_count,
+           (SELECT COUNT(*) FROM battles b WHERE b.winner_id = p.id OR b.loser_id = p.id) as battle_count,
+           (SELECT COUNT(*) FROM story_progress sp WHERE sp.player_id = p.id) as story_chapters
     FROM players p ORDER BY p.created_at DESC
   `).all();
   return res.json({ players });

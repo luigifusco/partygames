@@ -13,6 +13,10 @@ interface PlayerRow {
   essence: number;
   elo: number;
   pokemon_count: number;
+  pokedex_count: number;
+  trade_count: number;
+  battle_count: number;
+  story_chapters: number;
   created_at: string;
   picture?: string | null;
 }
@@ -650,17 +654,33 @@ export default function AdminPanel() {
               </div>
 
               <div className="admin-user-stats">
-                <span className="ds-stat">
+                <span className="ds-stat" title="Essence">
                   <span className="ds-stat-icon">✨</span>
                   <span className="ds-stat-essence">{p.essence.toLocaleString()}</span>
                 </span>
-                <span className="ds-stat">
+                <span className="ds-stat" title="ELO">
                   <span className="ds-stat-icon">🏆</span>
                   <span className="ds-stat-elo">{p.elo}</span>
                 </span>
-                <span className="ds-stat">
+                <span className="ds-stat" title="Pokédex (unique discovered)">
                   <span className="ds-stat-icon">📕</span>
+                  <span>{p.pokedex_count ?? 0}</span>
+                </span>
+                <span className="ds-stat" title="Owned Pokémon">
+                  <span className="ds-stat-icon">🎴</span>
                   <span>{p.pokemon_count}</span>
+                </span>
+                <span className="ds-stat" title="Trades">
+                  <span className="ds-stat-icon">🔄</span>
+                  <span>{p.trade_count ?? 0}</span>
+                </span>
+                <span className="ds-stat" title="Battles played">
+                  <span className="ds-stat-icon">⚔️</span>
+                  <span>{p.battle_count ?? 0}</span>
+                </span>
+                <span className="ds-stat" title="Story chapters completed">
+                  <span className="ds-stat-icon">📖</span>
+                  <span>{p.story_chapters ?? 0}</span>
                 </span>
               </div>
 
