@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { STORYLINES, STORYLINES_BY_ID, DIFFICULTY_ORDER, starterRegionChapter, STARTER_REGION_PREFIX, CHARACTER_UNLOCK_CHAPTER } from '@shared/story-data';
 import type { Storyline, StoryStep, TeamChoice } from '@shared/story-data';
@@ -13,6 +14,24 @@ import { BASE_PATH } from '../config';
 import './StoryScreen.css';
 
 const API = BASE_PATH;
+
+function renderDialogueText(text: string): ReactNode {
+  // Supports **bold**, *italic*, _italic_ — order matters: bold first.
+  const parts: ReactNode[] = [];
+  const regex = /\*\*([^*]+)\*\*|\*([^*\n]+)\*|_([^_\n]+)_/g;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > lastIdx) parts.push(text.slice(lastIdx, m.index));
+    if (m[1] !== undefined) parts.push(<strong key={key++}>{m[1]}</strong>);
+    else if (m[2] !== undefined) parts.push(<em key={key++}>{m[2]}</em>);
+    else if (m[3] !== undefined) parts.push(<em key={key++}>{m[3]}</em>);
+    lastIdx = m.index + m[0].length;
+  }
+  if (lastIdx < text.length) parts.push(text.slice(lastIdx));
+  return parts.length > 0 ? parts : text;
+}
 
 interface StoryScreenProps {
   playerId: string;
@@ -439,7 +458,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
             <div className="story-dialogue-name">{step.speaker}</div>
           </div>
           <div className="story-dialogue-body">
-            <div className="story-dialogue-text">{lines[dialogueLineIdx]}</div>
+            <div className="story-dialogue-text">{renderDialogueText(lines[dialogueLineIdx])}</div>
           </div>
           <div className="story-dialogue-actions">
             <button className="story-retreat-btn" onClick={() => { setPhase('hub'); setActiveStoryline(null); }}>← Back</button>
