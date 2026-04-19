@@ -387,34 +387,463 @@ export const STORYLINES: Storyline[] = [
     completionReward: { essence: 1000, pack: 'uncommon' },
   },
   {
-    id: 'team-rocket', title: 'Team Rocket Hideout', description: 'Infiltrate Team Rocket and face Giovanni.',
+    id: 'team-rocket', title: 'Team Rocket Hideout',
+    description: 'Silph Co. has gone dark. Something very old, and very patient, has crawled out of retirement.',
     region: 'Kanto', difficulty: 'advanced', icon: '🚀', regionLock: 'Kanto',
     requires: ['kanto-gyms'],
     steps: [
-      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgrunt'), lines: ["Hand over your Pokémon!", "Team Rocket doesn't take no for an answer!"] },
-      { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [41, 109, 24], fieldSize: 1, essenceReward: 200 },
-      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgruntf'), lines: ["You beat my partner? You won't get past me!"] },
-      { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [110, 89, 42], fieldSize: 1, essenceReward: 200 },
-      { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: ["So you've made it to the boss.", "I don't need heroes. I need power.", "And you're in my way."] },
-      { type: 'battle', trainerName: 'Giovanni', trainerTitle: 'Team Rocket Boss', team: [34, 112, 31, 89], fieldSize: 2, essenceReward: 500 },
-      { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: ["Impressive... Team Rocket will remember this.", "But we'll be back."] },
+      { type: 'dialogue', speaker: 'Prof. Oak', sprite: sp('oak'), lines: [
+        "I got your message. And yes — it's them again.",
+        "Silph Co. stopped answering their phones two days ago. Officer Jenny found a sigil on the back of the lobby doors. A red R, stitched into the wallpaper like it had always been there.",
+        "Team Rocket never really left, you understand. They just learned to wait. The only person who could call them back is the one who built them.",
+        "I won't ask you to go in. I'll just tell you what Cynthia once told me, the first time I stood at a door like this. A trained Pokémon is a small, strange gift. Team Rocket are the people who learned how to steal that gift. Don't forget which of those things you are."
+      ]},
+      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgrunt'), lines: [
+        "Hey, kid! You're not on the visitor list.",
+        "Hand over your Pokémon and we'll call it a nice walk. Otherwise my Koffing gets to say hi."
+      ]},
+      { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [41, 109, 24], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgrunt'), lines: [
+        "Tch — lucky hit. The boss said there'd be a brat.",
+        "You're bouncing back up to the tenth floor now, right? Fine. Save me the climb."
+      ]},
+      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgruntf'), lines: [
+        "You're the one ruining our evening, huh?",
+        "Team Rocket pays in cold cash and colder feelings. Trust me — this is the best job a girl can have in Kanto right now."
+      ]},
+      { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [110, 89, 42], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgruntf'), lines: [
+        "...okay, fine, you're good.",
+        "Petrel is next. He's... weird. Just pretend you don't notice."
+      ]},
+      { type: 'dialogue', speaker: 'Petrel', sprite: sp('petrel'), lines: [
+        "Ahh, so this is the famous kid. Younger than I pictured. Meaner mouth, though — you looked at my face like I owed you something.",
+        "I do impressions, you know. Little hobby. Want to hear me do the boss? *'You're in my way.'* Chilling, isn't it? I've been rehearsing for years.",
+        "Enough warm-up. Let's see how you handle an actual rocket instead of the firecrackers downstairs."
+      ]},
+      { type: 'battle', trainerName: 'Petrel', trainerTitle: 'Team Rocket Executive', team: [42, 89, 110, 24], fieldSize: 2, essenceReward: 300 },
+      { type: 'dialogue', speaker: 'Petrel', sprite: sp('petrel'), lines: [
+        "Fine, fine. You win this one. I'll go practise a new voice.",
+        "Proton is on the staircase. Don't joke with him. He doesn't know what jokes are."
+      ]},
+      { type: 'dialogue', speaker: 'Proton', sprite: sp('proton'), lines: [
+        "So you're the one who won't stop moving.",
+        "I don't have anything to say to you. People who talk give people who listen something to use. I only use.",
+        "Your Pokémon won't be returned. Nothing here is returned."
+      ]},
+      { type: 'battle', trainerName: 'Proton', trainerTitle: 'Team Rocket Executive', team: [95, 53, 49, 109], fieldSize: 2, essenceReward: 300 },
+      { type: 'dialogue', speaker: 'Proton', sprite: sp('proton'), lines: [
+        "...",
+        "Go on, then. The next door is open. I don't waste breath twice."
+      ]},
+      { type: 'dialogue', speaker: 'Ariana', sprite: sp('ariana'), lines: [
+        "Well. Look at you — climbing through our whole building in one afternoon.",
+        "You remind me of someone, actually. A boy I used to know. He was very sweet, very *loud*, and very dead by the time he was sixteen.",
+        "The problem with children like him, and like you, is you think being right is a shield. It isn't. It's a very pretty piece of glass."
+      ]},
+      { type: 'battle', trainerName: 'Ariana', trainerTitle: 'Team Rocket Executive', team: [59, 229, 31, 169], fieldSize: 2, essenceReward: 400 },
+      { type: 'dialogue', speaker: 'Ariana', sprite: sp('ariana'), lines: [
+        "...I misjudged you. Not glass, then. Something with more edges.",
+        "Go. Archer is up the hall. He is the only one of us the boss genuinely likes. Be careful how you stand in front of him."
+      ]},
+      { type: 'dialogue', speaker: 'Archer', sprite: sp('archer'), lines: [
+        "Trainer. You must be tired. Please — sit if you like. You've earned it.",
+        "I am Archer. I am the hand that brought Team Rocket back together. Ariana calls me the one who *believes* in him, and I suppose that's right. Somebody had to.",
+        "I don't dislike you. I don't think Giovanni does either. You are simply the last lock on a door we've been opening for years. Locks don't mean to be inconvenient. They just are."
+      ]},
+      { type: 'battle', trainerName: 'Archer', trainerTitle: "Giovanni's Right Hand", team: [51, 93, 229, 68, 65], fieldSize: 2, essenceReward: 450 },
+      { type: 'dialogue', speaker: 'Archer', sprite: sp('archer'), lines: [
+        "...Inconvenient, then. I was wrong.",
+        "The boss is waiting. He asked me to let you through if you got this far. He always said he wanted to meet the kid personally."
+      ]},
+      { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: [
+        "So — you are the child.",
+        "I watched you through the cameras on every floor. You move well. Your Pokémon move better. That is rare.",
+        "Do you understand what I've spent my life doing? I have taken the strongest creatures on this continent and I have made them useful. *Useful* — that is the only honest word for what a Pokémon is to a person. Everything else is decoration."
+      ]},
+      { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: [
+        "Cynthia teaches children about threads and conversations. Professor Oak writes papers about friendship. I respect them. I do. They are the paint on the outside of a very expensive machine.",
+        "I am the machine.",
+        "Show me your machine, then. Let's see whose runs cleaner."
+      ]},
+      { type: 'battle', trainerName: 'Giovanni', trainerTitle: 'Team Rocket Boss', team: [34, 112, 31, 51, 248, 130], fieldSize: 2, essenceReward: 900 },
+      { type: 'dialogue', speaker: 'Giovanni', sprite: sp('giovanni'), lines: [
+        "...",
+        "I felt that last hit. Not in my Pokémon. In me. How strange.",
+        "Perhaps I have been wrong about one thing. A machine does not flinch when it loses. You — and the small, stubborn creatures behind you — flinched *together*.",
+        "Take the building. Take the company. Take the R on the door. I am done with them. They were never enough."
+      ]},
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "I heard it from across the region. The whole Silph tower quietly unknotting itself.",
+        "Remember what I told you at the crossroads? About a battle being a conversation?",
+        "He just had one. He'll spend the rest of his life trying to decide whether it was with you, or with the part of himself he gave up a long time ago. Either way — it wasn't *about* power. Not in the end.",
+        "Go home, trainer. You did a rare thing today."
+      ]},
     ],
-    completionReward: { essence: 1500, pack: 'uncommon' },
+    completionReward: { essence: 1800, pack: 'rare' },
   },
   {
-    id: 'aqua-magma', title: 'Aqua vs Magma', description: 'Stop both teams from tearing Hoenn apart.',
+    id: 'aqua-magma', title: 'Aqua vs Magma',
+    description: 'Two teams. One sea, one mountain. Neither willing to listen. And Hoenn in the middle.',
     region: 'Hoenn', difficulty: 'advanced', icon: '🌋', regionLock: 'Hoenn',
     requires: ['hoenn-gyms'],
     steps: [
-      { type: 'dialogue', speaker: 'Aqua Grunt', sprite: sp('aquagrunt'), lines: ["Team Aqua will expand the seas!", "Stand aside or face the tide!"] },
-      { type: 'battle', trainerName: 'Aqua Grunt', trainerTitle: 'Team Aqua', team: [318, 320, 72], fieldSize: 1, essenceReward: 200 },
-      { type: 'dialogue', speaker: 'Magma Grunt', sprite: sp('magmagrunt'), lines: ["Team Magma will expand the land!", "We need that power more than Aqua does!"] },
-      { type: 'battle', trainerName: 'Magma Grunt', trainerTitle: 'Team Magma', team: [322, 218, 88], fieldSize: 1, essenceReward: 200 },
-      { type: 'battle', trainerName: 'Archie', trainerTitle: 'Team Aqua Boss', team: [319, 130, 342, 73], fieldSize: 2, essenceReward: 400 },
-      { type: 'battle', trainerName: 'Maxie', trainerTitle: 'Team Magma Boss', team: [323, 229, 330, 324], fieldSize: 2, essenceReward: 400 },
-      { type: 'dialogue', speaker: 'Steven', sprite: sp('steven'), lines: ["You've saved Hoenn from both teams.", "The balance of land and sea is restored."] },
+      { type: 'dialogue', speaker: 'Steven', sprite: sp('steven'), lines: [
+        "You picked a bad week to finish the gym circuit. Or a good one, depending on how brave you are.",
+        "Team Aqua have taken the submarine bay at Slateport. Team Magma have taken the volcano at Mt. Chimney. Both of them are chasing the same pair of ancient Pokémon, from the two ends of a very old story.",
+        "The worst of it isn't that either team is cruel. It's that *both of them think they're the kind one*. Archie wants the sea to cover the world so people stop hurting the ocean. Maxie wants the land to swallow the sea so people stop drowning in storms.",
+        "Neither of them is listening to Hoenn itself. I need someone who *will* listen. Will you go?"
+      ]},
+      { type: 'dialogue', speaker: 'Aqua Grunt', sprite: sp('aquagrunt'), lines: [
+        "Oi! No dry-landers past this point.",
+        "Archie is busy *saving the world*, and you're in our wake."
+      ]},
+      { type: 'battle', trainerName: 'Aqua Grunt', trainerTitle: 'Team Aqua', team: [318, 320, 72], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Aqua Grunt', sprite: sp('aquagrunt'), lines: [
+        "Grr — fine. Go find Shelly. See how she likes you."
+      ]},
+      { type: 'dialogue', speaker: 'Shelly', sprite: sp('shelly'), lines: [
+        "You're the kid the gym leaders wouldn't shut up about. Smaller than I pictured.",
+        "Let me make this short. The sea has been a garbage dump for a hundred years. Every coral I cut open has a cigarette in it. Every fish I tag has a story it shouldn't have.",
+        "Archie is going to wash all of that away. And yes, it will cost us some things. Land things. *Your* things. That is how a debt gets paid."
+      ]},
+      { type: 'battle', trainerName: 'Shelly', trainerTitle: 'Team Aqua Admin', team: [367, 319, 224, 73], fieldSize: 2, essenceReward: 350 },
+      { type: 'dialogue', speaker: 'Shelly', sprite: sp('shelly'), lines: [
+        "...Alright. Alright.",
+        "Matt is guarding the sub. Don't let him scare you — he's mostly elbows."
+      ]},
+      { type: 'dialogue', speaker: 'Matt', sprite: sp('matt'), lines: [
+        "WOOO! Yes! Someone finally showed up! This is what I trained for!",
+        "Archie says fight smart. Archie says think first. Archie says I talk too loud.",
+        "Archie's not here right now, is he. Let's GO, kid!"
+      ]},
+      { type: 'battle', trainerName: 'Matt', trainerTitle: 'Team Aqua Admin', team: [319, 130, 34, 223], fieldSize: 2, essenceReward: 400 },
+      { type: 'dialogue', speaker: 'Matt', sprite: sp('matt'), lines: [
+        "Hah! HAHA! Oh man, you *got* me! That was great!",
+        "Go see the boss. Tell him Matt said he's gonna like you. He won't, but tell him anyway."
+      ]},
+      { type: 'dialogue', speaker: 'Archie', sprite: sp('archie'), lines: [
+        "You came all the way down here just to argue with me? I respect that, kid. I really do.",
+        "Look. I've spent my whole life on the water. I know what a dying sea sounds like. It's quieter every year. No whale song in the gulf anymore. No Wailord calling back. The old waters are *starving*.",
+        "I'm not a bad man. I'm just the only one who stopped pretending.",
+      ]},
+      { type: 'dialogue', speaker: 'Archie', sprite: sp('archie'), lines: [
+        "Your teacher Cynthia would say I'm not listening. She's wrong. I've been listening my whole life. I just don't like the answer I got.",
+        "So let's have one of her *conversations*, then. You and me. Loud as you can."
+      ]},
+      { type: 'battle', trainerName: 'Archie', trainerTitle: 'Team Aqua Leader', team: [319, 130, 342, 73, 593, 321], fieldSize: 2, essenceReward: 700 },
+      { type: 'dialogue', speaker: 'Archie', sprite: sp('archie'), lines: [
+        "...",
+        "You fight like the ocean does. Not against me — *around* me. Taking what's weak and leaving the rest.",
+        "Fine. Go stop Maxie too, if you still can. And after — come find me. There's a beach at Pacifidlog I haven't walked in years. I'd like to see it with someone who doesn't want anything."
+      ]},
+      { type: 'dialogue', speaker: 'Magma Grunt', sprite: sp('magmagrunt'), lines: [
+        "No outsiders on the mountain!",
+        "Maxie's drilling to the magma vein. Nothing's stopping us — not a sea-brat, and definitely not you."
+      ]},
+      { type: 'battle', trainerName: 'Magma Grunt', trainerTitle: 'Team Magma', team: [322, 218, 88], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Magma Grunt', sprite: sp('magmagrunt'), lines: [
+        "Get lost already! Courtney will deal with you!"
+      ]},
+      { type: 'dialogue', speaker: 'Courtney', sprite: sp('courtney'), lines: [
+        "Target. Acquired.",
+        "I am Courtney. I am a researcher. I do not feel anger. I only feel *pattern*.",
+        "Pattern says: there is too much ocean. Pattern says: land must increase. Pattern says: obstacles are removed. You are an obstacle. This is not personal."
+      ]},
+      { type: 'battle', trainerName: 'Courtney', trainerTitle: 'Team Magma Admin', team: [37, 58, 156, 323], fieldSize: 2, essenceReward: 350 },
+      { type: 'dialogue', speaker: 'Courtney', sprite: sp('courtney'), lines: [
+        "Pattern adjusted. Obstacle remains. Obstacle is... interesting.",
+        "Proceed. Tabitha is guarding the caldera."
+      ]},
+      { type: 'dialogue', speaker: 'Tabitha', sprite: sp('tabitha'), lines: [
+        "You've made it further than any trainer has ever made it through Magma's ranks. Congratulations.",
+        "I don't intend to let you reach Maxie. Not because I dislike you — I barely know you — but because he is the only person in my life who has ever made me feel *useful*, and I owe him everything.",
+        "A man who saves you from being nothing will set the world on fire for you if you ask. That is the secret nobody at the university wants to print."
+      ]},
+      { type: 'battle', trainerName: 'Tabitha', trainerTitle: 'Team Magma Admin', team: [324, 219, 59, 323], fieldSize: 2, essenceReward: 400 },
+      { type: 'dialogue', speaker: 'Tabitha', sprite: sp('tabitha'), lines: [
+        "...You've won. I'm finished. I only ask that, whatever you say to him next, you say it *gently*. He does love us. He just loves the mountain a little more."
+      ]},
+      { type: 'dialogue', speaker: 'Maxie', sprite: sp('maxie'), lines: [
+        "Ah. You. I wondered whether the gym leaders would send you, or whether Archie would talk you into his version of it first.",
+        "Look around, trainer. The caldera is warm. The mountain is awake. Do you know how many people drown every year in Hoenn? Seven hundred and twenty-nine, last count. Do you know how many burn?",
+        "Seven. Water has always killed more of us than fire. I am not a fanatic. I am a *statistician*."
+      ]},
+      { type: 'dialogue', speaker: 'Maxie', sprite: sp('maxie'), lines: [
+        "Archie believes that if he drowns the world slowly, it will be kinder than if nature drowns it in pieces. He is sentimental. Magma would be quick. Magma would be final. Magma would be, in the cold end, *merciful*.",
+        "I will not convince you. I don't think you'd let me. So — let my Pokémon argue instead. They always say it better than I do."
+      ]},
+      { type: 'battle', trainerName: 'Maxie', trainerTitle: 'Team Magma Leader', team: [323, 229, 330, 324, 126, 219], fieldSize: 2, essenceReward: 700 },
+      { type: 'dialogue', speaker: 'Maxie', sprite: sp('maxie'), lines: [
+        "...",
+        "My numbers were clean. My reasoning was sound. And yet you've just... *disproven* me, with nothing more than a handful of ordinary Pokémon who happened to still be holding hands.",
+        "There is a variable I did not account for. I'll have to start over.",
+        "Go. Tell Archie he was also wrong. Maybe, if we are both wrong together, we can stop shouting."
+      ]},
+      { type: 'dialogue', speaker: 'Steven', sprite: sp('steven'), lines: [
+        "You've quieted both volcanos. One of rock. One of men.",
+        "Hoenn breathes easier tonight than it has in a decade. And the funny thing — neither of those two were lying. They were both telling a true story, with one bad ending.",
+        "Cynthia wrote me last week. She said you were the first trainer she'd met in a long time whose Pokémon would *lose* for you before they'd leave you. I didn't understand what she meant then. I do now."
+      ]},
+    ],
+    completionReward: { essence: 2200, pack: 'rare' },
+  },
+  {
+    id: 'team-rocket-revival', title: 'The Signal Under Johto',
+    description: 'Giovanni is gone, but his company isn\'t. Someone is broadcasting his voice out of Goldenrod — and the Pokémon are listening.',
+    region: 'Johto', difficulty: 'advanced', icon: '📡', regionLock: 'Johto',
+    requires: ['johto-gyms', 'team-rocket'],
+    steps: [
+      { type: 'dialogue', speaker: 'Prof. Oak', sprite: sp('oak'), lines: [
+        "It's happening again. But not how you'd expect.",
+        "Three years after Silph. The Goldenrod Radio Tower has been pushing an old, scrambled signal on a sub-band at night. Kurt in Azalea says his slowpokes line up when it starts playing. The tails don't grow back for days.",
+        "This isn't Giovanni. He's in hiding, if he's alive. This is someone trying very hard to be him. Be careful, trainer. A copy of a villain is sometimes worse than the original — copies have something to prove."
+      ]},
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "I came because the signal hurts.",
+        "I hear Pokémon the way you hear music. And tonight, in the low band, I hear them being *tuned*. Forced into a key they were not born in. It is the worst thing I have felt since I was a boy.",
+        "I can't fight the people who built it. I am not... that kind of person anymore. But you are a trainer, and the Pokémon at your side chose you freely. Walk me up the tower. I will tell you what I hear at every floor."
+      ]},
+      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgrunt'), lines: [
+        "Hah, a fan? The boss said we'd get the usual curious kid.",
+        "You heard the broadcast too, I bet. It's catchy, isn't it? Doesn't matter. You're not going up."
+      ]},
+      { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [43, 96, 41], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "The Zubat on that grunt's belt — its ears are bleeding. The signal pushes them past their range.",
+        "Keep climbing. The next floor is louder."
+      ]},
+      { type: 'dialogue', speaker: 'Rocket Grunt', sprite: sp('rocketgruntf'), lines: [
+        "You brought a *guy* with green hair up a radio tower? Huh. Weird date.",
+        "Team Rocket's back, kid. Giovanni or no Giovanni. Ideas don't need a face."
+      ]},
+      { type: 'battle', trainerName: 'Rocket Grunt', trainerTitle: 'Team Rocket', team: [19, 20, 48, 49], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Petrel', sprite: sp('petrel'), lines: [
+        "Well, hello again. Remember me? Silph tower, floor nine, the one with the *voice*.",
+        "*Ahem.* '...I do not need heroes. I need power. And you are in my way.' Still got it? Be honest.",
+        "I've been running this whole operation for months. The grunts think I *am* him. Archer even fell for it once. That's a man with his eyes closed and his ears open — the best kind of follower."
+      ]},
+      { type: 'battle', trainerName: 'Petrel', trainerTitle: 'Team Rocket Executive', team: [43, 42, 110, 89], fieldSize: 2, essenceReward: 350 },
+      { type: 'dialogue', speaker: 'Petrel', sprite: sp('petrel'), lines: [
+        "Okay, okay. Voice lessons clearly weren't enough.",
+        "Go on up. The real believers are waiting."
+      ]},
+      { type: 'dialogue', speaker: 'Proton', sprite: sp('proton'), lines: [
+        "You again.",
+        "Last time I said nothing to you. I'll say one thing this time — the signal was my idea. Pokémon listen to the same frequency whales use to call home across an ocean. It turns out you can call them somewhere else with it. Anywhere else.",
+        "Imagine what a boy like you could do with an army that came when you whistled."
+      ]},
+      { type: 'battle', trainerName: 'Proton', trainerTitle: 'Team Rocket Executive', team: [95, 107, 49, 24, 101], fieldSize: 2, essenceReward: 400 },
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "He was going to sell that idea to governments. He already has a buyer.",
+        "One more floor. The tower-top is where the transmitter lives. Ariana will not move from it. She believes Giovanni is coming back, and she has built a pulpit for him."
+      ]},
+      { type: 'dialogue', speaker: 'Ariana', sprite: sp('ariana'), lines: [
+        "You're the child who finished my boss. I've thought about you every night since.",
+        "Do you know what it is to love a man who made you somebody? Before Giovanni, I was nothing — a waitress from Celadon with a bad temper and a cheap haircut. He looked at me for ten seconds and said, 'You will run my advertising department.' And I did. And I was *good*.",
+        "He went quiet after you beat him. We didn't know what to do. So we built this — a signal that calls him home. If Pokémon can hear it, maybe he can too. Maybe he'll remember us."
+      ]},
+      { type: 'battle', trainerName: 'Ariana', trainerTitle: 'Team Rocket Executive', team: [229, 31, 59, 169, 432], fieldSize: 2, essenceReward: 500 },
+      { type: 'dialogue', speaker: 'Ariana', sprite: sp('ariana'), lines: [
+        "...It was never going to work, was it.",
+        "He's not coming. He was never coming. Archer — Archer kept saying 'just one more broadcast.' I was the one pouring the drinks. I heard him cry once. I pretended I didn't.",
+        "Go. Shut off the tower. Shut off us."
+      ]},
+      { type: 'dialogue', speaker: 'Archer', sprite: sp('archer'), lines: [
+        "Trainer. I remember you.",
+        "At Silph I told you locks don't mean to be inconvenient. I've thought about that line for years. I was wrong. Locks *do* mean to be inconvenient. That is the whole point of a lock. That is what we were.",
+        "Without him, I had to choose what to love. I chose the *shape* of him. A voice. A signal. A broadcast. I taught it to every Pokémon in this building. I called it *him*.",
+        "And then you came back. And I realised — the only person in the world who can tell a copy from the original is the person who once defeated the original."
+      ]},
+      { type: 'dialogue', speaker: 'Archer', sprite: sp('archer'), lines: [
+        "One last fight, then. Not for him. For the lock. So at least the door closes cleanly this time."
+      ]},
+      { type: 'battle', trainerName: 'Archer', trainerTitle: 'Team Rocket Leader', team: [51, 93, 229, 58, 65, 130], fieldSize: 2, essenceReward: 900 },
+      { type: 'dialogue', speaker: 'Archer', sprite: sp('archer'), lines: [
+        "...",
+        "Goodnight, trainer. The signal is off. The Pokémon outside have stopped walking. You can hear the crickets again — I couldn't hear them for six months.",
+        "If you ever see him — tell him his company was good. Tell him his people waited. And tell him... we are done waiting."
+      ]},
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "The sky is quiet. The birds are flying the wrong direction — they are remembering where south is. It will take them a few hours.",
+        "Thank you for doing what I could not. I have spent so long being angry at *men* that I forget some of them are already in pain, and they make their monsters out of it.",
+        "Walk home slowly. Hold your Pokémon's hands. The thread held tonight, and it was because of you."
+      ]},
     ],
     completionReward: { essence: 2000, pack: 'rare' },
+  },
+  {
+    id: 'team-galactic', title: 'The World Without Spirit',
+    description: 'A quiet man in Sinnoh is trying to unmake the sky. He believes he is saving everyone.',
+    region: 'Sinnoh', difficulty: 'advanced', icon: '🌌', regionLock: 'Sinnoh',
+    requires: ['sinnoh-gyms'],
+    steps: [
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "I came back to Sinnoh because I felt the sky lean.",
+        "You won't find this in any newspaper yet. A man named Cyrus, who owns half of Veilstone, has been buying artifacts related to Dialga and Palkia for ten years. Quietly. Legally. Through thirty-one shell companies.",
+        "Last week one of his employees — a grey-haired researcher named Charon — filed a patent for a machine called the 'Red Chain.' The description says it resonates with *the fabric of reality.* It also says, in a footnote, that the intended purpose is to 'restart' said fabric.",
+        "I am not a detective, trainer. But I am very frightened. Would you walk with me?"
+      ]},
+      { type: 'dialogue', speaker: 'Galactic Grunt', sprite: sp('galacticgrunt'), lines: [
+        "Galactic business. Move along.",
+        "The boss is building a better world. Your 'world' is in the way."
+      ]},
+      { type: 'battle', trainerName: 'Galactic Grunt', trainerTitle: 'Team Galactic', team: [431, 451, 109], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Galactic Grunt', sprite: sp('galacticgrunt'), lines: [
+        "Lucky. The Commanders are on every floor above. You'll run out of luck on one of them."
+      ]},
+      { type: 'dialogue', speaker: 'Mars', sprite: sp('mars'), lines: [
+        "Well hey there! Don't tell me — you're the *trainer*! The one people gossip about!",
+        "You want to know a fun secret? I am Galactic's morale officer. My actual job is to make everyone here feel better about the fact that we are going to delete the universe. Cheering them up in the mess hall. Doing karaoke. I'm *so good* at it.",
+        "Cyrus doesn't smile. He said the mission didn't need it. I disagreed. I smile *twice* as much so the average comes out right."
+      ]},
+      { type: 'battle', trainerName: 'Mars', trainerTitle: 'Galactic Commander', team: [431, 510, 432, 405], fieldSize: 2, essenceReward: 400 },
+      { type: 'dialogue', speaker: 'Mars', sprite: sp('mars'), lines: [
+        "Oof! Okay! Well! I lost, didn't I!",
+        "Don't feel bad, trainer. I lose to Cyrus in chess every Wednesday. I'm used to it.",
+        "Jupiter's up the elevator. She will not smile at you. That is her job."
+      ]},
+      { type: 'dialogue', speaker: 'Jupiter', sprite: sp('jupiter'), lines: [
+        "You are the obstacle Mars mentioned. Smaller than her report suggested.",
+        "I am Jupiter. I run internal security. My Pokémon and I have one rule: we do not lose to obstacles.",
+        "Cyrus says emotion is noise. I don't agree with everything he says — I enjoy winning, for instance — but I agree with that one. You should try silencing yourself sometime. It is very efficient."
+      ]},
+      { type: 'battle', trainerName: 'Jupiter', trainerTitle: 'Galactic Commander', team: [42, 452, 466, 461], fieldSize: 2, essenceReward: 450 },
+      { type: 'dialogue', speaker: 'Jupiter', sprite: sp('jupiter'), lines: [
+        "...I have lost. How strange. I will need to recalibrate.",
+        "Saturn is at the inner lab. He is the one who *built* what we are about to start. Talk to him, if you can. He listens. I never understood why."
+      ]},
+      { type: 'dialogue', speaker: 'Saturn', sprite: sp('saturn'), lines: [
+        "Trainer. Please — I have two minutes. The Red Chain is priming. I want to use them carefully.",
+        "I was Cyrus's first employee. I was the one who wrote the specification for the Chain. I have thought every day for a year about whether it is right to finish it.",
+        "He is not cruel. Do you understand that? He is not angry. He has simply decided that every bad thing that has ever happened to a living creature in this universe happens *because* that creature can feel. Remove feeling, and suffering ends with it.",
+        "I think he is wrong. I think he is beautifully, terribly wrong. But I am going to fight you anyway, because he asked me to, and I have not yet found the moment where I refuse him."
+      ]},
+      { type: 'battle', trainerName: 'Saturn', trainerTitle: 'Galactic Commander', team: [215, 452, 475, 426, 437], fieldSize: 2, essenceReward: 550 },
+      { type: 'dialogue', speaker: 'Saturn', sprite: sp('saturn'), lines: [
+        "...That is the moment, then. The one I was waiting for.",
+        "Go past me. I am going to shut down the outer ring. I am going to watch my Toxicroak drink water for the first time in a week. I am going to remember what a Pokémon is for.",
+        "He is in the inner chamber. He will not shout. He never shouts."
+      ]},
+      { type: 'dialogue', speaker: 'Cyrus', sprite: sp('cyrus'), lines: [
+        "You are the child the Champion brought.",
+        "I do not hate you. I do not hate anyone. I spent my childhood watching my parents hate each other across a dinner table, and I decided when I was nine years old that hate is simply a feeling looking for an excuse.",
+        "All feelings are. Love, fear, grief, joy — they are excuses the brain invents to justify more of itself. Remove the brain's permission to feel, and you remove everyone's excuse to ruin everything."
+      ]},
+      { type: 'dialogue', speaker: 'Cyrus', sprite: sp('cyrus'), lines: [
+        "Your teacher Cynthia told you the land is held together by thread. I agree with her. I simply think the thread is the source of the knot, not the cure for it.",
+        "Dialga, Palkia. Time, space. I will ask them for a world with no thread at all. A clean, quiet sheet. No one will hurt. No one will love. Those are the same word, trainer, spelled in two different fonts.",
+        "I realise you will disagree with me. Disagreement is itself a feeling. Show me how much of it you've built — and I will show you how little it was worth."
+      ]},
+      { type: 'battle', trainerName: 'Cyrus', trainerTitle: 'Galactic Boss', team: [229, 430, 130, 461, 448, 445], fieldSize: 2, essenceReward: 1000 },
+      { type: 'dialogue', speaker: 'Cyrus', sprite: sp('cyrus'), lines: [
+        "...",
+        "My Pokémon are not standing up. They are looking at me. I have never seen them look at me before.",
+        "Something in the model is wrong. Perhaps the thread is *not* the knot. Perhaps it is what keeps the universe from being a knot.",
+        "I... require time. I require thought. I require *silence*, which is the only emotion I was ever willing to admit to. Excuse me."
+      ]},
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "...I watched the whole thing on the monitor. I do not think I breathed.",
+        "He spoke my words back to me, did you hear it? He took the thread and called it the knot. For a moment I thought — *what if he's right? What if I've been teaching this to children for ten years and I've been the fool?*",
+        "And then your Pokémon stood up. And looked at you. And I knew the answer. I watched it *happen*, and I knew.",
+        "The thread is what keeps the universe from being a knot. He had the geometry inside-out. That is a relief I will be drinking tea about for years."
+      ]},
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "Thank you for coming when I called. Very few people would. Fewer would have won.",
+        "Go home. Walk the lake road — the Pokémon there will come out to meet you tonight. They felt it too. They always feel it first."
+      ]},
+    ],
+    completionReward: { essence: 2500, pack: 'epic' },
+  },
+  {
+    id: 'team-plasma', title: 'The King and the Harness',
+    description: "Ghetsis never stopped speaking for N. Someone has to shut him up.",
+    region: 'Unova', difficulty: 'expert', icon: '⚜️', regionLock: 'Unova',
+    requires: ['unova-gyms', 'n-styles-revealed'],
+    steps: [
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "I would not have come for this if I could have helped it.",
+        "You know the other half of my story, trainer. You have seen me at crossroads, at rivers, at the edge of forests where I could hear my Pokémon disagreeing with me. You have been very patient.",
+        "There is one person I have not spoken to since I left him. He raised me. He dressed me in a crown I could not see the inside of. He put sages around me like a cage of reasonable men, and he taught me that every sentence I said was also his.",
+        "His name is Ghetsis. He is still broadcasting. He still has followers. And there is a cold brain called Colress testing their Pokémon in a lab outside Opelucid, to see if he can make them obey without *any* of what we used to call bonding. I cannot face any of them on my own. Please."
+      ]},
+      { type: 'dialogue', speaker: 'Plasma Grunt', sprite: sp('plasmagrunt'), lines: [
+        "Halt, trainer! Plasma demands the liberation of all Pokémon!",
+        "...also specifically the ones in your pockets. Hand them over and we'll call it liberation."
+      ]},
+      { type: 'battle', trainerName: 'Plasma Grunt', trainerTitle: 'Team Plasma', team: [519, 506, 551], fieldSize: 2, essenceReward: 200 },
+      { type: 'dialogue', speaker: 'Plasma Grunt', sprite: sp('plasmagrunt'), lines: [
+        "Tch — fine, keep your stolen friends. The sages will sort you out."
+      ]},
+      { type: 'dialogue', speaker: 'Zinzolin', sprite: sp('zinzolin'), lines: [
+        "So. N's *chosen trainer*. I have heard the Lord speak of you. He does not like you.",
+        "I am one of the seven. I was with him before you were born. I helped write the speeches that raised that boy like a greenhouse flower — tall, beautiful, brittle, and useless outside the glass.",
+        "You pulled the glass off him. For that I will not forgive you, and I will not lose."
+      ]},
+      { type: 'battle', trainerName: 'Zinzolin', trainerTitle: 'Plasma Sage', team: [461, 472, 478, 615], fieldSize: 2, essenceReward: 500 },
+      { type: 'dialogue', speaker: 'Zinzolin', sprite: sp('zinzolin'), lines: [
+        "...You broke my ice as easily as you broke him. Predictable.",
+        "Go. Rood is waiting. He used to be one of us. He is not anymore. Traitor's fate."
+      ]},
+      { type: 'dialogue', speaker: 'Rood', sprite: sp('rood'), lines: [
+        "Trainer — wait. I am not here to stop you.",
+        "I was one of the seven sages. I served Ghetsis for thirty-one years. I taught N to read Pokémon-song from the cradle. I also watched the man I trusted turn my student into a puppet and tell him it was a coronation.",
+        "I left Plasma two years ago. I took the Pokémon the Lord had forgotten — the ones he called 'symbolic' — and I've been returning them to the wild, one river at a time. That is my penance.",
+        "I cannot stop Ghetsis alone. But I can test you. If you still deserve to stand in front of him, my Pokémon will tell you. If you don't — better that you learn it now, from me, than later, from him."
+      ]},
+      { type: 'battle', trainerName: 'Rood', trainerTitle: 'Defected Sage', team: [553, 536, 563, 601, 611], fieldSize: 2, essenceReward: 600 },
+      { type: 'dialogue', speaker: 'Rood', sprite: sp('rood'), lines: [
+        "...You deserve to stand in front of him. Go.",
+        "One more thing — the cold man, Colress, is not Plasma. Not really. He is a scientist, and his currency is *curiosity*. He will be in the next chamber. He wishes to compare you with the boy he calls N. Oblige him, or don't. But do not underestimate him — he is the only one in that building who does not lie."
+      ]},
+      { type: 'dialogue', speaker: 'Colress', sprite: sp('colress'), lines: [
+        "Ah! The *other* trainer. Excellent. Excellent.",
+        "I am Colress. I have spent the better part of my career testing the hypothesis that the strength of a Pokémon is precisely equal to the strength of its bond with its trainer, weighted by the trainer's willpower and divided by the number of times the trainer has failed them publicly.",
+        "It is a messy equation. Your data, however — your data is *remarkable*. I have been tracking your battles from the league records. Your team's standard deviation is vanishingly low. That is, forgive me, *beautiful*.",
+        "I don't care about Ghetsis. I care about the graph. Lend me five more points of data, if you would."
+      ]},
+      { type: 'battle', trainerName: 'Colress', trainerTitle: 'Plasma Scientist', team: [598, 376, 462, 479, 613, 571], fieldSize: 2, essenceReward: 700 },
+      { type: 'dialogue', speaker: 'Colress', sprite: sp('colress'), lines: [
+        "*Ahh.* Wonderful. The coefficient is clean. I will be writing about this battle for the next decade.",
+        "I owe you a favour. When you open the next door, Ghetsis will attempt to have his Hydreigon hit you before you finish your first sentence. I have *subtly* unplugged the projector he was going to use to intimidate you. He hates working without his projector. Enjoy."
+      ]},
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "He is on the other side of that door. I can hear him pacing. He paces when the lights go out — he always did.",
+        "Trainer. I have to ask you something difficult. I have spent six months watching you build a team that argues with you. Pokémon that refuse moves you pick, that glare at you when you heal them, that love you *in spite* of you. That is what I always wanted, and never dared to make.",
+        "He will tell you the bond is a lie. He will tell you I am his. He will tell you that what you have is a puppet show and he is the only one who ever took off the gloves.",
+        "Please — do not listen. He is a very persuasive man. He made a *king* out of me without my knowing. He will not do that to you. Not today. Go."
+      ]},
+      { type: 'dialogue', speaker: 'Ghetsis', sprite: sp('ghetsis'), lines: [
+        "So. The *other* child.",
+        "N spoke of you on the rare occasions I could force him to speak at all. He spoke with a warmth I had not heard in him before, and it was — I will admit — deeply inconvenient.",
+        "You are the reason my kingdom did not happen. I had it all. A boy whose tongue I owned. Seven sages to nod at him. A continent that had forgotten what it was to say *no*. And then you walked into a forest clearing with a tired Oshawott and you asked him, *'Who are you?'* Like it was a thing he was allowed to answer."
+      ]},
+      { type: 'dialogue', speaker: 'Ghetsis', sprite: sp('ghetsis'), lines: [
+        "I am not going to repeat his arguments back to you. I do not agree with them. I never did. Plasma was *my* instrument; the philosophy was a leash. I used the language of liberation to build the tightest cage anyone in Unova has ever seen, and my boy wore it for ten years and thanked me every morning.",
+        "Bonds, trainer, are *harnesses*. The thing you call love between you and your Pokémon is merely the softest rope ever invented. I know this because I have pulled on it, and it has always come.",
+        "Come, then. Pull on yours. Let us see if it snaps cleanly or takes a few tries."
+      ]},
+      { type: 'battle', trainerName: 'Ghetsis', trainerTitle: 'Team Plasma Lord', team: [635, 626, 563, 537, 625, 604], fieldSize: 2, essenceReward: 1200 },
+      { type: 'dialogue', speaker: 'Ghetsis', sprite: sp('ghetsis'), lines: [
+        "...",
+        "My Hydreigon will not rise. She is *looking at me*. She has never looked at me before. I have owned her for eleven years.",
+        "A harness does not look back at its rider. A harness is a *harness*. Unless it was something else, the whole time, and I simply failed to notice.",
+        "No. No. I refuse this conclusion. I have worked too hard. Take my son if you must — he is already not mine. Take my team. Take my tower. I will not take the thought that I was wrong."
+      ]},
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "He's gone. He walked out of the back door still telling himself he won.",
+        "That's alright. People like him always walk out the back door. The front door is where the rest of us say goodnight.",
+        "Trainer — I do not think I'm going to cry, and I do not think I'm going to feel proud either, and that's a strange, quiet thing to feel after ten years of being told to feel exactly one way.",
+        "Thank you. For the thing that is neither pride nor grief. For the quiet place in the middle, where a boy gets to simply be a person for the first time."
+      ]},
+      { type: 'dialogue', speaker: 'Cynthia', sprite: sp('cynthia'), lines: [
+        "I watched this one from Sinnoh. Steven was sitting next to me. Neither of us spoke.",
+        "You have now closed every loop the last generation of villains left open. Rocket. Aqua. Magma. Galactic. Plasma. Each of them thought they had found the one correct way to hold a Pokémon. Each of them was wrong, and each of them was wrong in a different interesting shape.",
+        "What you have, trainer, is the only correct answer. It is: *you do not hold them*. You stand next to them. You ask them things. They answer. That is enough.",
+        "It has always been enough. It was always going to be you who proved it."
+      ]},
+    ],
+    completionReward: { essence: 3000, pack: 'epic' },
   },
   {
     id: 'kanto-e4', title: 'Kanto Elite Four', description: 'Face the strongest trainers in Kanto.',
