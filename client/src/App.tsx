@@ -20,7 +20,7 @@ import StoryScreen from './pages/StoryScreen';
 import TournamentScreen from './pages/TournamentScreen';
 import TournamentPrizeModal, { type TournamentPrizeAward } from './components/TournamentPrizeModal';
 import { socket } from './socket';
-import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, teachTMOnServer, useBoostOnServer, giveHeldItemOnServer, takeHeldItemOnServer, setFavoriteOnServer, buildInstance, buildItem } from './api';
+import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, reawakenPokemonOnServer, teachTMOnServer, useBoostOnServer, giveHeldItemOnServer, takeHeldItemOnServer, setFavoriteOnServer, buildInstance, buildItem } from './api';
 import { BASE_PATH } from './config';
 import { STARTING_ESSENCE } from '@shared/essence';
 import { STARTING_ELO } from '@shared/elo';
@@ -135,6 +135,36 @@ export default function App() {
     if (player) {
       setFavoriteOnServer(player.id, instance.instanceId, next);
     }
+  };
+
+  const reawakenPokemon = async (instance: PokemonInstance): Promise<{ ok: true; newInstanceId: string } | { ok: false; error: string }> => {
+    if (!player) return { ok: false, error: 'No player' };
+    const res = await reawakenPokemonOnServer(player.id, instance.instanceId);
+    if (!res.ok) return { ok: false, error: res.error };
+    // Server deducted essence + 1 token + returned held item to inventory
+    // and deleted the old instance. Reflect that locally.
+    const cost = res.cost;
+    setEssence((e) => Math.max(0, e - cost.essence));
+    setItems((prev) => {
+      const next = [...prev];
+      // Remove one token of this species
+      const tokenIdx = next.findIndex((it) => it.itemType === 'token' && it.itemData === String(instance.pokemon.id));
+      if (tokenIdx >= 0) next.splice(tokenIdx, 1);
+      // Returned held item (if any)
+      if (instance.heldItem) {
+        next.push(buildItem({ id: 'ret-' + Math.random().toString(36).slice(2), item_type: 'held_item', item_data: instance.heldItem }));
+      }
+      return next;
+    });
+    const built = buildInstance({ ...res.newInstance });
+    setCollection((c) => {
+      const idx = c.findIndex((x) => x.instanceId === instance.instanceId);
+      if (idx < 0 || !built) return c.filter((x) => x.instanceId !== instance.instanceId);
+      const next = [...c];
+      next[idx] = built;
+      return next;
+    });
+    return { ok: true, newInstanceId: built?.instanceId ?? '' };
   };
 
   const teachTM = async (instance: PokemonInstance, moveName: string, moveSlot: 0 | 1) => {
@@ -362,7 +392,7 @@ export default function App() {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/notifications" element={<NotificationsScreen notifications={notifications} onAccept={handleAcceptNotification} onDismiss={dismissNotification} />} />
         <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} />} />
-        <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} playerId={player.id} />} />
+        <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} essence={essence} onShard={shardPokemon} onEvolve={evolvePokemon} onReawaken={reawakenPokemon} onToggleFavorite={toggleFavorite} playerId={player.id} />} />
         <Route path="/pokedex" element={<PokedexScreen discovered={discovered} />} />
         <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
         <Route path="/shop" element={<ShopScreen essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />

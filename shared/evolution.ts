@@ -114,3 +114,45 @@ export function evolveGate(input: EvolveGateInput): EvolveGate {
     tokensNeeded: 0,
   };
 }
+
+// --- Reawakening cost (N's post-Plasma feature) ---
+// Releases an existing specimen and returns a fresh one of the same
+// species, at the cost of 1 species token + essence scaled by tier
+// and evolution stage.
+const REAWAKEN_ESSENCE_BY_TIER: Record<BoxTier, number> = {
+  common: 300,
+  uncommon: 800,
+  rare: 2000,
+  epic: 6000,
+  legendary: 20000,
+};
+
+export interface ReawakenSpecies {
+  tier: BoxTier;
+  evolutionFrom?: number;
+  evolutionTo?: number[];
+}
+
+export interface ReawakenCost {
+  tokens: number;
+  essence: number;
+}
+
+/** 1.0 for base forms, 1.8 for mid-evolutions, 3.0 for final forms. */
+export function reawakenStageMultiplier(s: ReawakenSpecies): number {
+  const hasPrev = typeof s.evolutionFrom === 'number';
+  const hasNext = Array.isArray(s.evolutionTo) && s.evolutionTo.length > 0;
+  if (hasPrev && !hasNext) return 3.0;     // final form
+  if (hasPrev && hasNext) return 1.8;      // middle stage
+  if (!hasPrev && hasNext) return 1.0;     // base form with further evolutions
+  return 1.8;                              // standalone (no evolutions either way)
+}
+
+export function reawakenCost(species: ReawakenSpecies): ReawakenCost {
+  const baseEssence = REAWAKEN_ESSENCE_BY_TIER[species.tier] ?? 2000;
+  const mult = reawakenStageMultiplier(species);
+  return {
+    tokens: 1,
+    essence: Math.round(baseEssence * mult),
+  };
+}

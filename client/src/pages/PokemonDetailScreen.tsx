@@ -5,20 +5,23 @@ import { getEffectiveMoves } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { NATURE_BY_NAME, calcStat, STAT_LABELS } from '@shared/natures';
 import { getHeldItemSprite, getHeldItemName, HELD_ITEMS_BY_ID } from '@shared/held-item-data';
-import { evolveGate } from '@shared/evolution';
+import { evolveGate, reawakenCost } from '@shared/evolution';
 import { evolutionStepFor } from '@shared/evolution-helpers';
-import { BOND_UNLOCK_CHAPTER } from '@shared/story-data';
+import { BOND_UNLOCK_CHAPTER, REAWAKEN_UNLOCK_CHAPTER } from '@shared/story-data';
 import RarityStars from '../components/RarityStars';
 import ShardConfirmModal from '../components/ShardConfirmModal';
 import EvolvePreviewModal from '../components/EvolvePreviewModal';
+import ReawakenConfirmModal from '../components/ReawakenConfirmModal';
 import { useStoryChapters } from '../hooks/useStoryChapters';
 import './PokemonDetailScreen.css';
 
 interface PokemonDetailScreenProps {
   collection: PokemonInstance[];
   items: OwnedItem[];
+  essence: number;
   onShard: (instance: PokemonInstance) => void;
   onEvolve: (instance: PokemonInstance, targetId: number) => void;
+  onReawaken: (instance: PokemonInstance) => Promise<{ ok: true; newInstanceId: string } | { ok: false; error: string }>;
   onToggleFavorite: (instance: PokemonInstance) => void;
   playerId?: string;
 }
@@ -33,14 +36,17 @@ const TYPE_COLORS: Record<string, string> = {
   steel: '#B8B8D0', fairy: '#EE99AC',
 };
 
-export default function PokemonDetailScreen({ collection, items, onShard, onEvolve, onToggleFavorite, playerId }: PokemonDetailScreenProps) {
+export default function PokemonDetailScreen({ collection, items, essence, onShard, onEvolve, onReawaken, onToggleFavorite, playerId }: PokemonDetailScreenProps) {
   const { idx } = useParams();
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const bondUnlocked = chapters.has(BOND_UNLOCK_CHAPTER);
+  const reawakenUnlocked = chapters.has(REAWAKEN_UNLOCK_CHAPTER);
   const [shardConfirm, setShardConfirm] = useState(false);
   const [evoPreview, setEvoPreview] = useState(false);
   const [evolving, setEvolving] = useState<{ from: PokemonInstance; toId: number } | null>(null);
+  const [reawakenPrompt, setReawakenPrompt] = useState(false);
+  const [reawakening, setReawakening] = useState<{ from: PokemonInstance } | null>(null);
 
   const index = parseInt(idx ?? '', 10);
   const inst = collection[index];
@@ -88,6 +94,34 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
     }, 3200);
   };
 
+  // --- Reawaken ---
+  const rCost = reawakenCost({
+    tier: pokemon.tier,
+    evolutionFrom: pokemon.evolutionFrom,
+    evolutionTo: pokemon.evolutionTo,
+  });
+  const tokenCount = items.filter((it) => it.itemType === 'token' && it.itemData === String(pokemon.id)).length;
+  const hasEssence = essence >= rCost.essence;
+  const hasToken = tokenCount >= rCost.tokens;
+  const canReawaken = reawakenUnlocked && hasEssence && hasToken;
+
+  const handleReawaken = async () => {
+    setReawakenPrompt(false);
+    setReawakening({ from: inst });
+    // Let the fade-out play, then call server, then hold the reveal.
+    setTimeout(async () => {
+      const res = await onReawaken(inst);
+      setTimeout(() => {
+        setReawakening(null);
+        if (res.ok) {
+          // Find the new instance in the collection and jump to it.
+          // It's at the same index we came from (App replaces in place).
+          navigate(`/pokemon/${index}`, { replace: true });
+        }
+      }, 1600);
+    }, 1800);
+  };
+
   return (
     <div className="pokemon-detail-screen">
       <div className="detail-header">
@@ -120,6 +154,17 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
           targets={evoTargets}
           onCancel={() => setEvoPreview(false)}
           onConfirm={(id) => handleEvolve(id)}
+        />
+      )}
+
+      {reawakenPrompt && (
+        <ReawakenConfirmModal
+          instance={inst}
+          essence={essence}
+          tokenCount={tokenCount}
+          cost={rCost}
+          onCancel={() => setReawakenPrompt(false)}
+          onConfirm={handleReawaken}
         />
       )}
 
@@ -161,6 +206,25 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
             <span className="detail-evolve-cta-spark">✦</span>
             <span>Evolve {pokemon.name}</span>
             <span className="detail-evolve-cta-spark">✦</span>
+          </button>
+        )}
+
+        {reawakenUnlocked && (
+          <button
+            className={`detail-reawaken-cta ${canReawaken ? '' : 'disabled'}`}
+            onClick={() => { if (canReawaken) setReawakenPrompt(true); }}
+            disabled={!canReawaken}
+            title={
+              !hasToken ? `Need 1 ${pokemon.name} token` :
+              !hasEssence ? `Need ${rCost.essence.toLocaleString()} essence` :
+              `Reawaken ${pokemon.name} — fresh nature, IVs, ability and moves`
+            }
+          >
+            <span className="detail-reawaken-cta-spark">✨</span>
+            <span>Reawaken {pokemon.name}</span>
+            <span className="detail-reawaken-cta-cost">
+              1 🪙 · ✦ {rCost.essence.toLocaleString()}
+            </span>
           </button>
         )}
 
@@ -277,6 +341,47 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
           </div>
         );
       })()}
+      {reawakening && (
+        <div className="reawaken-overlay">
+          <div className="reawaken-stage">
+            <div className="reawaken-aurora" />
+            <div className="reawaken-forest" aria-hidden="true">
+              {/* silhouette trees — simple CSS shapes */}
+              <span className="reawaken-tree reawaken-tree-1" />
+              <span className="reawaken-tree reawaken-tree-2" />
+              <span className="reawaken-tree reawaken-tree-3" />
+              <span className="reawaken-tree reawaken-tree-4" />
+            </div>
+            <img
+              className="reawaken-sprite reawaken-sprite-from"
+              src={reawakening.from.pokemon.sprite}
+              alt={reawakening.from.pokemon.name}
+            />
+            <img
+              className="reawaken-sprite reawaken-sprite-to"
+              src={reawakening.from.pokemon.sprite}
+              alt={reawakening.from.pokemon.name}
+            />
+            <div className="reawaken-motes" aria-hidden="true">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="reawaken-mote"
+                  style={{ ['--i' as string]: i } as React.CSSProperties}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="reawaken-caption">
+            <div className="reawaken-caption-line reawaken-caption-release">
+              {reawakening.from.pokemon.name} returned to the wild for one night…
+            </div>
+            <div className="reawaken-caption-line reawaken-caption-return">
+              …and came back reawakened.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

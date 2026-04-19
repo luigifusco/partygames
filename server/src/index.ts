@@ -20,8 +20,9 @@ import { canLearnMove, randomMovesForSpecies, randomLevelUpMovesForSpecies, type
 import { getMoveInfo } from '../../shared/move-info.js';
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
-import { computeBondXp, bondThresholdForStep, type BondBattleMode } from '../../shared/evolution.js';
+import { computeBondXp, bondThresholdForStep, reawakenCost, type BondBattleMode } from '../../shared/evolution.js';
 import { evolutionStepFor } from '../../shared/evolution-helpers.js';
+import { REAWAKEN_UNLOCK_CHAPTER } from '../../shared/story-data.js';
 import { runShowdownBattle, randomAbilityForSpecies } from './showdown-battle.js';
 import { Dex as ShowdownDex } from '../../pokemon-showdown/dist/sim/index.js';
 
@@ -471,6 +472,104 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/evolve`, (req, res) => {
 
   db.prepare('UPDATE owned_pokemon SET pokemon_id = ?, bond_xp = ? WHERE id = ?').run(newPokemonId, leftover, instanceId);
   return res.json({ ok: true, bondXp: leftover });
+});
+
+// Reawaken: release a specimen and generate a fresh one of the same
+// species (new nature, IVs, ability, moves). Gated by N's Reawakening
+// storyline. Costs 1 species token + tier-scaled essence. The old
+// instance is deleted; the held item (if any) returns to inventory.
+app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
+  const { instanceId } = req.body;
+  if (typeof instanceId !== 'string') {
+    return res.status(400).json({ error: 'Invalid params' });
+  }
+  const playerId = req.params.id;
+
+  // Gate on story progression
+  const hasUnlock = db.prepare(
+    'SELECT 1 FROM story_progress WHERE player_id = ? AND chapter_id = ?'
+  ).get(playerId, REAWAKEN_UNLOCK_CHAPTER);
+  if (!hasUnlock) {
+    return res.status(403).json({ error: 'Reawakening has not been taught yet.' });
+  }
+
+  const pokemon = db.prepare(
+    'SELECT id, pokemon_id, held_item, favorite, character FROM owned_pokemon WHERE id = ? AND player_id = ?'
+  ).get(instanceId, playerId) as any;
+  if (!pokemon) {
+    return res.status(404).json({ error: 'Pokemon not found' });
+  }
+
+  const species = POKEMON_BY_ID[pokemon.pokemon_id];
+  if (!species) return res.status(404).json({ error: 'Unknown species' });
+
+  const cost = reawakenCost({
+    tier: species.tier,
+    evolutionFrom: species.evolutionFrom,
+    evolutionTo: species.evolutionTo,
+  });
+
+  // Verify essence
+  const player = db.prepare('SELECT essence FROM players WHERE id = ?').get(playerId) as any;
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+  if ((player.essence ?? 0) < cost.essence) {
+    return res.status(400).json({ error: 'Not enough essence', required: cost });
+  }
+
+  // Verify a matching species token
+  const tokenRow = db.prepare(
+    'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT 1'
+  ).get(playerId, 'token', String(species.id)) as any;
+  if (!tokenRow) {
+    return res.status(400).json({ error: `You need a ${species.name} token.`, required: cost });
+  }
+
+  // Deduct essence + token, release held item, delete old, insert new.
+  // Use an ad-hoc transaction by running in order; node:sqlite doesn't
+  // expose db.transaction the same way better-sqlite3 does, but the
+  // operations here are idempotent enough on failure.
+  db.prepare('UPDATE players SET essence = essence - ? WHERE id = ?').run(cost.essence, playerId);
+  db.prepare('DELETE FROM owned_items WHERE id = ?').run(tokenRow.id);
+
+  if (pokemon.held_item) {
+    const returnedId = uuidv4();
+    db.prepare(
+      'INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)'
+    ).run(returnedId, playerId, 'held_item', pokemon.held_item);
+  }
+
+  db.prepare('DELETE FROM owned_pokemon WHERE id = ?').run(pokemon.id);
+
+  const newId = uuidv4();
+  const nature = randomNature();
+  const ivs = randomIVs();
+  const ability = randomAbilityForSpecies(species.name);
+  const moves = randomLevelUpMovesForSpecies(
+    species.name,
+    getMoveInfoFull,
+    species.moves as [string, string],
+    { atkBias: speciesAtkBias(species), types: species.types as string[] },
+  );
+  db.prepare(
+    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(newId, playerId, species.id, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+
+  return res.json({
+    ok: true,
+    cost,
+    newInstance: {
+      id: newId,
+      pokemon_id: species.id,
+      nature,
+      iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense,
+      iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed,
+      ability,
+      move_1: moves[0], move_2: moves[1],
+      bond_xp: 0,
+      favorite: 0,
+      held_item: null,
+    },
+  });
 });
 
 // Teach a TM to a pokemon (replace one of its moves, consume the TM)

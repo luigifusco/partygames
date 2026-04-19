@@ -60,6 +60,7 @@ export function starterRegionChapter(region: string) { return STARTER_REGION_PRE
 export const BOND_UNLOCK_CHAPTER = 'n-bond-awakening:complete';
 export const CHARACTER_UNLOCK_CHAPTER = 'n-styles-revealed:complete';
 export const MENU_UNLOCK_CHAPTER = 'cynthia-intro:complete';
+export const REAWAKEN_UNLOCK_CHAPTER = 'n-reawakening:complete';
 
 function sp(name: string) { return TRAINERS_PATH + '/' + name + '.png'; }
 
@@ -844,6 +845,36 @@ export const STORYLINES: Storyline[] = [
       ]},
     ],
     completionReward: { essence: 3000, pack: 'epic' },
+  },
+  {
+    id: 'n-reawakening', title: 'A Second Chance',
+    description: "N has one more question — whether a bond can survive being let go.",
+    region: 'Unova', difficulty: 'expert', icon: '✨',
+    requires: ['team-plasma'],
+    steps: [
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "Will you meet me in the clearing outside Opelucid? The one with the white birches. I would like to show you something quiet.",
+        "I have been thinking, since that night, about what he said. *A harness.* He said it so certainly. I almost believed him — for a minute, I almost did.",
+        "And then I remembered a thing I learned from my Zorua when I was six. She walked away from me, once. For three full days. I sat in the snow and I did not call her. She came back because she wanted to, and I have never, in my life, held anything as tightly as I held her that evening.",
+        "That is the test, isn't it? Not whether a Pokémon stays. Whether it comes back.",
+      ]},
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "I want to propose an experiment. A gift, if you win it.",
+        "There is an old rite — my grandmother's generation still remembered it. A trainer who trusts their bond can release a partner to the wild for a single night. The Pokémon remembers what it was before it was yours. It meets its wild cousins. It drinks from rivers it hasn't seen since it was small.",
+        "And then, because it wants to, it comes back — reborn. Fresh nature. Fresh muscles. Fresh moves learned in one long wild night. Still yours. Still — *entirely* — your partner.",
+        "My teachers called it **Reawakening**. Ghetsis forbade it, because a king cannot allow his subjects to choose him twice.",
+        "Battle me. If you win, I will teach it to you. And I will believe, for the rest of my life, that what you have is not a harness.",
+      ]},
+      { type: 'battle', trainerName: 'N', trainerTitle: 'Seeker of Truth', team: [571, 625, 601, 553, 567, 635], fieldSize: 3, essenceReward: 1500 },
+      { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
+        "There. *There.* Thank you.",
+        "I watched your Pokémon through that battle, and I watched them watching *you*, and I am satisfied. The thread holds.",
+        "The rite is yours. When a partner is unhappy in their own skin — when a nature fits them wrongly, when the moves came to them in a bad order, when the dice they were born with feel too small — bring them to a quiet place. Thank them. Let them go for one night. They will come back the version of themselves they were meant to be.",
+        "You will need a token of their kind — a piece of the wider family they're rejoining — and essence for the offering. The stronger the partner, the more essence the rite asks of you; the world is careful with its rare ones.",
+        "Go. Someone is waiting for their one good night.",
+      ]},
+    ],
+    completionReward: { essence: 2000, pack: 'rare' },
   },
   {
     id: 'kanto-e4', title: 'Kanto Elite Four', description: 'Face the strongest trainers in Kanto.',
