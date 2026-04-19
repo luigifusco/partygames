@@ -571,6 +571,8 @@
   overflow: hidden;
   pointer-events: none;
   z-index: 2;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
 }
 .collection-bond-fill {
   position: absolute;
