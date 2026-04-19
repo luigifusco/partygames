@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
 import Avatar from '../components/Avatar';
-import { MENU_UNLOCK_CHAPTER } from '@shared/story-data';
+import { MENU_UNLOCK_CHAPTER, MINIGAMES_UNLOCK_CHAPTER } from '@shared/story-data';
 import { useStoryChaptersStatus } from '../hooks/useStoryChapters';
 import './MenuScreen.css';
 
@@ -24,6 +24,7 @@ export default function MenuScreen({ playerName, playerId, playerPicture, essenc
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
   const { chapters, loaded: chaptersLoaded } = useStoryChaptersStatus(playerId);
   const menuUnlocked = chapters.has(MENU_UNLOCK_CHAPTER);
+  const minigamesUnlocked = chapters.has(MINIGAMES_UNLOCK_CHAPTER);
 
   useEffect(() => {
     fetch(BASE_PATH + '/api/settings/features')
@@ -94,6 +95,12 @@ export default function MenuScreen({ playerName, playerId, playerPicture, essenc
               <button className="menu-tile" onClick={() => navigate('/battle-demo')}>
                 <span className="menu-tile-icon">🤖</span>
                 <span className="menu-tile-label">vs AI</span>
+              </button>
+            )}
+            {minigamesUnlocked && (
+              <button className="menu-tile" onClick={() => navigate('/minigames')}>
+                <span className="menu-tile-icon">🍎</span>
+                <span className="menu-tile-label">Minigames</span>
               </button>
             )}
           </div>

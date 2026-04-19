@@ -1,0 +1,145 @@
+.applecatch-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #5ec1ff 0%, #a3e0ff 50%, #d7f3c6 100%);
+  color: #0a1f3a;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+.applecatch-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.applecatch-status {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+}
+.applecatch-stat { display: flex; flex-direction: column; align-items: center; min-width: 48px; }
+.applecatch-stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #254a7a;
+}
+.applecatch-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0a1f3a;
+  line-height: 1;
+}
+
+.applecatch-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 0;
+}
+.applecatch-scale-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+.applecatch-scale-inner {
+  transform-origin: center center;
+  position: relative;
+}
+.applecatch-field {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.55), transparent 60%),
+    linear-gradient(180deg, #9de0ff 0%, #cbeffd 60%, #e8f6d4 100%);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2), inset 0 0 0 2px rgba(255,255,255,0.4);
+  overflow: hidden;
+}
+.applecatch-field > * {
+  position: absolute;
+}
+
+.applecatch-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
+  animation: applecatch-spin 1.2s linear infinite;
+}
+.applecatch-item-star { filter: drop-shadow(0 0 6px #ffe680) drop-shadow(0 2px 3px rgba(0,0,0,0.2)); }
+.applecatch-item-rock { animation: none; }
+@keyframes applecatch-spin {
+  from { transform: rotate(-8deg); }
+  50%  { transform: rotate(8deg); }
+  to   { transform: rotate(-8deg); }
+}
+
+.applecatch-player {
+  image-rendering: pixelated;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 4px rgba(0,0,0,0.25));
+  transition: left 0.04s linear;
+}
+.applecatch-ground {
+  left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(180deg, #6fae3a, #3f7b19);
+  box-shadow: 0 -2px 0 rgba(0,0,0,0.15) inset;
+}
+
+.applecatch-flash {
+  font-weight: 800;
+  font-size: 22px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: applecatch-flash-pop 0.5s ease-out forwards;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.25);
+}
+.applecatch-flash-pos { color: #2bd46e; }
+.applecatch-flash-neg { color: #ff5757; }
+@keyframes applecatch-flash-pop {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(0.7); }
+  to   { opacity: 0; transform: translate(-50%, -120%) scale(1.2); }
+}
+
+.applecatch-overlay {
+  left: 0; right: 0; top: 0; bottom: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(10, 31, 58, 0.55);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+.applecatch-overlay-title {
+  font-size: 36px;
+  font-weight: 800;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.3);
+}
+.applecatch-overlay-hint {
+  font-size: 14px;
+  opacity: 0.9;
+  text-align: center;
+  padding: 0 16px;
+}
+.applecatch-overlay-score {
+  font-size: 48px;
+  font-weight: 800;
+}

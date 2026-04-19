@@ -19,6 +19,7 @@ import AdminPanel from './pages/AdminPanel';
 import BackgroundsDemo from './pages/BackgroundsDemo';
 import StoryScreen from './pages/StoryScreen';
 import TournamentScreen from './pages/TournamentScreen';
+import MinigamesScreen from './pages/MinigamesScreen';
 import TournamentPrizeModal, { type TournamentPrizeAward } from './components/TournamentPrizeModal';
 import { socket } from './socket';
 import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, reawakenPokemonOnServer, teachTMOnServer, useBoostOnServer, giveHeldItemOnServer, takeHeldItemOnServer, setFavoriteOnServer, buildInstance, buildItem } from './api';
@@ -441,6 +442,7 @@ export default function App() {
         <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
         <Route path="/story" element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
         <Route path="/tournaments" element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} />} />
+        <Route path="/minigames" element={<MinigamesScreen playerName={player.name} collection={collection} />} />
         <Route path="/tv" element={<TVView />} />
         <Route path="/bg-demo" element={<BackgroundsDemo />} />
         <Route path="*" element={<Navigate to="/play" replace />} />

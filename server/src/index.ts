@@ -255,6 +255,25 @@ function awardBondXp(
   return awards;
 }
 
+function awardBondXpDirect(playerId: string, instanceId: string, delta: number): BondAward | null {
+  if (!instanceId || delta <= 0) return null;
+  if (!hasBondUnlocked(playerId)) return null;
+  const row = db.prepare('SELECT bond_xp, pokemon_id FROM owned_pokemon WHERE id = ? AND player_id = ?').get(instanceId, playerId) as any;
+  if (!row) return null;
+  db.prepare('UPDATE owned_pokemon SET bond_xp = bond_xp + ? WHERE id = ? AND player_id = ?').run(delta, instanceId, playerId);
+  const previous = row.bond_xp ?? 0;
+  const total = previous + delta;
+  const species = POKEMON_BY_ID[row.pokemon_id];
+  let threshold: number | null = null;
+  if (species) {
+    const step = evolutionStepFor(species) ?? undefined;
+    const firstTargetId = species.evolutionTo?.[0];
+    const targetSpecies = firstTargetId != null ? POKEMON_BY_ID[firstTargetId] : undefined;
+    if (targetSpecies) threshold = bondThresholdForStep(targetSpecies.tier, step);
+  }
+  return { instanceId, slot: 0, delta, total, threshold, previous };
+}
+
 // --- REST API ---
 
 // Get distinct pokemon IDs used in a player's last 3 battles
@@ -1194,6 +1213,41 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
   }
 
   return res.json({ snapshot, bondAwards });
+});
+
+// --- Minigame reward ---
+const MINIGAMES_UNLOCK_CHAPTER_ID = 'n-finale:complete';
+app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
+  const { playerName, instanceId, minigame, score } = req.body as {
+    playerName?: string; instanceId?: string; minigame?: string; score?: number;
+  };
+  if (!playerName || !instanceId || !minigame || typeof score !== 'number') {
+    return res.status(400).json({ error: 'playerName, instanceId, minigame and numeric score are required' });
+  }
+  const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+  const unlocked = db.prepare('SELECT 1 FROM story_progress WHERE player_id = ? AND chapter_id = ?').get(player.id, MINIGAMES_UNLOCK_CHAPTER_ID);
+  if (!unlocked) return res.status(403).json({ error: 'Minigames not yet unlocked' });
+
+  const own = db.prepare('SELECT id FROM owned_pokemon WHERE id = ? AND player_id = ?').get(instanceId, player.id) as any;
+  if (!own) return res.status(404).json({ error: 'Pokemon not found' });
+
+  // Scale score → bond XP. Tuned so a solid Apple Catch run (~40-60 points)
+  // is comparable to winning an AI battle, with diminishing returns past that.
+  const clamped = Math.max(0, Math.min(200, Math.floor(score)));
+  let delta = 0;
+  if (clamped <= 60) {
+    delta = Math.round(clamped * 0.75);
+  } else {
+    // Beyond 60, each point is worth much less to avoid infinite grinding.
+    delta = Math.round(60 * 0.75 + (clamped - 60) * 0.2);
+  }
+  delta = Math.min(delta, 60);
+
+  const award = awardBondXpDirect(player.id, instanceId, delta);
+  const sock = connectedPlayers.get(playerName);
+  if (sock && award) io.to(sock).emit('battle:bondUpdate', { awards: [award] });
+  return res.json({ ok: true, award, delta });
 });
 
 // --- Socket.IO: Battle matching ---

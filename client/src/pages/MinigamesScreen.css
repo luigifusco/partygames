@@ -1,0 +1,177 @@
+.minigame-hub-intro {
+  text-align: center;
+  color: var(--ds-text-muted, #aaa);
+  padding: 16px 12px 24px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.minigame-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  padding: 0 12px 24px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.minigame-hub-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  background: none;
+  border: none;
+  text-align: center;
+  cursor: pointer;
+}
+.minigame-hub-icon {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.minigame-hub-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.minigame-hub-tagline {
+  font-size: 13px;
+  color: var(--ds-text-muted, #aaa);
+}
+
+.minigame-explainer {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.minigame-explainer-hero {
+  text-align: center;
+  padding: 20px 12px 8px;
+}
+.minigame-explainer-icon {
+  font-size: 72px;
+  line-height: 1;
+}
+.minigame-explainer-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.minigame-explainer-tagline {
+  color: var(--ds-text-muted, #aaa);
+  margin-top: 4px;
+}
+.minigame-explainer-list {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+.minigame-explainer-list li { margin-bottom: 6px; }
+.minigame-explainer-reward {
+  background: var(--ds-surface-raised, rgba(255,255,255,0.04));
+  border: 1px solid var(--ds-border, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.minigame-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.minigame-pick-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: var(--ds-surface-raised, rgba(255,255,255,0.04));
+  border: 1px solid var(--ds-border, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+  color: inherit;
+}
+.minigame-pick-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ds-accent, #ff9a3c);
+}
+.minigame-pick-sprite {
+  width: 72px;
+  height: 72px;
+  image-rendering: pixelated;
+}
+.minigame-pick-name {
+  font-weight: 600;
+  margin-top: 4px;
+  font-size: 13px;
+}
+.minigame-pick-bond {
+  font-size: 11px;
+  color: var(--ds-text-muted, #aaa);
+  margin-top: 2px;
+}
+
+.minigame-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.minigame-result-card {
+  max-width: 420px;
+  width: 100%;
+  margin: 24px auto;
+  padding: 32px 24px;
+  background: var(--ds-surface-raised, rgba(255,255,255,0.04));
+  border: 1px solid var(--ds-border, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  text-align: center;
+}
+.minigame-result-icon { font-size: 56px; line-height: 1; }
+.minigame-result-title { color: var(--ds-text-muted, #aaa); margin-top: 8px; font-size: 13px; }
+.minigame-result-score { font-size: 56px; font-weight: 800; margin: 4px 0 12px; }
+.minigame-result-sprite { width: 96px; height: 96px; image-rendering: pixelated; }
+.minigame-result-name { font-weight: 600; margin-top: 4px; }
+.minigame-result-xp {
+  margin-top: 16px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ff6bd0;
+}
+.minigame-result-progress {
+  height: 10px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 10px 0 4px;
+}
+.minigame-result-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff8ac9, #ff4fa5);
+  transition: width 0.6s;
+}
+.minigame-result-total {
+  font-size: 12px;
+  color: var(--ds-text-muted, #aaa);
+}
+.minigame-result-submitting {
+  margin-top: 12px;
+  color: var(--ds-text-muted, #aaa);
+}
+.minigame-result-error {
+  margin-top: 12px;
+  color: #ff6b6b;
+  font-size: 13px;
+}
+.minigame-result-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
