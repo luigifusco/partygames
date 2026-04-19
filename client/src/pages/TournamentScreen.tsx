@@ -37,6 +37,12 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
   const [battleFinished, setBattleFinished] = useState(false);
   const [viewingTeamOf, setViewingTeamOf] = useState<string | null>(null);
   const [playerPictures, setPlayerPictures] = useState<Record<string, string | null>>({});
+  // Tick once a second so all deadline countdowns re-render live.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     fetch(API + '/api/players')
@@ -183,11 +189,26 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
   };
 
   const timeLeft = (ts: number) => {
-    const diff = ts - Date.now();
+    const diff = ts - now;
     if (diff <= 0) return 'Expired';
-    const min = Math.floor(diff / 60000);
-    const sec = Math.floor((diff % 60000) / 1000);
-    return min > 0 ? min + 'm ' + sec + 's' : sec + 's';
+    const totalSec = Math.floor(diff / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    if (min >= 60) {
+      const hr = Math.floor(min / 60);
+      const m = min % 60;
+      return `${hr}h ${m}m`;
+    }
+    if (min > 0) return `${min}m ${String(sec).padStart(2, '0')}s`;
+    return `${sec}s`;
+  };
+
+  const urgencyClass = (ts: number) => {
+    const diff = ts - now;
+    if (diff <= 0) return 'expired';
+    if (diff <= 30_000) return 'critical';
+    if (diff <= 120_000) return 'warning';
+    return '';
   };
 
   // ─── Battle View ───
@@ -211,6 +232,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
 
   // ─── Waiting for Opponent ───
   if (phase === 'waitingOpponent') {
+    const myMatch = findMyMatch();
     return (
       <div className="ds-screen">
         <div className="ds-topbar">
@@ -219,6 +241,12 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
         </div>
         <div className="tournament-waiting">
           Your team is locked in. Waiting for your opponent to submit their team.
+          {myMatch?.deadline && (
+            <div className={`tournament-countdown tournament-countdown-block ${urgencyClass(myMatch.deadline)}`}>
+              <span className="tournament-countdown-icon">⏱️</span>
+              Match deadline in <strong>{timeLeft(myMatch.deadline)}</strong>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -250,6 +278,12 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
         disallowLegendaries={activeTournament.allowLegendaries === false}
         onBack={() => setPhase('detail')}
         title="Lock Tournament Team"
+        subtitle={activeTournament.registrationEnd ? (
+          <span className={`tournament-countdown tournament-countdown-inline ${urgencyClass(activeTournament.registrationEnd)}`}>
+            <span className="tournament-countdown-icon">⏱️</span>
+            Registration closes in {timeLeft(activeTournament.registrationEnd)}
+          </span>
+        ) : undefined}
       />
     );
   }
@@ -257,6 +291,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
   // ─── Team Select ───
   if (phase === 'teamSelect' && activeTournament) {
     const teamSize = activeTournament.totalPokemon;
+    const myMatch = findMyMatch();
     const toggleSelect = (idx: number, character?: string | null) => {
       const i = selected.indexOf(idx);
       if (i !== -1) {
@@ -280,6 +315,12 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
         disallowLegendaries={activeTournament.allowLegendaries === false}
         onBack={() => setPhase('detail')}
         title="Tournament Match"
+        subtitle={myMatch?.deadline ? (
+          <span className={`tournament-countdown tournament-countdown-inline ${urgencyClass(myMatch.deadline)}`}>
+            <span className="tournament-countdown-icon">⏱️</span>
+            Match deadline in {timeLeft(myMatch.deadline)}
+          </span>
+        ) : undefined}
       />
     );
   }
@@ -325,8 +366,10 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
 
           {t.status === 'registration' && (
             <div className="tournament-reg-info">
-              <div className="tournament-reg-deadline">
-                Registration closes: <strong>{formatTime(t.registrationEnd)}</strong>
+              <div className={`tournament-reg-deadline tournament-countdown ${urgencyClass(t.registrationEnd)}`}>
+                <span className="tournament-countdown-icon">⏱️</span>
+                Registration closes at <strong>{formatTime(t.registrationEnd)}</strong>
+                <span className="tournament-countdown-value">{timeLeft(t.registrationEnd)}</span>
               </div>
               {!isParticipant ? (
                 <button className="ds-btn ds-btn-primary ds-btn-block" onClick={() => joinTournament(t.id)}>
@@ -376,7 +419,12 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
               <div className="tournament-my-match-title">Your Match</div>
               <div className="tournament-my-match-info">
                 vs <strong>{myMatch.player1 === playerName ? myMatch.player2 : myMatch.player1}</strong>
-                {myMatch.deadline && <span className="tournament-deadline"> · {timeLeft(myMatch.deadline)} left</span>}
+                {myMatch.deadline && (
+                  <span className={`tournament-deadline tournament-countdown-inline ${urgencyClass(myMatch.deadline)}`}>
+                    <span className="tournament-countdown-icon">⏱️</span>
+                    {timeLeft(myMatch.deadline)} left
+                  </span>
+                )}
                 {t.publicTeams && (() => {
                   const opp = myMatch.player1 === playerName ? myMatch.player2 : myMatch.player1;
                   return opp && t.frozenTeams[opp] ? (
@@ -480,6 +528,12 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
                     <span>· {t.participantCount} players</span>
                     {t.fixedTeam && <span className="ds-badge ds-badge-gold">Fixed</span>}
                   </div>
+                  {t.status === 'registration' && t.registrationEnd && (
+                    <div className={`tournament-card-countdown ${urgencyClass(t.registrationEnd)}`}>
+                      <span className="tournament-countdown-icon">⏱️</span>
+                      Reg closes in <strong>{timeLeft(t.registrationEnd)}</strong>
+                    </div>
+                  )}
                   {t.winner && <div className="tournament-card-winner">Winner: {t.winner}</div>}
                   {t.prizes && Array.isArray(t.prizes) && t.prizes[0] && (
                     <div className="tournament-card-prize">1st: {t.prizes[0].essence}✦{t.prizes[0].pack ? ' + ' + t.prizes[0].pack : ''}</div>
