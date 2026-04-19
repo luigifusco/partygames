@@ -290,6 +290,24 @@ export default function App() {
       addNotification('tournament', 'Match vs ' + opponent);
     };
 
+    const onAdminAnnouncement = ({ id, message, from }: { id?: string; message: string; from?: string }) => {
+      if (!message) return;
+      setNotifications((prev) => {
+        const nid = id ?? crypto.randomUUID();
+        if (prev.some((n) => n.id === nid)) return prev;
+        return [
+          ...prev,
+          {
+            id: nid,
+            type: 'announcement',
+            from: from || 'Announcement',
+            message,
+            timestamp: Date.now(),
+          },
+        ];
+      });
+    };
+
     const onBondUpdate = ({ awards }: { awards: Array<{ instanceId: string; delta: number; total: number }> }) => {
       if (!awards || awards.length === 0) return;
       setCollection((c) =>
@@ -306,6 +324,22 @@ export default function App() {
       window.location.reload();
     };
 
+    // Force a reload when the server reports a new startup id (redeploy).
+    // Stored in sessionStorage so it resets with a new tab, but persists
+    // across reconnects within a session.
+    const onServerHello = ({ startedAt }: { startedAt?: number }) => {
+      if (typeof startedAt !== 'number') return;
+      const key = 'pp:serverStartedAt';
+      const prev = sessionStorage.getItem(key);
+      if (prev && Number(prev) !== startedAt) {
+        // Clear before reload so we don't loop.
+        sessionStorage.setItem(key, String(startedAt));
+        window.location.reload();
+        return;
+      }
+      sessionStorage.setItem(key, String(startedAt));
+    };
+
     const onPrizeAwarded = (award: TournamentPrizeAward) => {
       if (!award) return;
       setPrizeQueue((prev) => [...prev, award]);
@@ -320,6 +354,8 @@ export default function App() {
     socket.on('tournament:prizeAwarded', onPrizeAwarded);
     socket.on('battle:bondUpdate', onBondUpdate);
     socket.on('player:reset', onPlayerReset);
+    socket.on('admin:announcement', onAdminAnnouncement);
+    socket.on('server:hello', onServerHello);
 
     return () => {
       socket.off('battle:challenged', onBattleChallenged);
@@ -329,6 +365,8 @@ export default function App() {
       socket.off('tournament:prizeAwarded', onPrizeAwarded);
       socket.off('battle:bondUpdate', onBondUpdate);
       socket.off('player:reset', onPlayerReset);
+      socket.off('admin:announcement', onAdminAnnouncement);
+      socket.off('server:hello', onServerHello);
     };
   }, []);
 
@@ -339,7 +377,11 @@ export default function App() {
   const navigate = useNavigate();
   const handleAcceptNotification = useCallback((notification: Notification) => {
     setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-    const routes: Record<Notification['type'], string> = {
+    if (notification.type === 'announcement') {
+      // Announcements are informational — "Accept" just dismisses.
+      return;
+    }
+    const routes: Record<Exclude<Notification['type'], 'announcement'>, string> = {
       battle: '/battle',
       trade: '/trade',
       tournament: '/tournaments',

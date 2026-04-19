@@ -141,3 +141,24 @@
   gap: var(--space-2);
   flex-shrink: 0;
 }
+
+/* Announcement broadcast cards: warmer tint, multi-line message body. */
+.notif-card-announcement {
+  border-color: rgba(255, 170, 80, 0.55);
+  background: linear-gradient(180deg, rgba(255, 170, 80, 0.12), rgba(255, 110, 130, 0.08)), var(--color-surface);
+  box-shadow: 0 0 18px rgba(255, 170, 80, 0.18), var(--shadow-sm);
+}
+
+.notif-card-announcement .notif-card-icon {
+  background: linear-gradient(180deg, rgba(255, 180, 90, 0.28), rgba(255, 120, 130, 0.22));
+  border-color: rgba(255, 170, 80, 0.55);
+}
+
+.notif-card-message {
+  margin-top: 4px;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

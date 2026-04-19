@@ -1022,6 +1022,19 @@ app.put(`${BASE_PATH}/api/admin/settings`, (req, res) => {
   return res.json({ ok: true });
 });
 
+// Broadcast a free-form announcement notification to every connected client.
+app.post(`${BASE_PATH}/api/admin/broadcast`, (req, res) => {
+  const rawMsg = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  if (!rawMsg) return res.status(400).json({ error: 'Message is required' });
+  if (rawMsg.length > 2000) return res.status(400).json({ error: 'Message too long (max 2000 chars)' });
+  const from = typeof req.body?.from === 'string' && req.body.from.trim()
+    ? req.body.from.trim().slice(0, 120)
+    : 'Announcement';
+  const id = `ann-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  io.emit('admin:announcement', { id, from, message: rawMsg });
+  return res.json({ ok: true, id });
+});
+
 // Public endpoint for feature flags
 app.get(`${BASE_PATH}/api/settings/features`, (_req, res) => {
   const rows = db.prepare("SELECT key, value FROM game_settings WHERE key IN ('tm_shop_enabled', 'ai_battle_enabled', 'login_disabled')").all() as any[];
@@ -1493,9 +1506,18 @@ app.post(`${BASE_PATH}/api/admin/tournament/:id/cancel`, (req, res) => {
 });
 
 
+// Server startup id — clients store this on first socket connect and force a
+// full reload if it changes, so a redeploy always picks up fresh JS/CSS.
+const SERVER_STARTED_AT = Date.now();
+
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
   let playerName: string | null = null;
+
+  // Send the server's startup id right away so the client can compare with
+  // the one it stored from a previous connection and force a reload if the
+  // server was redeployed in the meantime.
+  socket.emit('server:hello', { startedAt: SERVER_STARTED_AT });
 
   socket.on('player:identify', (name: string) => {
     playerName = name;

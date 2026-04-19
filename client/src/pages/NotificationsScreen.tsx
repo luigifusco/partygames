@@ -3,9 +3,11 @@ import './NotificationsScreen.css';
 
 export interface Notification {
   id: string;
-  type: 'battle' | 'trade' | 'tournament';
+  type: 'battle' | 'trade' | 'tournament' | 'announcement';
   from: string;
   timestamp: number;
+  /** For 'announcement' notifications: the admin-supplied body text. */
+  message?: string;
 }
 
 interface NotificationsScreenProps {
@@ -18,6 +20,7 @@ const TYPE_LABELS: Record<Notification['type'], { icon: string; label: string }>
   battle: { icon: '⚔️', label: 'Battle challenge' },
   trade: { icon: '🔄', label: 'Trade request' },
   tournament: { icon: '🏆', label: 'Tournament' },
+  announcement: { icon: '📣', label: 'Announcement' },
 };
 
 function timeAgo(timestamp: number): string {
@@ -47,6 +50,25 @@ export default function NotificationsScreen({ notifications, onAccept, onDismiss
         )}
         {notifications.map((n) => {
           const { icon, label } = TYPE_LABELS[n.type];
+          if (n.type === 'announcement') {
+            return (
+              <div key={n.id} className="notif-card notif-card-announcement">
+                <div className="notif-card-icon">{icon}</div>
+                <div className="notif-card-body">
+                  <div className="notif-card-text">
+                    <strong>{n.from || label}</strong>
+                  </div>
+                  {n.message && <div className="notif-card-message">{n.message}</div>}
+                  <div className="notif-card-time">{timeAgo(n.timestamp)}</div>
+                </div>
+                <div className="notif-card-actions">
+                  <button className="ds-btn ds-btn-primary ds-btn-sm" onClick={() => onDismiss(n.id)}>
+                    Acknowledge
+                  </button>
+                </div>
+              </div>
+            );
+          }
           return (
             <div key={n.id} className="notif-card">
               <div className="notif-card-icon">{icon}</div>

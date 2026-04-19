@@ -161,6 +161,35 @@ export default function AdminPanel() {
     }
   };
 
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [broadcastFrom, setBroadcastFrom] = useState('');
+  const [broadcasting, setBroadcasting] = useState(false);
+
+  const sendBroadcast = async () => {
+    const msg = broadcastMsg.trim();
+    if (!msg) return;
+    if (!confirm(`Send this announcement to every connected player?\n\n${msg}`)) return;
+    setBroadcasting(true);
+    try {
+      const res = await fetch(`${API}/api/admin/broadcast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, from: broadcastFrom.trim() || undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setBroadcastMsg('');
+        alert('Announcement sent.');
+      } else {
+        alert('Broadcast failed: ' + (data.error ?? res.statusText));
+      }
+    } catch (e) {
+      alert('Broadcast request failed: ' + e);
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
   const [tournamentName, setTournamentName] = useState('Tournament');
   const [tournamentFieldSize, setTournamentFieldSize] = useState(1);
   const [tournamentPokemon, setTournamentPokemon] = useState(3);
@@ -635,6 +664,45 @@ export default function AdminPanel() {
               />
               <span className="ds-toggle-slider" />
             </label>
+          </div>
+        </div>
+
+        {/* Broadcast announcement */}
+        <div className="ds-section-title">Broadcast announcement</div>
+        <div className="ds-card">
+          <div className="admin-field-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+            <div className="admin-field-label">
+              Message
+              <span className="admin-field-desc">
+                Sent to every connected player as a notification with an Acknowledge button.
+              </span>
+            </div>
+            <input
+              type="text"
+              className="ds-input"
+              placeholder="From (optional, defaults to “Announcement”)"
+              value={broadcastFrom}
+              onChange={(e) => setBroadcastFrom(e.target.value)}
+              maxLength={120}
+            />
+            <textarea
+              className="ds-input"
+              placeholder="Write the announcement…"
+              value={broadcastMsg}
+              onChange={(e) => setBroadcastMsg(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              style={{ resize: 'vertical', minHeight: 72, fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                className="ds-btn ds-btn-primary"
+                onClick={sendBroadcast}
+                disabled={broadcasting || !broadcastMsg.trim()}
+              >
+                {broadcasting ? 'Sending…' : 'Send to all players'}
+              </button>
+            </div>
           </div>
         </div>
 
