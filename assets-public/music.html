@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pokemon Party — BGM Player</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; font-family: system-ui, sans-serif;
+      background: #111; color: #eee; padding: 24px;
+      max-width: 720px; margin-inline: auto;
+    }
+    h1 { font-size: 20px; margin: 0 0 16px; }
+    .tracks { display: grid; gap: 6px; margin-bottom: 20px; }
+    .track {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #1c1c24; border: 1px solid #2a2a35; border-radius: 8px;
+      padding: 10px 14px; cursor: pointer;
+    }
+    .track.active { border-color: #6aa8ff; background: #1a2238; }
+    .track .name { font-weight: 600; }
+    .track .meta { font-size: 12px; opacity: 0.6; }
+    .player { background: #1c1c24; border: 1px solid #2a2a35; border-radius: 10px; padding: 16px; }
+    .player .title { font-size: 16px; margin-bottom: 10px; }
+    audio { width: 100%; }
+    label { display: flex; gap: 8px; align-items: center; font-size: 13px; margin-top: 10px; }
+    input[type="number"] { width: 90px; background: #111; color: #eee; border: 1px solid #333; padding: 4px 6px; border-radius: 4px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .time { font-family: monospace; font-size: 13px; opacity: 0.8; }
+    button { background: #2a2a35; color: #eee; border: 1px solid #3a3a45; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    button:hover { background: #353545; }
+    .hint { font-size: 12px; opacity: 0.55; margin-top: 8px; line-height: 1.4; }
+    .group { margin-top: 14px; }
+    .group-title { font-size: 11px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <h1>🎵 Pokemon Party — BGM Player</h1>
+  <div class="tracks" id="tracks"></div>
+
+  <div class="player" id="player" style="display:none;">
+    <div class="title" id="trackTitle"></div>
+    <audio id="audio" controls preload="metadata"></audio>
+    <div class="row" style="margin-top:10px;">
+      <label><input type="checkbox" id="loopEnabled" /> Loop test</label>
+      <label>start <input type="number" step="0.001" id="loopStart" /></label>
+      <label>end <input type="number" step="0.001" id="loopEnd" /></label>
+      <button id="jumpBeforeLoop">jump to end-2s</button>
+      <span class="time" id="timeDisplay">0.000 s</span>
+    </div>
+    <div class="hint">
+      "Loop test" mimics the in-game loop handler: when playback crosses
+      <b>end</b>, it rewinds to <b>start</b>. Use <i>jump to end-2s</i> to
+      audition the splice quickly.
+    </div>
+  </div>
+
+  <script>
+  const SHOWDOWN = 'https://play.pokemonshowdown.com';
+  const BASE = '/pokemonparty';
+
+  const LOCAL = [
+    { name: 'n-simple',  title: 'N (regular battles)',   url: BASE + '/music/n-simple.mp3', loopStart: 70.031, loopEnd: 124.714 },
+    { name: 'n-final',   title: 'N (finale)',            url: BASE + '/music/n-final.mp3',  loopStart: 52.381, loopEnd: 139.549 },
+    { name: 'may',       title: 'May',                   url: BASE + '/music/may.mp3',      loopStart: 52.610, loopEnd: 105.575 },
+    { name: 'ludicolo',  title: 'Ludicolo (override)',   url: BASE + '/music/ludicolo.mp3', loopStart: 27.218, loopEnd: 120.284 },
+  ];
+  const SHOW = [
+    { url: 'audio/dpp-trainer.mp3',            loopStart: 13.440, loopEnd: 96.959 },
+    { url: 'audio/dpp-rival.mp3',              loopStart: 13.888, loopEnd: 66.352 },
+    { url: 'audio/hgss-johto-trainer.mp3',     loopStart: 23.731, loopEnd: 125.086 },
+    { url: 'audio/hgss-kanto-trainer.mp3',     loopStart: 13.003, loopEnd: 94.656 },
+    { url: 'audio/bw-trainer.mp3',             loopStart: 14.629, loopEnd: 110.109 },
+    { url: 'audio/bw-rival.mp3',               loopStart: 19.180, loopEnd: 57.373 },
+    { url: 'audio/bw-subway-trainer.mp3',      loopStart: 15.503, loopEnd: 110.984 },
+    { url: 'audio/bw2-rival.mp3',              loopStart: 7.152,  loopEnd: 68.708 },
+    { url: 'audio/bw2-kanto-gym-leader.mp3',   loopStart: 14.626, loopEnd: 58.986 },
+    { url: 'audio/xy-trainer.mp3',             loopStart: 7.802,  loopEnd: 82.469 },
+    { url: 'audio/xy-rival.mp3',               loopStart: 7.802,  loopEnd: 58.634 },
+    { url: 'audio/oras-trainer.mp3',           loopStart: 13.579, loopEnd: 91.548 },
+    { url: 'audio/oras-rival.mp3',             loopStart: 14.303, loopEnd: 69.149 },
+    { url: 'audio/sm-trainer.mp3',             loopStart: 8.323,  loopEnd: 89.230 },
+    { url: 'audio/sm-rival.mp3',               loopStart: 11.389, loopEnd: 62.158 },
+    { url: 'audio/spl-elite4.mp3',             loopStart: 3.962,  loopEnd: 152.509 },
+  ].map(t => ({ ...t, name: t.url.split('/').pop().replace('.mp3',''), title: t.url.split('/').pop().replace('.mp3',''), url: SHOWDOWN + '/' + t.url }));
+
+  const tracksEl = document.getElementById('tracks');
+  function section(title, items) {
+    const wrap = document.createElement('div');
+    wrap.className = 'group';
+    const h = document.createElement('div');
+    h.className = 'group-title';
+    h.textContent = title;
+    wrap.appendChild(h);
+    for (const t of items) {
+      const d = document.createElement('div');
+      d.className = 'track';
+      d.dataset.name = t.name;
+      d.innerHTML = `<div><div class="name">${t.title}</div><div class="meta">loop ${t.loopStart.toFixed(2)}s → ${t.loopEnd.toFixed(2)}s</div></div><div>▶</div>`;
+      d.addEventListener('click', () => select(t));
+      wrap.appendChild(d);
+    }
+    tracksEl.appendChild(wrap);
+  }
+  section('Custom tracks', LOCAL);
+  section('Showdown CDN tracks', SHOW);
+
+  const audio = document.getElementById('audio');
+  const player = document.getElementById('player');
+  const title = document.getElementById('trackTitle');
+  const loopStart = document.getElementById('loopStart');
+  const loopEnd = document.getElementById('loopEnd');
+  const loopEnabled = document.getElementById('loopEnabled');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const jumpBtn = document.getElementById('jumpBeforeLoop');
+
+  let currentTrack = null;
+
+  function select(t) {
+    currentTrack = t;
+    player.style.display = 'block';
+    title.textContent = t.title;
+    audio.src = t.url;
+    loopStart.value = t.loopStart;
+    loopEnd.value = t.loopEnd;
+    audio.play().catch(() => {});
+    document.querySelectorAll('.track').forEach(el => el.classList.toggle('active', el.dataset.name === t.name));
+  }
+
+  audio.addEventListener('timeupdate', () => {
+    timeDisplay.textContent = audio.currentTime.toFixed(3) + ' s';
+    if (loopEnabled.checked) {
+      const end = parseFloat(loopEnd.value);
+      const start = parseFloat(loopStart.value);
+      if (!isNaN(end) && !isNaN(start) && audio.currentTime >= end) {
+        audio.currentTime = start;
+      }
+    }
+  });
+
+  jumpBtn.addEventListener('click', () => {
+    const end = parseFloat(loopEnd.value);
+    if (!isNaN(end)) audio.currentTime = Math.max(0, end - 2);
+  });
+  </script>
+</body>
+</html>
