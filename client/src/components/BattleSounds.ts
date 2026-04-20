@@ -417,6 +417,11 @@ const BGM_HOENN_RIVAL: BgmTrack = { url: 'audio/oras-rival.mp3', loopStart: 14.3
 const BGM_SINNOH_TRAINER: BgmTrack = { url: 'audio/dpp-trainer.mp3', loopStart: 13.440, loopEnd: 96.959 };
 const BGM_RED: BgmTrack = { url: 'audio/bw2-kanto-gym-leader.mp3', loopStart: 14.626, loopEnd: 58.986 };
 
+const BGM_N_SIMPLE: BgmTrack = { url: `${BASE_PATH}/music/n-simple.mp3`, loopStart: 70.031, loopEnd: 124.714 };
+const BGM_N_FINAL: BgmTrack = { url: `${BASE_PATH}/music/n-final.mp3`, loopStart: 52.381, loopEnd: 139.549 };
+const BGM_MAY: BgmTrack = { url: `${BASE_PATH}/music/may.mp3`, loopStart: 52.610, loopEnd: 105.575 };
+const BGM_LUDICOLO: BgmTrack = { url: `${BASE_PATH}/music/ludicolo.mp3`, loopStart: 27.218, loopEnd: 120.284 };
+
 const TRAINER_BGM: Record<string, BgmTrack> = {
   brock: BGM_KANTO_GYM, misty: BGM_KANTO_GYM, ltsurge: BGM_KANTO_GYM,
   erika: BGM_KANTO_GYM, koga: BGM_KANTO_GYM, janine: BGM_KANTO_GYM,
@@ -434,18 +439,24 @@ const TRAINER_BGM: Record<string, BgmTrack> = {
   byron: BGM_SINNOH_TRAINER, candice: BGM_SINNOH_TRAINER, volkner: BGM_SINNOH_TRAINER,
   aaron: BGM_ELITE4, bertha: BGM_ELITE4, flint: BGM_ELITE4, lucian: BGM_ELITE4,
   cynthia: BGM_CHAMPION_DPP, barry: BGM_RIVAL_DPP,
+  n: BGM_N_SIMPLE, 'n-final': BGM_N_FINAL,
+  may: BGM_MAY,
 };
 
 let currentBgm: HTMLAudioElement | null = null;
 let bgmLoopHandler: (() => void) | null = null;
 
-export function startBattleBgm(volume = 0.25, trainerId?: string): void {
+export function startBattleBgm(volume = 0.25, trainerId?: string, speciesNames?: readonly string[]): void {
   stopBattleBgm();
   try {
-    const track = trainerId && TRAINER_BGM[trainerId]
-      ? TRAINER_BGM[trainerId]
-      : BATTLE_BGMS[Math.floor(Math.random() * BATTLE_BGMS.length)];
-    const audio = new Audio(`${SHOWDOWN_CDN}/${track.url}`);
+    // Ludicolo in any team overrides the trainer BGM — the user explicitly hardcoded this.
+    const hasLudicolo = speciesNames?.some(n => typeof n === 'string' && n.toLowerCase() === 'ludicolo') ?? false;
+    const track = hasLudicolo
+      ? BGM_LUDICOLO
+      : trainerId && TRAINER_BGM[trainerId]
+        ? TRAINER_BGM[trainerId]
+        : BATTLE_BGMS[Math.floor(Math.random() * BATTLE_BGMS.length)];
+    const audio = new Audio(track.url.startsWith('/') || /^https?:\/\//.test(track.url) ? track.url : `${SHOWDOWN_CDN}/${track.url}`);
     audio.volume = volume;
     audio.muted = bgmMuted;
     bgmLoopHandler = () => {

@@ -377,8 +377,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
 
   // Start BGM on mount, preload cries, stop on unmount
   useEffect(() => {
-    startBattleBgm(0.25, trainerId);
     const allNames = [...snapshot.left, ...snapshot.right].map(p => p.name);
+    startBattleBgm(0.25, trainerId, allNames);
     preloadCries(allNames);
     preloadHitSounds();
     preloadStatSounds();

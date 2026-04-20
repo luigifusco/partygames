@@ -512,12 +512,18 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   if (phase === 'battle' && snapshot && activeStoryline) {
     const step = activeStoryline.steps[activeStepIdx];
     const essenceReward = snapshot.winner === 'left' ? step?.essenceReward : undefined;
+    const trainerId = step && step.type === 'battle' && step.trainerName
+      ? step.trainerName === 'N'
+        ? (activeStoryline.id === 'n-finale' ? 'n-final' : 'n')
+        : step.trainerName.toLowerCase().replace(/[^a-z0-9]/g, '')
+      : undefined;
     return (
       <div className="story-battle-wrapper">
         <BattleScene
           snapshot={snapshot}
           turnDelayMs={1500}
           essenceGained={essenceReward}
+          trainerId={trainerId}
           bondAwards={bondAwards}
           onFinished={() => setBattleFinished(true)}
           onContinue={battleFinished ? handleBattleEnd : undefined}
