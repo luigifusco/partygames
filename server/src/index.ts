@@ -2260,6 +2260,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistPath = path.join(__dirname, '../../client/dist');
 if (fs.existsSync(clientDistPath)) {
   app.use(BASE_PATH || '/', express.static(clientDistPath));
+  app.get(`${BASE_PATH}/music`, (_req, res) => {
+    res.sendFile(path.join(clientDistPath, 'music.html'));
+  });
   app.get(`${BASE_PATH}/*`, (_req, res) => {
     res.sendFile(path.join(clientDistPath, 'index.html'));
   });
