@@ -2259,10 +2259,13 @@ const PORT = process.env.PORT || 3001;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistPath = path.join(__dirname, '../../client/dist');
 if (fs.existsSync(clientDistPath)) {
-  app.use(BASE_PATH || '/', express.static(clientDistPath));
+  // Must come before express.static, otherwise the static middleware
+  // 301-redirects /music to /music/ (since a directory by that name exists)
+  // and our handler never runs.
   app.get(`${BASE_PATH}/music`, (_req, res) => {
     res.sendFile(path.join(clientDistPath, 'music.html'));
   });
+  app.use(BASE_PATH || '/', express.static(clientDistPath));
   app.get(`${BASE_PATH}/*`, (_req, res) => {
     res.sendFile(path.join(clientDistPath, 'index.html'));
   });
