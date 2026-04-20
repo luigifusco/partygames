@@ -1196,8 +1196,8 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
 
   // Record in DB (no player IDs for AI battles)
   db.prepare(
-    'INSERT INTO battles (id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds) VALUES (?, NULL, NULL, 0, ?, ?, ?, ?, ?)'
-  ).run(uuidv4(), fs, leftTeam.length, mode, 'ai', snapshot.round);
+    'INSERT INTO battles (id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?)'
+  ).run(uuidv4(), fs, leftTeam.length, mode, 'ai', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
 
   // Award Bond XP if the caller identifies a real player + their instance IDs.
   let bondAwards: BondAward[] = [];
@@ -1425,6 +1425,16 @@ function handleTournamentTeamSubmission(
   const p1Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player1) as any;
   const p2Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player2) as any;
   const p1Won = snapshot.winner === 'left';
+
+  // Persist the match as a battle row (source-of-truth Showdown log).
+  if (p1Row && p2Row) {
+    const winnerId = p1Won ? p1Row.id : p2Row.id;
+    const loserId = p1Won ? p2Row.id : p1Row.id;
+    db.prepare(
+      'INSERT INTO battles (id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log, tournament_id, tournament_match_id) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(uuidv4(), winnerId, loserId, t.fieldSize, (battle.player1Team ?? []).length, t.pickMode ?? 'blind', 'tournament', snapshot.round, (snapshot.rawLog ?? []).join('\n'), tournamentId, matchId);
+  }
+
   if (p1Row) {
     const p1Awards = awardBondXp(p1Row.id, battle.player1InstanceIds, snapshot.left, snapshot.round, p1Won, 'tournament');
     if (s1 && p1Awards.length) io.to(s1).emit('battle:bondUpdate', { awards: p1Awards });
@@ -1930,9 +1940,9 @@ io.on('connection', (socket) => {
 
         // Record battle in DB with config
         const recordBattle = db.prepare(
-          'INSERT INTO battles (id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO battles (id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
-        recordBattle.run(battleId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, battle.fieldSize, battle.totalPokemon, 'blind', 'pvp', snapshot.round);
+        recordBattle.run(battleId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, battle.fieldSize, battle.totalPokemon, 'blind', 'pvp', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
 
         // Record team entries for recent-pokemon tracking
         const recordTeamEntry = db.prepare(

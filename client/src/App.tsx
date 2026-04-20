@@ -270,6 +270,35 @@ export default function App() {
     }
   };
 
+  // Pull fresh collection/essence/items from the server. Useful for screens
+  // like the collection or items view where a just-finished battle or
+  // minigame may have changed bond_xp / essence / inventory via the server
+  // directly — a socket update may have been missed if the client wasn't
+  // connected or if the event raced with a navigation.
+  const refreshFromServer = useCallback(async () => {
+    if (!player) return;
+    try {
+      const res = await fetch(`${BASE_PATH}/api/player/${player.id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.player) {
+        if (typeof data.player.essence === 'number') setEssence(data.player.essence);
+        if (typeof data.player.elo === 'number') setElo(data.player.elo);
+      }
+      if (Array.isArray(data.pokemon)) {
+        setCollection(data.pokemon.map(buildInstance).filter(Boolean) as PokemonInstance[]);
+      }
+      if (Array.isArray(data.items)) {
+        setItems(data.items.map(buildItem));
+      }
+      if (Array.isArray(data.recentPokemonIds)) {
+        setRecentPokemonIds(data.recentPokemonIds);
+      }
+    } catch {
+      // ignore — the cached state is fine as a fallback
+    }
+  }, [player]);
+
   // Global notification listeners
   useEffect(() => {
     const addNotification = (type: Notification['type'], from: string) => {
@@ -431,7 +460,7 @@ export default function App() {
         <Route path="/play" element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} onOpenNotifications={() => setNotifModalOpen(true)} />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/notifications" element={<NotificationsRedirect onOpen={() => setNotifModalOpen(true)} />} />
-        <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} />} />
+        <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} onRefresh={refreshFromServer} />} />
         <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} playerId={player.id} />} />
         <Route path="/pokedex" element={<PokedexScreen discovered={discovered} />} />
         <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />

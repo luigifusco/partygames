@@ -45,6 +45,14 @@ export function initDb() {
       essence_gained INTEGER NOT NULL,
       winner_elo_delta INTEGER NOT NULL DEFAULT 0,
       loser_elo_delta INTEGER NOT NULL DEFAULT 0,
+      field_size INTEGER NOT NULL DEFAULT 3,
+      total_pokemon INTEGER NOT NULL DEFAULT 3,
+      selection_mode TEXT NOT NULL DEFAULT 'blind',
+      opponent_type TEXT NOT NULL DEFAULT 'pvp',
+      rounds INTEGER NOT NULL DEFAULT 0,
+      showdown_log TEXT,
+      tournament_id TEXT,
+      tournament_match_id TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -159,6 +167,17 @@ export function initDb() {
     db.exec(`ALTER TABLE battles ADD COLUMN selection_mode TEXT NOT NULL DEFAULT 'blind'`);
     db.exec(`ALTER TABLE battles ADD COLUMN opponent_type TEXT NOT NULL DEFAULT 'pvp'`);
     db.exec(`ALTER TABLE battles ADD COLUMN rounds INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!battleCols2.find((c: any) => c.name === 'showdown_log')) {
+    // Raw Pokémon Showdown protocol log, newline-joined. Stored as the
+    // source of truth so battles can be replayed or audited even if our
+    // parser/UI changes.
+    db.exec(`ALTER TABLE battles ADD COLUMN showdown_log TEXT`);
+  }
+  if (!battleCols2.find((c: any) => c.name === 'tournament_id')) {
+    // Link tournament-match battles back to their tournament for replay.
+    db.exec(`ALTER TABLE battles ADD COLUMN tournament_id TEXT`);
+    db.exec(`ALTER TABLE battles ADD COLUMN tournament_match_id TEXT`);
   }
 
   // Story progress table

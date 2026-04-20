@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { PokemonInstance, Pokemon, BoxTier, OwnedItem } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
@@ -20,6 +20,7 @@ interface CollectionScreenProps {
   onEvolve: (instance: PokemonInstance, targetId: number) => void;
   onShard: (instance: PokemonInstance) => void;
   playerId?: string;
+  onRefresh?: () => void | Promise<void>;
 }
 
 function getEvoTargets(pokemon: Pokemon): Pokemon[] {
@@ -29,10 +30,21 @@ function getEvoTargets(pokemon: Pokemon): Pokemon[] {
     .filter(Boolean);
 }
 
-export default function CollectionScreen({ collection, items, onShard, playerId }: CollectionScreenProps) {
+export default function CollectionScreen({ collection, items, onShard, playerId, onRefresh }: CollectionScreenProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const bondUnlocked = chapters.has(BOND_UNLOCK_CHAPTER);
+
+  // Ensure the collection reflects any bond-XP / evolution changes that
+  // happened during the preceding battle. If a socket event was missed
+  // (tab backgrounded, race with navigation, etc.) this gives a reliable
+  // second chance to catch up from the server.
+  useEffect(() => {
+    if (onRefresh) void onRefresh();
+    // Intentionally only run on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [filter, setFilter] = useState<BoxTier | 'all'>('all');
   const [nameQuery, setNameQuery] = useState('');
   const [shardMode, setShardMode] = useState(false);
