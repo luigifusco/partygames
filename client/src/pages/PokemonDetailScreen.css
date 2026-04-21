@@ -637,3 +637,131 @@
   opacity: 0.75;
 }
 
+
+/* ---- Replace-with-TM button on move card ---- */
+.detail-move-replace-btn {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.detail-move-replace-btn:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+.detail-move-replace-btn:active {
+  transform: scale(0.96);
+}
+
+/* ---- TM picker overlay ---- */
+.detail-tm-picker {
+  max-width: 520px;
+  width: 100%;
+}
+.detail-tm-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 10px 0 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  outline: none;
+}
+.detail-tm-search::placeholder { color: rgba(255, 255, 255, 0.5); }
+.detail-tm-search:focus { border-color: rgba(255, 255, 255, 0.5); }
+
+.detail-tm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px;
+}
+.detail-tm-card {
+  position: relative;
+  padding: 10px 8px 8px;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.detail-tm-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+.detail-tm-card:active { transform: scale(0.97); }
+
+/* ---- TM confirm overlay ---- */
+.detail-tm-confirm {
+  max-width: 440px;
+  width: 100%;
+}
+.detail-tm-confirm-card {
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.detail-tm-confirm-card .item-sprite {
+  width: 56px;
+  height: 56px;
+}
+.detail-tm-confirm-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 6px 0;
+}
+.detail-tm-confirm-card .detail-move-stats {
+  justify-content: center;
+  margin-top: 10px;
+}
+.detail-tm-confirm-card .detail-move-desc {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+.detail-tm-confirm-swap {
+  text-align: center;
+  margin: 12px 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
+.detail-tm-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.detail-tm-cancel,
+.detail-tm-confirm-btn {
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.detail-tm-cancel {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+.detail-tm-cancel:hover { background: rgba(255, 255, 255, 0.25); }
+.detail-tm-confirm-btn {
+  background: #4caf50;
+  color: #fff;
+}
+.detail-tm-confirm-btn:hover { background: #43a047; }
+.detail-tm-cancel:active,
+.detail-tm-confirm-btn:active { transform: scale(0.97); }

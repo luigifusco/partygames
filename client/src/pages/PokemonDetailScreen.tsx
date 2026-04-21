@@ -9,11 +9,13 @@ import { getHeldItemSprite, getHeldItemName, HELD_ITEMS_BY_ID } from '@shared/he
 import { evolveGate } from '@shared/evolution';
 import { evolutionStepFor } from '@shared/evolution-helpers';
 import { BOND_UNLOCK_CHAPTER } from '@shared/story-data';
-import RarityStars from '../components/RarityStars';
+import { canLearnMove } from '@shared/tm-learnsets';
+import { getMoveType, getTMSprite } from '@shared/move-data';import RarityStars from '../components/RarityStars';
 import ShardConfirmModal from '../components/ShardConfirmModal';
 import EvolvePreviewModal from '../components/EvolvePreviewModal';
 import { useStoryChapters } from '../hooks/useStoryChapters';
 import './PokemonDetailScreen.css';
+import './ItemsScreen.css';
 
 interface PokemonDetailScreenProps {
   collection: PokemonInstance[];
@@ -21,6 +23,7 @@ interface PokemonDetailScreenProps {
   onShard: (instance: PokemonInstance) => void;
   onEvolve: (instance: PokemonInstance, targetId: number) => void;
   onToggleFavorite: (instance: PokemonInstance) => void;
+  onTeachTM?: (instance: PokemonInstance, moveName: string, moveSlot: 0 | 1) => void;
   playerId?: string;
 }
 
@@ -34,7 +37,7 @@ const TYPE_COLORS: Record<string, string> = {
   steel: '#B8B8D0', fairy: '#EE99AC',
 };
 
-export default function PokemonDetailScreen({ collection, items, onShard, onEvolve, onToggleFavorite, playerId }: PokemonDetailScreenProps) {
+export default function PokemonDetailScreen({ collection, items, onShard, onEvolve, onToggleFavorite, onTeachTM, playerId }: PokemonDetailScreenProps) {
   const { idx } = useParams();
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
@@ -42,6 +45,9 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const [shardConfirm, setShardConfirm] = useState(false);
   const [evoPreview, setEvoPreview] = useState(false);
   const [evolving, setEvolving] = useState<{ from: PokemonInstance; toId: number } | null>(null);
+  const [tmPicker, setTmPicker] = useState<{ slot: 0 | 1 } | null>(null);
+  const [tmSearch, setTmSearch] = useState('');
+  const [tmConfirm, setTmConfirm] = useState<{ slot: 0 | 1; moveName: string } | null>(null);
 
   type MoveDex = { name: string; type: string; category: 'Physical' | 'Special' | 'Status'; basePower: number; accuracy: number | null; pp: number | null; priority: number; shortDesc: string; desc: string };
   type AbilityDex = { name: string; shortDesc: string; desc: string };
@@ -56,11 +62,14 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   // so hooks stay before any early returns.
   const effectiveMoves = inst ? getEffectiveMoves(inst) : [];
   const abilityName = inst?.ability ?? '';
-  const movesKey = effectiveMoves.join('|');
+  const extraMove = tmConfirm?.moveName ?? '';
+  const movesKey = [...effectiveMoves, extraMove].join('|');
 
   useEffect(() => {
     if (!inst) return;
-    const movesNeeded = effectiveMoves.filter((m) => !moveDex[m]);
+    const needed = new Set(effectiveMoves);
+    if (extraMove) needed.add(extraMove);
+    const movesNeeded = [...needed].filter((m) => !moveDex[m]);
     const abilityNeeded = abilityName && !abilityDex[abilityName] ? [abilityName] : [];
     if (movesNeeded.length === 0 && abilityNeeded.length === 0) return;
     let alive = true;
@@ -270,6 +279,15 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
                     </div>
                   )}
                 </div>
+                {onTeachTM && (
+                  <button
+                    type="button"
+                    className="detail-move-replace-btn"
+                    onClick={() => { setTmSearch(''); setTmPicker({ slot: i as 0 | 1 }); }}
+                  >
+                    💿 Replace with TM
+                  </button>
+                )}
                 {mi && (
                   <>
                     <div className="detail-move-stats">
@@ -365,6 +383,131 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
               </div>
               <div className="evolve-caption-line evolve-caption-done">
                 {evolving.from.pokemon.name} evolved into {target.name}!
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* TM picker overlay */}
+      {tmPicker && (() => {
+        const counts = new Map<string, number>();
+        for (const it of items) {
+          if (it.itemType === 'tm' && typeof it.itemData === 'string') {
+            counts.set(it.itemData, (counts.get(it.itemData) ?? 0) + 1);
+          }
+        }
+        const currentMoves = getEffectiveMoves(inst);
+        const q = tmSearch.trim().toLowerCase();
+        const available = [...counts.entries()]
+          .filter(([name]) => canLearnMove(pokemon.name, name))
+          .filter(([name]) => !currentMoves.includes(name))
+          .filter(([name]) => !q || name.toLowerCase().includes(q))
+          .sort((a, b) => a[0].localeCompare(b[0]));
+        return (
+          <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setTmPicker(null)}>
+            <div className="teach-content detail-tm-picker">
+              <div className="teach-header">
+                <span>Teach a TM to <strong>{pokemon.name}</strong></span>
+                <button className="teach-close" onClick={() => setTmPicker(null)}>✕</button>
+              </div>
+              <input
+                className="detail-tm-search"
+                type="text"
+                placeholder="Search TMs…"
+                autoFocus
+                value={tmSearch}
+                onChange={(e) => setTmSearch(e.target.value)}
+              />
+              {available.length === 0 ? (
+                <div className="teach-empty">
+                  {counts.size === 0
+                    ? 'You don\'t own any TMs.'
+                    : q
+                      ? 'No matching TMs.'
+                      : `${pokemon.name} can't learn any of the TMs you own.`}
+                </div>
+              ) : (
+                <div className="detail-tm-grid">
+                  {available.map(([moveName, count]) => {
+                    const mt = getMoveType(moveName);
+                    return (
+                      <div
+                        key={moveName}
+                        className={`detail-tm-card type-bg-${mt}`}
+                        onClick={() => setTmConfirm({ slot: tmPicker.slot, moveName })}
+                      >
+                        <img className="item-sprite" src={getTMSprite(moveName)} alt="TM" />
+                        {count > 1 && <div className="item-count">×{count}</div>}
+                        <div className="item-name">{moveName}</div>
+                        <div className={`item-type type-${mt}`}>{mt}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* TM teach confirm */}
+      {tmConfirm && (() => {
+        const mi = moveDex[tmConfirm.moveName];
+        const oldMove = getEffectiveMoves(inst)[tmConfirm.slot];
+        const mt = getMoveType(tmConfirm.moveName);
+        return (
+          <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setTmConfirm(null)}>
+            <div className="teach-content detail-tm-confirm">
+              <div className="teach-header">
+                <button className="teach-back" onClick={() => setTmConfirm(null)}>←</button>
+                <span>Teach this TM?</span>
+                <button className="teach-close" onClick={() => { setTmConfirm(null); setTmPicker(null); }}>✕</button>
+              </div>
+              <div className={`detail-tm-confirm-card type-bg-${mt}`}>
+                <img className="item-sprite" src={getTMSprite(tmConfirm.moveName)} alt="TM" />
+                <div className="detail-tm-confirm-name">{tmConfirm.moveName}</div>
+                <div className={`item-type type-${mt}`}>{mt}</div>
+                {mi && (
+                  <>
+                    <div className="detail-move-stats">
+                      <span className="detail-move-stat">
+                        <span className="detail-move-stat-label">Power</span>
+                        <span className="detail-move-stat-value">{mi.basePower > 0 ? mi.basePower : '—'}</span>
+                      </span>
+                      <span className="detail-move-stat">
+                        <span className="detail-move-stat-label">Acc</span>
+                        <span className="detail-move-stat-value">{mi.accuracy == null ? '—' : `${mi.accuracy}%`}</span>
+                      </span>
+                      <span className="detail-move-stat">
+                        <span className="detail-move-stat-label">PP</span>
+                        <span className="detail-move-stat-value">{mi.pp ?? '—'}</span>
+                      </span>
+                      <span className="detail-move-stat">
+                        <span className="detail-move-stat-label">Cat</span>
+                        <span className="detail-move-stat-value">{mi.category}</span>
+                      </span>
+                    </div>
+                    {mi.desc && <div className="detail-move-desc">{mi.desc}</div>}
+                  </>
+                )}
+                {!mi && <div className="detail-move-desc">Loading move details…</div>}
+              </div>
+              <div className="detail-tm-confirm-swap">
+                Replaces <strong>{oldMove}</strong>
+              </div>
+              <div className="detail-tm-confirm-actions">
+                <button className="detail-tm-cancel" onClick={() => setTmConfirm(null)}>Cancel</button>
+                <button
+                  className="detail-tm-confirm-btn"
+                  onClick={() => {
+                    if (onTeachTM) onTeachTM(inst, tmConfirm.moveName, tmConfirm.slot);
+                    setTmConfirm(null);
+                    setTmPicker(null);
+                  }}
+                >
+                  Confirm
+                </button>
               </div>
             </div>
           </div>
