@@ -638,130 +638,237 @@
 }
 
 
-/* ---- Replace-with-TM button on move card ---- */
+
+/* =====================================================================
+   Mobile-first: TM replace + held item give/take overlays.
+   Constraints:
+   - Touch targets ≥ 44px.
+   - Inputs ≥ 16px font (no iOS zoom).
+   - Overlay becomes a full-height sheet on phones.
+   ===================================================================== */
+
+/* Replace-with-TM button on each move card */
 .detail-move-replace-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   align-self: flex-start;
-  margin-top: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
+  margin-top: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 700;
   color: #fff;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 22px;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-}
-.detail-move-replace-btn:hover {
-  background: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: background 0.12s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
 }
 .detail-move-replace-btn:active {
   transform: scale(0.96);
+  background: rgba(0, 0, 0, 0.6);
 }
 
-/* ---- TM picker overlay ---- */
-.detail-tm-picker {
-  max-width: 520px;
+/* Held-item action buttons (give / take-back) */
+.detail-held-action {
+  display: block;
   width: 100%;
+  margin-top: 10px;
+  min-height: 48px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 0.08s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
 }
+.detail-held-action-give {
+  background: linear-gradient(180deg, #4caf50 0%, #3d9b43 100%);
+}
+.detail-held-action-give:active {
+  transform: scale(0.98);
+  background: #3d9b43;
+}
+.detail-held-action-take {
+  background: linear-gradient(180deg, #e57373 0%, #c45454 100%);
+}
+.detail-held-action-take:active {
+  transform: scale(0.98);
+  background: #c45454;
+}
+
+/* Picker + confirm overlays share .teach-overlay (bottom-sheet) from
+   ItemsScreen.css; we only tune the inner content width/layout here. */
+.detail-tm-picker,
+.detail-tm-confirm {
+  width: 100%;
+  padding: 12px 14px 18px;
+}
+
+/* Search input — 16px font prevents iOS zoom on focus. */
 .detail-tm-search {
   width: 100%;
   box-sizing: border-box;
   margin: 10px 0 12px;
-  padding: 8px 12px;
-  font-size: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 16px;
+  line-height: 1.2;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.35);
   color: #fff;
   outline: none;
+  -webkit-appearance: none;
 }
-.detail-tm-search::placeholder { color: rgba(255, 255, 255, 0.5); }
-.detail-tm-search:focus { border-color: rgba(255, 255, 255, 0.5); }
+.detail-tm-search::placeholder { color: rgba(255, 255, 255, 0.55); }
+.detail-tm-search:focus { border-color: rgba(255, 255, 255, 0.6); }
 
+/* Grid: 2 columns on small screens, auto-fill elsewhere. */
 .detail-tm-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  max-height: 60vh;
   overflow-y: auto;
-  padding: 4px;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 4px 12px;
+  /* Shrink to remaining space inside the sheet. */
+  flex: 1 1 auto;
+  min-height: 0;
 }
+@media (min-width: 520px) {
+  .detail-tm-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
 .detail-tm-card {
   position: relative;
-  padding: 10px 8px 8px;
-  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px 10px;
+  min-height: 120px;
+  border-radius: 12px;
   text-align: center;
   cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.15s;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.25);
+  transition: transform 0.08s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
-.detail-tm-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+.detail-tm-card:active {
+  transform: scale(0.96);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35) inset;
 }
-.detail-tm-card:active { transform: scale(0.97); }
+.detail-tm-card .item-sprite {
+  width: 44px;
+  height: 44px;
+  image-rendering: pixelated;
+}
+.detail-tm-card .item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.15;
+  word-break: break-word;
+}
+.detail-tm-card .item-type {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.detail-tm-card .item-count {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
 
-/* ---- TM confirm overlay ---- */
-.detail-tm-confirm {
-  max-width: 440px;
-  width: 100%;
-}
+/* Confirm card */
 .detail-tm-confirm-card {
   padding: 16px;
-  border-radius: 12px;
+  border-radius: 14px;
   text-align: center;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.25);
 }
 .detail-tm-confirm-card .item-sprite {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
 }
 .detail-tm-confirm-name {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 6px 0;
+  font-size: 20px;
+  font-weight: 800;
+  margin: 8px 0;
 }
 .detail-tm-confirm-card .detail-move-stats {
   justify-content: center;
   margin-top: 10px;
+  flex-wrap: wrap;
 }
 .detail-tm-confirm-card .detail-move-desc {
-  margin-top: 8px;
-  font-size: 12px;
-  opacity: 0.9;
+  margin-top: 10px;
+  font-size: 13px;
+  opacity: 0.95;
 }
 .detail-tm-confirm-swap {
   text-align: center;
-  margin: 12px 0;
+  margin: 12px 0 14px;
   font-size: 14px;
-  opacity: 0.85;
+  opacity: 0.9;
 }
+
+/* Actions row — full-width on phones, side-by-side on larger. */
 .detail-tm-confirm-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  justify-content: flex-end;
+  padding-top: 4px;
 }
 .detail-tm-cancel,
 .detail-tm-confirm-btn {
-  padding: 8px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 8px;
+  min-height: 48px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: transform 0.08s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
 }
 .detail-tm-cancel {
   background: rgba(255, 255, 255, 0.15);
   color: #fff;
 }
-.detail-tm-cancel:hover { background: rgba(255, 255, 255, 0.25); }
+.detail-tm-cancel:active { transform: scale(0.98); background: rgba(255, 255, 255, 0.25); }
 .detail-tm-confirm-btn {
-  background: #4caf50;
+  background: linear-gradient(180deg, #4caf50 0%, #3d9b43 100%);
   color: #fff;
 }
-.detail-tm-confirm-btn:hover { background: #43a047; }
-.detail-tm-cancel:active,
-.detail-tm-confirm-btn:active { transform: scale(0.97); }
+.detail-tm-confirm-btn:active { transform: scale(0.98); background: #3d9b43; }
+.detail-tm-confirm-btn-danger {
+  background: linear-gradient(180deg, #e57373 0%, #c45454 100%);
+}
+.detail-tm-confirm-btn-danger:active { background: #c45454; }
+
+/* Held-item picker card (no type chip). */
+.detail-held-card { min-height: 110px; }
+.detail-held-confirm-card .detail-move-desc {
+  font-style: normal;
+}

@@ -24,6 +24,8 @@ interface PokemonDetailScreenProps {
   onEvolve: (instance: PokemonInstance, targetId: number) => void;
   onToggleFavorite: (instance: PokemonInstance) => void;
   onTeachTM?: (instance: PokemonInstance, moveName: string, moveSlot: 0 | 1) => void;
+  onGiveHeldItem?: (instance: PokemonInstance, itemId: string) => void;
+  onTakeHeldItem?: (instance: PokemonInstance) => void;
   playerId?: string;
 }
 
@@ -37,7 +39,7 @@ const TYPE_COLORS: Record<string, string> = {
   steel: '#B8B8D0', fairy: '#EE99AC',
 };
 
-export default function PokemonDetailScreen({ collection, items, onShard, onEvolve, onToggleFavorite, onTeachTM, playerId }: PokemonDetailScreenProps) {
+export default function PokemonDetailScreen({ collection, items, onShard, onEvolve, onToggleFavorite, onTeachTM, onGiveHeldItem, onTakeHeldItem, playerId }: PokemonDetailScreenProps) {
   const { idx } = useParams();
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
@@ -48,6 +50,10 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const [tmPicker, setTmPicker] = useState<{ slot: 0 | 1 } | null>(null);
   const [tmSearch, setTmSearch] = useState('');
   const [tmConfirm, setTmConfirm] = useState<{ slot: 0 | 1; moveName: string } | null>(null);
+  const [heldPicker, setHeldPicker] = useState(false);
+  const [heldSearch, setHeldSearch] = useState('');
+  const [heldConfirm, setHeldConfirm] = useState<{ itemId: string } | null>(null);
+  const [heldTakeConfirm, setHeldTakeConfirm] = useState(false);
 
   type MoveDex = { name: string; type: string; category: 'Physical' | 'Special' | 'Status'; basePower: number; accuracy: number | null; pp: number | null; priority: number; shortDesc: string; desc: string };
   type AbilityDex = { name: string; shortDesc: string; desc: string };
@@ -331,15 +337,37 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
         <div className="detail-section-title">Held Item</div>
         <div className="detail-held-item">
           {inst.heldItem ? (
-            <div className="detail-held-item-info">
-              <img src={getHeldItemSprite(inst.heldItem)} alt="" className="detail-held-icon" />
-              <div>
-                <div className="detail-held-name">{getHeldItemName(inst.heldItem)}</div>
-                <div className="detail-held-desc">{HELD_ITEMS_BY_ID[inst.heldItem]?.description}</div>
+            <>
+              <div className="detail-held-item-info">
+                <img src={getHeldItemSprite(inst.heldItem)} alt="" className="detail-held-icon" />
+                <div>
+                  <div className="detail-held-name">{getHeldItemName(inst.heldItem)}</div>
+                  <div className="detail-held-desc">{HELD_ITEMS_BY_ID[inst.heldItem]?.description}</div>
+                </div>
               </div>
-            </div>
+              {onTakeHeldItem && (
+                <button
+                  type="button"
+                  className="detail-held-action detail-held-action-take"
+                  onClick={() => setHeldTakeConfirm(true)}
+                >
+                  Take back
+                </button>
+              )}
+            </>
           ) : (
-            <div className="detail-held-none">None</div>
+            <>
+              <div className="detail-held-none">None equipped</div>
+              {onGiveHeldItem && (
+                <button
+                  type="button"
+                  className="detail-held-action detail-held-action-give"
+                  onClick={() => { setHeldSearch(''); setHeldPicker(true); }}
+                >
+                  🎒 Give held item
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -507,6 +535,133 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
                   }}
                 >
                   Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Held item picker overlay */}
+      {heldPicker && (() => {
+        const counts = new Map<string, number>();
+        for (const it of items) {
+          if (it.itemType === 'held_item' && typeof it.itemData === 'string') {
+            counts.set(it.itemData, (counts.get(it.itemData) ?? 0) + 1);
+          }
+        }
+        const q = heldSearch.trim().toLowerCase();
+        const available = [...counts.entries()]
+          .map(([id, count]) => ({ id, count, def: HELD_ITEMS_BY_ID[id] }))
+          .filter((e) => e.def && (!q || e.def.name.toLowerCase().includes(q)))
+          .sort((a, b) => a.def!.name.localeCompare(b.def!.name));
+        return (
+          <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setHeldPicker(false)}>
+            <div className="teach-content detail-tm-picker">
+              <div className="teach-header">
+                <span>Give item to <strong>{pokemon.name}</strong></span>
+                <button className="teach-close" onClick={() => setHeldPicker(false)}>✕</button>
+              </div>
+              <input
+                className="detail-tm-search"
+                type="search"
+                placeholder="Search items…"
+                autoComplete="off"
+                value={heldSearch}
+                onChange={(e) => setHeldSearch(e.target.value)}
+              />
+              {available.length === 0 ? (
+                <div className="teach-empty">
+                  {counts.size === 0 ? 'You don\'t own any held items.' : 'No matching items.'}
+                </div>
+              ) : (
+                <div className="detail-tm-grid">
+                  {available.map(({ id, count, def }) => (
+                    <div
+                      key={id}
+                      className="detail-tm-card detail-held-card"
+                      onClick={() => setHeldConfirm({ itemId: id })}
+                    >
+                      <img className="item-sprite" src={def!.sprite} alt={def!.name} />
+                      {count > 1 && <div className="item-count">×{count}</div>}
+                      <div className="item-name">{def!.name}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Held item give confirm */}
+      {heldConfirm && (() => {
+        const def = HELD_ITEMS_BY_ID[heldConfirm.itemId];
+        if (!def) return null;
+        return (
+          <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setHeldConfirm(null)}>
+            <div className="teach-content detail-tm-confirm">
+              <div className="teach-header">
+                <button className="teach-back" onClick={() => setHeldConfirm(null)}>←</button>
+                <span>Give this item?</span>
+                <button className="teach-close" onClick={() => { setHeldConfirm(null); setHeldPicker(false); }}>✕</button>
+              </div>
+              <div className="detail-tm-confirm-card detail-held-confirm-card">
+                <img className="item-sprite" src={def.sprite} alt={def.name} />
+                <div className="detail-tm-confirm-name">{def.name}</div>
+                <div className="detail-move-desc">{def.description}</div>
+              </div>
+              <div className="detail-tm-confirm-swap">
+                Held by <strong>{pokemon.name}</strong>
+              </div>
+              <div className="detail-tm-confirm-actions">
+                <button className="detail-tm-cancel" onClick={() => setHeldConfirm(null)}>Cancel</button>
+                <button
+                  className="detail-tm-confirm-btn"
+                  onClick={() => {
+                    if (onGiveHeldItem) onGiveHeldItem(inst, heldConfirm.itemId);
+                    setHeldConfirm(null);
+                    setHeldPicker(false);
+                  }}
+                >
+                  Give
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Held item take confirm */}
+      {heldTakeConfirm && inst.heldItem && (() => {
+        const def = HELD_ITEMS_BY_ID[inst.heldItem];
+        return (
+          <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setHeldTakeConfirm(false)}>
+            <div className="teach-content detail-tm-confirm">
+              <div className="teach-header">
+                <span>Take back item?</span>
+                <button className="teach-close" onClick={() => setHeldTakeConfirm(false)}>✕</button>
+              </div>
+              {def && (
+                <div className="detail-tm-confirm-card detail-held-confirm-card">
+                  <img className="item-sprite" src={def.sprite} alt={def.name} />
+                  <div className="detail-tm-confirm-name">{def.name}</div>
+                  <div className="detail-move-desc">{def.description}</div>
+                </div>
+              )}
+              <div className="detail-tm-confirm-swap">
+                Returns to your inventory
+              </div>
+              <div className="detail-tm-confirm-actions">
+                <button className="detail-tm-cancel" onClick={() => setHeldTakeConfirm(false)}>Cancel</button>
+                <button
+                  className="detail-tm-confirm-btn detail-tm-confirm-btn-danger"
+                  onClick={() => {
+                    if (onTakeHeldItem) onTakeHeldItem(inst);
+                    setHeldTakeConfirm(false);
+                  }}
+                >
+                  Take back
                 </button>
               </div>
             </div>
