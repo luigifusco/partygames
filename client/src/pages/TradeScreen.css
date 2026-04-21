@@ -593,3 +593,34 @@
   .trade-sprite-out { opacity: 1; }
   .trade-sprite-in { opacity: 1; transform: none; }
 }
+
+/* Rich confirm cards — reuse .team-select-card styling but larger and
+ * non-interactive, with a "You give / You get" label on top. */
+.team-select-card.trade-confirm-rich {
+  flex: 0 0 auto;
+  width: 180px;
+  cursor: default;
+  padding-top: 22px;
+}
+.team-select-card.trade-confirm-rich:hover {
+  transform: none;
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+.trade-confirm-label {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  z-index: 2;
+  text-shadow: 0 0 4px #000;
+}
+.team-select-card.trade-confirm-rich .team-select-card-name {
+  top: 22px;
+}

@@ -210,6 +210,9 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
 
   // Confirm phase
   if (phase === 'confirm' || phase === 'waitingConfirm') {
+    const myInst = selectedIdx !== null ? collection[selectedIdx] : null;
+    const myMoves = myInst ? getEffectiveMoves(myInst) : [];
+    const theirDefaultMoves = theirPokemon?.moves?.slice(0, 4) ?? [];
     return (
       <div className="trade-screen">
         <div className="trade-header">
@@ -217,22 +220,47 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
         </div>
         <div className="trade-content">
           <div className="trade-confirm-view">
-            <div className="trade-confirm-card">
-              <div className="label">You give</div>
+            <div className="team-select-card trade-confirm-rich">
+              <div className="trade-confirm-label">You give</div>
               {myPokemon && (
                 <>
                   <img src={myPokemon.sprite} alt={myPokemon.name} />
-                  <div className="name">{myPokemon.name}</div>
+                  <div className="team-select-card-name">{myPokemon.name}</div>
+                  <div className="team-select-card-info">
+                    {myInst && <div className="team-select-card-nature">{myInst.nature}</div>}
+                    {myInst?.ability && <div className="team-select-card-ability">{myInst.ability}</div>}
+                    <div className="team-select-card-moves">
+                      {myMoves.map((m, i) => (
+                        <span key={i} className="team-select-card-move">{m}</span>
+                      ))}
+                    </div>
+                    {myInst?.heldItem && (
+                      <div className="team-select-card-held">
+                        <img src={getHeldItemSprite(myInst.heldItem)} alt="" className="team-select-held-icon" />
+                        <span>{getHeldItemName(myInst.heldItem)}</span>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
             <div className="trade-confirm-arrow">⇄</div>
-            <div className="trade-confirm-card">
-              <div className="label">You get</div>
+            <div className="team-select-card trade-confirm-rich">
+              <div className="trade-confirm-label">You get</div>
               {theirPokemon && (
                 <>
                   <img src={theirPokemon.sprite} alt={theirPokemon.name} />
-                  <div className="name">{theirPokemon.name}</div>
+                  <div className="team-select-card-name">{theirPokemon.name}</div>
+                  <div className="team-select-card-info">
+                    <div className="team-select-card-nature" style={{ fontStyle: 'italic', opacity: 0.65 }}>
+                      nature & IVs random
+                    </div>
+                    <div className="team-select-card-moves">
+                      {theirDefaultMoves.map((m, i) => (
+                        <span key={i} className="team-select-card-move">{m}</span>
+                      ))}
+                    </div>
+                  </div>
                 </>
               )}
             </div>
