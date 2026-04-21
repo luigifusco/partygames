@@ -23,7 +23,7 @@ import type { Pokemon as AppPokemon } from '../../shared/types.js';
 import { computeBondXp, bondThresholdForStep, reawakenCost, type BondBattleMode } from '../../shared/evolution.js';
 import { evolutionStepFor } from '../../shared/evolution-helpers.js';
 import { REAWAKEN_UNLOCK_CHAPTER } from '../../shared/story-data.js';
-import { runShowdownBattle, randomAbilityForSpecies } from './showdown-battle.js';
+import { runShowdownBattle, randomAbilityForSpecies, replayParseSnapshot } from './showdown-battle.js';
 import { Dex as ShowdownDex } from '../../pokemon-showdown/dist/sim/index.js';
 
 const GEN5_DEX = ShowdownDex.forGen(5);
@@ -879,6 +879,101 @@ app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
   `).all();
 
   return res.json({ byMode, byDay, topPlayers });
+});
+
+// ─── Replay endpoints ──────────────────────────────────────────────
+
+app.get(`${BASE_PATH}/api/replay/list`, (req, res) => {
+  const limit = Math.max(1, Math.min(200, parseInt((req.query.limit as string) || '100', 10)));
+  const rows = db.prepare(`
+    SELECT b.id, b.created_at, b.field_size, b.total_pokemon, b.opponent_type,
+           b.rounds, b.tournament_id,
+           b.winner_id, b.loser_id,
+           pw.name AS winner_name, pl.name AS loser_name,
+           b.winner_elo_delta, b.loser_elo_delta
+    FROM battles b
+    LEFT JOIN players pw ON pw.id = b.winner_id
+    LEFT JOIN players pl ON pl.id = b.loser_id
+    WHERE b.showdown_log IS NOT NULL AND length(b.showdown_log) > 0
+    ORDER BY b.created_at DESC
+    LIMIT ?
+  `).all(limit);
+  return res.json({ battles: rows });
+});
+
+app.get(`${BASE_PATH}/api/replay/:id`, (req, res) => {
+  const id = req.params.id;
+  const row: any = db.prepare(`
+    SELECT b.id, b.created_at, b.field_size, b.total_pokemon, b.opponent_type,
+           b.rounds, b.winner_id, b.loser_id, b.showdown_log,
+           pw.name AS winner_name, pl.name AS loser_name
+    FROM battles b
+    LEFT JOIN players pw ON pw.id = b.winner_id
+    LEFT JOIN players pl ON pl.id = b.loser_id
+    WHERE b.id = ?
+  `).get(id);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  if (!row.showdown_log) return res.status(404).json({ error: 'no_log' });
+
+  // Re-hydrate team entries from battle_team_entries. Order within a side is
+  // the insertion order (rowid) — matches the order pokemon appear in the log.
+  const entries: any[] = db.prepare(`
+    SELECT player_id, pokemon_id, rowid
+    FROM battle_team_entries
+    WHERE battle_id = ?
+    ORDER BY rowid ASC
+  `).all(id);
+
+  const toEntry = (pokemonId: number) => {
+    const pokemon = POKEMON_BY_ID[pokemonId];
+    if (!pokemon) return null;
+    return { pokemon, moves: [pokemon.moves[0] || 'Tackle', pokemon.moves[1] || 'Tackle'] as [string, string] };
+  };
+
+  const leftEntries: any[] = [];
+  const rightEntries: any[] = [];
+  for (const e of entries) {
+    const entry = toEntry(e.pokemon_id);
+    if (!entry) continue;
+    if (e.player_id === row.winner_id || e.player_id === row.loser_id) {
+      // Winner side shows as LEFT in the raw log only if winner was p1 — but
+      // the log itself decides which team is p1 via |player|p1|Left|. Since
+      // we saved the log as-is, the original p1 entries should populate
+      // leftEntries and p2 should populate rightEntries. We don't currently
+      // persist that mapping, so fall back to "first player seen == p1".
+    }
+  }
+
+  // The simplest faithful reconstruction: both players' entries in rowid
+  // order, partitioned by whichever player_id appears first. The running
+  // battle code inserted p1's team before p2's team, so this preserves the
+  // correct side assignment.
+  const firstPlayerId = entries.length > 0 ? entries[0].player_id : null;
+  for (const e of entries) {
+    const entry = toEntry(e.pokemon_id);
+    if (!entry) continue;
+    if (e.player_id === firstPlayerId) leftEntries.push(entry);
+    else rightEntries.push(entry);
+  }
+
+  try {
+    const snapshot = replayParseSnapshot(row.showdown_log, leftEntries, rightEntries, row.field_size || 1);
+    return res.json({
+      snapshot,
+      meta: {
+        id: row.id,
+        createdAt: row.created_at,
+        fieldSize: row.field_size,
+        opponentType: row.opponent_type,
+        rounds: row.rounds,
+        winnerName: row.winner_name,
+        loserName: row.loser_name,
+      },
+    });
+  } catch (err: any) {
+    console.error('[replay] parse failed', id, err);
+    return res.status(500).json({ error: 'parse_failed', message: err?.message });
+  }
 });
 
 // ─── Admin endpoints ────────────────────────────────────────────────

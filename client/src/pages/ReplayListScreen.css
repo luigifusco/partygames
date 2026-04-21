@@ -1,0 +1,168 @@
+.replay-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 14px 14px 24px;
+  gap: 14px;
+  color: #fff;
+}
+
+.replay-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.replay-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.replay-back {
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.replay-back:active { background: rgba(255, 255, 255, 0.2); }
+
+.replay-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 20px;
+}
+
+.replay-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  color: #fff;
+  cursor: pointer;
+  min-height: 80px;
+  transition: transform 0.08s, background 0.12s, border-color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.replay-row:active {
+  transform: scale(0.99);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.replay-row-top,
+.replay-row-mid,
+.replay-row-bot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.replay-row-when {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.replay-row-mode {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.replay-row-winner {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffd166;
+}
+
+.replay-row-vs {
+  font-size: 12px;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.replay-row-loser {
+  font-size: 15px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.replay-row-rounds {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.replay-row-elo {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8bc34a;
+}
+
+.replay-row-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 200, 80, 0.2);
+  color: #ffe0a0;
+}
+
+.replay-empty {
+  padding: 40px 20px;
+  text-align: center;
+  opacity: 0.7;
+  font-size: 14px;
+}
+
+.replay-error { color: #ff7575; }
+
+/* Replay watch screen shares the header style but renders BattleScene underneath. */
+.replay-watch {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.replay-watch-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.replay-watch-header .replay-back { min-height: 40px; padding: 8px 12px; }
+
+.replay-watch-title {
+  font-size: 14px;
+  font-weight: 700;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-watch-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}

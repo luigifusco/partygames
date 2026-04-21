@@ -247,6 +247,25 @@ export function runShowdownBattle(
 }
 
 
+/**
+ * Re-parse a previously recorded Showdown protocol log (as stored in
+ * `battles.showdown_log`) into a BattleSnapshot for replay. `leftEntries`
+ * and `rightEntries` only need `pokemon` + `ability` (+ any `character`)
+ * populated — everything else comes from the log itself.
+ */
+export function replayParseSnapshot(
+  log: string,
+  leftEntries: BattleTeamEntry[],
+  rightEntries: BattleTeamEntry[],
+  fieldSize: number,
+): BattleSnapshot {
+  const lines = log.split('\n');
+  const snapshot = parseProtocol(lines, leftEntries, rightEntries, fieldSize);
+  snapshot.rawLog = lines.filter((l) => l.startsWith('|') && l !== '|');
+  return snapshot;
+}
+
+
 function parseProtocol(
   lines: string[],
   leftEntries: BattleTeamEntry[],
