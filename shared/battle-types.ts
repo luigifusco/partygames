@@ -43,7 +43,7 @@ export interface BattleLogEntry {
   boostChanges?: { instanceId: string; changes: Partial<Record<'atk' | 'def' | 'spa' | 'spd' | 'spe', number>> };
   statusChange?: { instanceId: string; status: string };
   statusDamage?: { instanceId: string; damage: number };
-  replacement?: { instanceId: string; name: string; sprite: string; side: 'left' | 'right' };
+  replacement?: { instanceId: string; name: string; sprite: string; side: 'left' | 'right'; outgoingInstanceId?: string };
   /** Illusion broke — client should swap this pokemon's displayed sprite/name. */
   illusionBroken?: { instanceId: string; name: string; sprite: string };
   itemConsumed?: { instanceId: string; itemId: string };

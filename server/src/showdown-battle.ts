@@ -471,6 +471,7 @@ function parseProtocol(
         const hpStr = parts[4] || '100/100';
         const { hp, maxHp } = parseHPString(hpStr);
         const parsed = parsePokemonIdent(ident);
+        const outgoingId = activeSlot[slotPrefix(ident)]; // previous occupant (if any)
         const instId = assignSlot(ident);
 
         pokemonState[instId] = { hp, maxHp, side: parsed.side, name: parsed.name, species: detailParts[0] };
@@ -489,6 +490,7 @@ function parseProtocol(
               name: parsed.name,
               sprite: instanceIdToSprite[instId] || '',
               side: parsed.side,
+              outgoingInstanceId: outgoingId && outgoingId !== instId ? outgoingId : undefined,
             },
           });
         }

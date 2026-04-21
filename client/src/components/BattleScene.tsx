@@ -339,8 +339,15 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         const fullState = [...snapshot.left, ...snapshot.right].find(p => p.instanceId === rep.instanceId);
         if (fullState) {
           const arr = rep.side === 'left' ? leftDisplayed : rightDisplayed;
-          const faintedIdx = arr.findIndex(p => (state.pokemonHp?.[p.instanceId] ?? 0) <= 0 && p.instanceId !== rep.instanceId);
-          if (faintedIdx >= 0) arr[faintedIdx] = fullState;
+          // Preferred: use outgoingInstanceId for living switches (Eject Button, U-turn, etc.)
+          let replacedIdx = -1;
+          if (rep.outgoingInstanceId) {
+            replacedIdx = arr.findIndex(p => p.instanceId === rep.outgoingInstanceId);
+          }
+          if (replacedIdx < 0) {
+            replacedIdx = arr.findIndex(p => (state.pokemonHp?.[p.instanceId] ?? 0) <= 0 && p.instanceId !== rep.instanceId);
+          }
+          if (replacedIdx >= 0) arr[replacedIdx] = fullState;
           else if (!arr.some(p => p.instanceId === rep.instanceId)) {
             const anyFainted = arr.findIndex(p => (state.pokemonHp?.[p.instanceId] ?? 0) <= 0);
             if (anyFainted >= 0) arr[anyFainted] = fullState;
@@ -462,6 +469,17 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
             setDisplayed((displayed) => {
               // Don't add if already displayed
               if (displayed.some(p => p.instanceId === rep.instanceId)) return displayed;
+              // Preferred: if the server told us who is being switched OUT, swap that slot.
+              // This is needed for Eject Button / U-turn / Volt Switch where the
+              // outgoing pokemon is still alive (faintedIdx below would miss it).
+              if (rep.outgoingInstanceId) {
+                const outIdx = displayed.findIndex(p => p.instanceId === rep.outgoingInstanceId);
+                if (outIdx >= 0) {
+                  const next = [...displayed];
+                  next[outIdx] = fullState;
+                  return next;
+                }
+              }
               // Find the fainted slot: check prev.pokemonHp (before this entry's hpState)
               // to find which displayed pokemon was at 0 HP
               const faintedIdx = displayed.findIndex(p => (prev.pokemonHp[p.instanceId] ?? 0) <= 0);
