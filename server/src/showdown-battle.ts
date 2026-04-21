@@ -305,6 +305,18 @@ function parseProtocol(
     const roster = parsed.side === 'left' ? leftRoster : rightRoster;
     const switchNum = parsed.side === 'left' ? leftSwitchCount++ : rightSwitchCount++;
 
+    // A pokemon that switched out via Eject Button / U-turn / Volt Switch is
+    // still alive and will come back later, so it must remain pickable.
+    // Build the set of instanceIds currently on the field so we only exclude
+    // those, not every consumed entry.
+    const sidePrefix = parsed.side === 'left' ? 'l' : 'r';
+    const onField = new Set<string>(
+      Object.entries(activeSlot)
+        .filter(([p, id]) => p !== prefix && id && id.startsWith(sidePrefix))
+        .map(([, id]) => id),
+    );
+    const isFree = (r: RosterEntry) => !onField.has(`${sidePrefix}${r.idx}`);
+
     let pick: RosterEntry | undefined;
     if (switchNum === 0) {
       // The very first switch-in for a side is always the team lead (roster[0]).
@@ -312,10 +324,15 @@ function parseProtocol(
       // name of its disguise target, but it IS roster[0].
       pick = roster[0];
     } else {
-      // Later switches: match by name among unconsumed, else any unconsumed Illusion user (disguise),
-      // else any unconsumed entry.
+      // 1. Unconsumed entry by name (normal first switch-in of a teammate).
       pick = roster.find(r => !r.consumed && r.name === parsed.name);
+      // 2. Consumed entry by name that is NOT currently on the field — this is
+      //    a pokemon returning after an Eject Button / U-turn / Volt Switch.
+      if (!pick) pick = roster.find(r => r.consumed && r.name === parsed.name && isFree(r));
+      // 3. Illusion disguise: an unconsumed Illusion user switching in as a
+      //    teammate's name.
       if (!pick) pick = roster.find(r => !r.consumed && r.ability === 'Illusion');
+      // 4. Last-ditch fallback: any unconsumed entry.
       if (!pick) pick = roster.find(r => !r.consumed);
       if (!pick) pick = roster[0];
     }
