@@ -915,45 +915,48 @@ app.get(`${BASE_PATH}/api/replay/:id`, (req, res) => {
   if (!row) return res.status(404).json({ error: 'not_found' });
   if (!row.showdown_log) return res.status(404).json({ error: 'no_log' });
 
-  // Re-hydrate team entries from battle_team_entries. Order within a side is
-  // the insertion order (rowid) — matches the order pokemon appear in the log.
-  const entries: any[] = db.prepare(`
-    SELECT player_id, pokemon_id, rowid
-    FROM battle_team_entries
-    WHERE battle_id = ?
-    ORDER BY rowid ASC
-  `).all(id);
+  const pokemonByLowerName: Record<string, any> = {};
+  for (const p of POKEMON) pokemonByLowerName[p.name.toLowerCase()] = p;
 
-  const toEntry = (pokemonId: number) => {
-    const pokemon = POKEMON_BY_ID[pokemonId];
-    if (!pokemon) return null;
-    return { pokemon, moves: [pokemon.moves[0] || 'Tackle', pokemon.moves[1] || 'Tackle'] as [string, string] };
-  };
+  const toEntry = (pokemon: any) => ({
+    pokemon,
+    moves: [pokemon.moves[0] || 'Tackle', pokemon.moves[1] || 'Tackle'] as [string, string],
+  });
 
+  // Preferred: parse |poke|pN|Species, gender|... lines from the team preview
+  // at the start of the log. These are present for every battle and give us
+  // team order per side even if battle_team_entries isn't populated.
   const leftEntries: any[] = [];
   const rightEntries: any[] = [];
-  for (const e of entries) {
-    const entry = toEntry(e.pokemon_id);
-    if (!entry) continue;
-    if (e.player_id === row.winner_id || e.player_id === row.loser_id) {
-      // Winner side shows as LEFT in the raw log only if winner was p1 — but
-      // the log itself decides which team is p1 via |player|p1|Left|. Since
-      // we saved the log as-is, the original p1 entries should populate
-      // leftEntries and p2 should populate rightEntries. We don't currently
-      // persist that mapping, so fall back to "first player seen == p1".
+  for (const line of row.showdown_log.split('\n')) {
+    if (!line.startsWith('|poke|')) continue;
+    const parts = line.split('|'); // ['', 'poke', 'p1', 'Species, F', '']
+    const side = parts[2];
+    const speciesRaw = (parts[3] || '').split(',')[0].trim();
+    const pkmn = pokemonByLowerName[speciesRaw.toLowerCase()];
+    if (!pkmn) continue;
+    (side === 'p1' ? leftEntries : rightEntries).push(toEntry(pkmn));
+  }
+
+  // Fallback: use battle_team_entries if the log had no team preview (shouldn't
+  // normally happen for any modern format).
+  if (leftEntries.length === 0 && rightEntries.length === 0) {
+    const entries: any[] = db.prepare(`
+      SELECT player_id, pokemon_id, rowid
+      FROM battle_team_entries
+      WHERE battle_id = ?
+      ORDER BY rowid ASC
+    `).all(id);
+    const firstPlayerId = entries.length > 0 ? entries[0].player_id : null;
+    for (const e of entries) {
+      const pkmn = POKEMON_BY_ID[e.pokemon_id];
+      if (!pkmn) continue;
+      (e.player_id === firstPlayerId ? leftEntries : rightEntries).push(toEntry(pkmn));
     }
   }
 
-  // The simplest faithful reconstruction: both players' entries in rowid
-  // order, partitioned by whichever player_id appears first. The running
-  // battle code inserted p1's team before p2's team, so this preserves the
-  // correct side assignment.
-  const firstPlayerId = entries.length > 0 ? entries[0].player_id : null;
-  for (const e of entries) {
-    const entry = toEntry(e.pokemon_id);
-    if (!entry) continue;
-    if (e.player_id === firstPlayerId) leftEntries.push(entry);
-    else rightEntries.push(entry);
+  if (leftEntries.length === 0 || rightEntries.length === 0) {
+    return res.status(422).json({ error: 'no_team_info' });
   }
 
   try {
