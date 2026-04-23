@@ -6,6 +6,7 @@ import { playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, pre
 import { getHeldItemSprite } from '@shared/held-item-data';
 import BattleBackground, { pickPreset } from './BattleBackground';
 import TrickRoomBackground from './TrickRoomBackground';
+import WeatherVideo from './WeatherVideo';
 import './BattleScene.css';
 
 interface BattleSceneProps {
@@ -727,7 +728,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         <TrickRoomBackground active={anim.trickRoom} />
         <div className="battle-arena-vignette" aria-hidden="true" />
         {anim.activeWeather && (
-          <div className={`weather-overlay weather-overlay-${anim.activeWeather}`} />
+          <WeatherVideo kind={anim.activeWeather} />
         )}
         {snapshot.round > 0 && !anim.finished && (
           <div className="battle-round-badge">Round {snapshot.round}</div>

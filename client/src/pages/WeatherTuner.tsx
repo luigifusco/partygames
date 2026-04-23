@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BattleBackground, { BACKGROUND_PRESETS } from '../components/BattleBackground';
+import WeatherVideo, { type WeatherKind } from '../components/WeatherVideo';
 import '../components/BattleScene.css';
 import './WeatherTuner.css';
-
-type WeatherKind = 'rain' | 'sun' | 'sand' | 'hail';
 
 interface WeatherDef {
   kind: WeatherKind;
@@ -14,11 +13,13 @@ interface WeatherDef {
 }
 
 const WEATHERS: WeatherDef[] = [
-  { kind: 'rain', label: 'Rain',       icon: '🌧️', description: 'Tinted wash + diagonal streaks + subtle lightning' },
-  { kind: 'sun',  label: 'Harsh Sun',  icon: '☀️', description: 'Warm pulse + rotating rays + heat haze' },
-  { kind: 'sand', label: 'Sandstorm',  icon: '🌪️', description: 'Tan haze + wind-blown streaks + drifting motes' },
-  { kind: 'hail', label: 'Hail',       icon: '❄️', description: 'Icy tint + falling flakes' },
+  { kind: 'rain', label: 'Rain',      icon: '🌧️', description: 'weather-gen6-raindance' },
+  { kind: 'sun',  label: 'Harsh Sun', icon: '☀️', description: 'weather-gen6-sunnyday' },
+  { kind: 'sand', label: 'Sandstorm', icon: '🌪️', description: 'weather-gen6-sandstorm' },
+  { kind: 'hail', label: 'Hail',      icon: '❄️', description: 'weather-gen6-hail' },
 ];
+
+const BLEND_MODES = ['screen', 'multiply', 'overlay', 'lighten', 'normal'] as const;
 
 export default function WeatherTuner() {
   const navigate = useNavigate();
@@ -26,48 +27,18 @@ export default function WeatherTuner() {
   const [speed, setSpeed] = useState(1);
   const [brightness, setBrightness] = useState(1);
   const [saturate, setSaturate] = useState(1);
-  const [paused, setPaused] = useState(false);
+  const [blend, setBlend] = useState<string>('default');
   const [bgIndex, setBgIndex] = useState(0);
   const [focus, setFocus] = useState<WeatherKind | null>(null);
 
-  // Per-preview pseudo-element durations come from CSS. To tune speed we
-  // inject a <style> block that scales every weather animation by 1/speed.
-  // Using a CSS custom property is simpler than overriding each rule.
-  const speedStyle = useMemo(() => {
-    const s = Math.max(0.01, speed);
-    // List every weather animation + its base duration (must match BattleScene.css).
-    const rules: Array<[string, number]> = [
-      ['.weather-overlay-rain::before', 0.7], // front streaks
-      ['.weather-overlay-rain',         9],   // lightning flash (on element)
-      ['.weather-overlay-rain::after',  7],   // lightning flash (pseudo)
-      ['.weather-overlay-sun',          3.5], // sun pulse
-      ['.weather-overlay-sun::before',  28],  // sun rays
-      ['.weather-overlay-sun::after',   2.2], // heat haze
-      ['.weather-overlay-sand::before', 1.8], // sand front
-      ['.weather-overlay-sand::after',  5],   // sand dust
-      ['.weather-overlay-hail::before', 1.0],
-      ['.weather-overlay-hail::after',  1.8],
-    ];
-    // We can't retarget the double-animation on rain::before reliably with a
-    // single duration, so override it explicitly with both durations.
-    let css = '';
-    for (const [sel, base] of rules) {
-      css += `.weather-tuner-scope ${sel} { animation-duration: ${(base / s).toFixed(3)}s; }\n`;
-    }
-    // Rain::before has TWO animations (front 0.7s, back 1.4s); redefine both.
-    css += `.weather-tuner-scope .weather-overlay-rain::before { animation-duration: ${(0.7 / s).toFixed(3)}s, ${(1.4 / s).toFixed(3)}s; }\n`;
-    // Sand::before also has two (1.8s front, 3.6s back).
-    css += `.weather-tuner-scope .weather-overlay-sand::before { animation-duration: ${(1.8 / s).toFixed(3)}s, ${(3.6 / s).toFixed(3)}s; }\n`;
-    if (paused) {
-      css += `.weather-tuner-scope .weather-overlay, .weather-tuner-scope .weather-overlay::before, .weather-tuner-scope .weather-overlay::after { animation-play-state: paused !important; }\n`;
-    }
-    return css;
-  }, [speed, paused]);
-
-  const overlayStyle: React.CSSProperties = {
-    opacity,
-    filter: `brightness(${brightness}) saturate(${saturate})`,
-  };
+  const style = useMemo<React.CSSProperties>(() => {
+    const s: React.CSSProperties = {
+      opacity,
+      filter: `brightness(${brightness}) saturate(${saturate})`,
+    };
+    if (blend !== 'default') (s as any).mixBlendMode = blend;
+    return s;
+  }, [opacity, brightness, saturate, blend]);
 
   const preset = BACKGROUND_PRESETS[bgIndex % BACKGROUND_PRESETS.length];
 
@@ -78,9 +49,9 @@ export default function WeatherTuner() {
       role={big ? undefined : 'button'}
       tabIndex={big ? -1 : 0}
     >
-      <div className="weather-card-stage weather-tuner-scope">
+      <div className="weather-card-stage">
         <BattleBackground preset={preset} />
-        <div className={`weather-overlay weather-overlay-${w.kind}`} style={overlayStyle} />
+        <WeatherVideo kind={w.kind} style={style} playbackRate={speed} />
       </div>
       <div className="weather-card-label">
         <span className="weather-card-icon">{w.icon}</span>
@@ -94,7 +65,6 @@ export default function WeatherTuner() {
 
   return (
     <div className="weather-tuner-screen">
-      <style>{speedStyle}</style>
       <div className="weather-tuner-header">
         <button className="weather-back" onClick={() => navigate(-1)}>← Back</button>
         <h2>Weather Tuner</h2>
@@ -117,18 +87,20 @@ export default function WeatherTuner() {
           <label>Saturation <span>{saturate.toFixed(2)}</span></label>
           <input type="range" min="0" max="2" step="0.05" value={saturate} onChange={(e) => setSaturate(+e.target.value)} />
         </div>
+        <div className="weather-control">
+          <label>Blend mode</label>
+          <select className="weather-select" value={blend} onChange={(e) => setBlend(e.target.value)}>
+            <option value="default">default (per-weather)</option>
+            {BLEND_MODES.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
         <div className="weather-control weather-control-row">
-          <button className="weather-btn" onClick={() => setPaused((p) => !p)}>
-            {paused ? '▶ Resume' : '⏸ Pause'}
-          </button>
-          <button className="weather-btn" onClick={() => setBgIndex((i) => i + 1)}>
-            🔀 Shuffle BG
-          </button>
+          <button className="weather-btn" onClick={() => setBgIndex((i) => i + 1)}>🔀 Shuffle BG</button>
           <button
             className="weather-btn"
-            onClick={() => {
-              setOpacity(1); setSpeed(1); setBrightness(1); setSaturate(1); setPaused(false);
-            }}
+            onClick={() => { setOpacity(1); setSpeed(1); setBrightness(1); setSaturate(1); setBlend('default'); }}
           >
             ↺ Reset
           </button>
@@ -142,7 +114,8 @@ export default function WeatherTuner() {
       </div>
 
       <div className="weather-footnote">
-        Background preset: <b>{preset.label}</b> · Tap a card to expand.
+        Background preset: <b>{preset.label}</b> · Tap a card to expand. Videos from
+        {' '}<code>play.pokemonshowdown.com/fx/</code>.
       </div>
 
       {focus && (
