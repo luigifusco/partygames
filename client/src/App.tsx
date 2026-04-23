@@ -20,6 +20,7 @@ import BackgroundsDemo from './pages/BackgroundsDemo';
 import StoryScreen from './pages/StoryScreen';
 import ReplayListScreen from './pages/ReplayListScreen';
 import ReplayWatchScreen from './pages/ReplayWatchScreen';
+import WeatherTuner from './pages/WeatherTuner';
 import TournamentScreen from './pages/TournamentScreen';
 import MinigamesScreen from './pages/MinigamesScreen';
 import TournamentPrizeModal, { type TournamentPrizeAward } from './components/TournamentPrizeModal';
@@ -453,6 +454,7 @@ export default function App() {
         <Route path="/bg-demo" element={<BackgroundsDemo />} />
         <Route path="/replay" element={<ReplayListScreen />} />
         <Route path="/replay/:id" element={<ReplayWatchScreen />} />
+        <Route path="/weather" element={<WeatherTuner />} />
         <Route path="*" element={<LoginScreen onLogin={handleLogin} />} />
       </Routes>
     );
@@ -479,6 +481,7 @@ export default function App() {
         <Route path="/tv" element={<TVView />} />
         <Route path="/replay" element={<ReplayListScreen />} />
         <Route path="/replay/:id" element={<ReplayWatchScreen />} />
+        <Route path="/weather" element={<WeatherTuner />} />
         <Route path="/bg-demo" element={<BackgroundsDemo />} />
         <Route path="*" element={<Navigate to="/play" replace />} />
       </Routes>
