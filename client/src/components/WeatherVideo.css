@@ -35,31 +35,31 @@
 /* Rain: bright streaks on dark — screen blend drops the dark backdrop. */
 .weather-video-wrap-rain {
   mix-blend-mode: screen;
-  --weather-video-opacity: 0.9;
-  opacity: 0.9;
+  --weather-video-opacity: 0.55;
+  opacity: 0.55;
 }
 
 /* Sun: warm light rays — screen blend to add warmth without washing out. */
 .weather-video-wrap-sun {
   mix-blend-mode: screen;
-  --weather-video-opacity: 0.75;
-  opacity: 0.75;
+  --weather-video-opacity: 0.45;
+  opacity: 0.45;
   filter: saturate(1.1);
 }
 
 /* Sandstorm: swirling brown dust — multiply tints scene naturally. */
 .weather-video-wrap-sand {
   mix-blend-mode: multiply;
-  --weather-video-opacity: 0.85;
-  opacity: 0.85;
+  --weather-video-opacity: 0.55;
+  opacity: 0.55;
   filter: brightness(1.15);
 }
 
 /* Hail: bright snow on dark — screen for transparency. */
 .weather-video-wrap-hail {
   mix-blend-mode: screen;
-  --weather-video-opacity: 0.95;
-  opacity: 0.95;
+  --weather-video-opacity: 0.6;
+  opacity: 0.6;
 }
 
 @media (prefers-reduced-motion: reduce) {
