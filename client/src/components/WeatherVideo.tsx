@@ -4,9 +4,20 @@ import './WeatherVideo.css';
 
 /* Animated weather overlay using looping videos from Pokemon Showdown's
  * fx directory (weather-gen6-{raindance|sunnyday|sandstorm|hail}).
- * The videos are copied into assets-public/fx/ at build time and served
- * locally. Each is blended onto the arena with mix-blend-mode tuned to
- * the type of effect (bright-on-dark → screen, warm → overlay, etc.).
+ * The videos are served locally from assets-public/fx/.
+ *
+ * iOS Safari quirks handled here:
+ * - The `muted` attribute must be present at parse time for autoplay to
+ *   be allowed. React's JSX `muted` prop is set as a property, not an
+ *   attribute, so we also call setAttribute('muted', '') in the ref
+ *   callback.
+ * - `mix-blend-mode` is ignored on `<video>` on iOS because the video
+ *   composites in a separate hardware layer. We put the blend mode on
+ *   a wrapper `<div>` instead and let the video paint inside it.
+ * - MP4 is listed before WebM so iOS picks the H.264 source without
+ *   stumbling on the unsupported webm source.
+ * - `webkit-playsinline` (legacy attribute) is included alongside
+ *   `playsInline` for older iOS.
  */
 
 export type WeatherKind = 'rain' | 'sun' | 'sand' | 'hail';
@@ -32,30 +43,54 @@ export default function WeatherVideo({ kind, className, style, playbackRate }: P
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
+    // Force muted attribute (not just property) for iOS autoplay.
+    v.setAttribute('muted', '');
+    v.setAttribute('webkit-playsinline', 'true');
+    v.setAttribute('playsinline', 'true');
     v.muted = true;
+    v.defaultMuted = true;
     if (playbackRate != null) v.playbackRate = Math.max(0.01, playbackRate);
-    const tryPlay = () => v.play().catch(() => {});
+    const tryPlay = () => {
+      const p = v.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    };
     tryPlay();
+    // iOS pauses videos when the tab loses focus or a modal closes —
+    // retry on every reasonable signal.
     const onVis = () => { if (!document.hidden) tryPlay(); };
+    const onTouch = () => tryPlay();
     document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    document.addEventListener('touchstart', onTouch, { once: true, passive: true });
+    document.addEventListener('click', onTouch, { once: true });
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      document.removeEventListener('touchstart', onTouch);
+      document.removeEventListener('click', onTouch);
+    };
   }, [kind, playbackRate]);
 
   return (
-    <video
-      ref={ref}
-      className={`weather-video weather-video-${kind} ${className ?? ''}`}
+    <div
+      className={`weather-video-wrap weather-video-wrap-${kind} ${className ?? ''}`}
       style={style}
-      autoPlay
-      loop
-      muted
-      playsInline
-      preload="auto"
       aria-hidden="true"
-      key={kind}
     >
-      <source src={`${BASE_PATH}/fx/${base}.webm`} type="video/webm" />
-      <source src={`${BASE_PATH}/fx/${base}.mp4`} type="video/mp4" />
-    </video>
+      <video
+        ref={ref}
+        className={`weather-video weather-video-${kind}`}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        disablePictureInPicture
+        disableRemotePlayback
+        key={kind}
+      >
+        {/* MP4 first so iOS picks a format it actually supports. */}
+        <source src={`${BASE_PATH}/fx/${base}.mp4`} type="video/mp4" />
+        <source src={`${BASE_PATH}/fx/${base}.webm`} type="video/webm" />
+      </video>
+    </div>
   );
 }

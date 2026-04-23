@@ -1,3 +1,20 @@
+/* Wrapper div receives the blend mode — iOS Safari ignores mix-blend-mode
+ * on <video> elements because video paints in a separate hardware layer,
+ * but a <div> container composites normally. The video inside the
+ * wrapper inherits the blended result. */
+.weather-video-wrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+  /* Force the wrapper (and its video child) onto a compositor layer so
+   * blend modes and opacity apply reliably on iOS. */
+  transform: translateZ(0);
+  will-change: opacity, transform;
+  animation: weatherVideoFade 0.6s ease forwards;
+}
+
 .weather-video {
   position: absolute;
   inset: 0;
@@ -5,9 +22,9 @@
   height: 100%;
   object-fit: cover;
   pointer-events: none;
-  z-index: 2;
-  /* Smooth fade-in when weather becomes active. */
-  animation: weatherVideoFade 0.6s ease forwards;
+  /* Same layer-promotion trick for the video itself. */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 @keyframes weatherVideoFade {
@@ -16,22 +33,22 @@
 }
 
 /* Rain: bright streaks on dark — screen blend drops the dark backdrop. */
-.weather-video-rain {
+.weather-video-wrap-rain {
   mix-blend-mode: screen;
   --weather-video-opacity: 0.9;
   opacity: 0.9;
 }
 
 /* Sun: warm light rays — screen blend to add warmth without washing out. */
-.weather-video-sun {
+.weather-video-wrap-sun {
   mix-blend-mode: screen;
   --weather-video-opacity: 0.75;
   opacity: 0.75;
   filter: saturate(1.1);
 }
 
-/* Sandstorm: swirling brown dust — overlay blend tints scene naturally. */
-.weather-video-sand {
+/* Sandstorm: swirling brown dust — multiply tints scene naturally. */
+.weather-video-wrap-sand {
   mix-blend-mode: multiply;
   --weather-video-opacity: 0.85;
   opacity: 0.85;
@@ -39,12 +56,12 @@
 }
 
 /* Hail: bright snow on dark — screen for transparency. */
-.weather-video-hail {
+.weather-video-wrap-hail {
   mix-blend-mode: screen;
   --weather-video-opacity: 0.95;
   opacity: 0.95;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .weather-video { animation: none; opacity: var(--weather-video-opacity, 1); }
+  .weather-video-wrap { animation: none; opacity: var(--weather-video-opacity, 1); }
 }
