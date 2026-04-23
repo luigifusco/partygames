@@ -35,6 +35,8 @@ interface AnimationState {
   finished: boolean;
   activeWeather: 'rain' | 'sun' | 'sand' | 'hail' | null;
   trickRoom: boolean;
+  tailwindLeft: boolean;
+  tailwindRight: boolean;
 }
 
 function getHpClass(current: number, max: number): string {
@@ -277,6 +279,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     finished: false,
     activeWeather: null,
     trickRoom: false,
+    tailwindLeft: false,
+    tailwindRight: false,
   });
 
   const [paused, setPaused] = useState(false);
@@ -289,6 +293,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     const items: Record<string, string | null> = { ...initialItems };
     let weather: 'rain' | 'sun' | 'sand' | 'hail' | null = null;
     let trickRoom = false;
+    let tailwindLeft = false;
+    let tailwindRight = false;
 
     for (let i = 0; i <= targetIdx && i < snapshot.log.length; i++) {
       const e = snapshot.log[i];
@@ -308,6 +314,10 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       if (e.statusChange) status[e.statusChange.instanceId] = e.statusChange.status;
       if (e.weather) weather = e.weather === 'clear' ? null : e.weather;
       if (typeof e.trickRoom === 'boolean') trickRoom = e.trickRoom;
+      if (e.tailwind) {
+        if (e.tailwind.side === 'left') tailwindLeft = e.tailwind.active;
+        else tailwindRight = e.tailwind.active;
+      }
       if (e.itemConsumed) items[e.itemConsumed.instanceId] = null;
       if (e.replacement) {
         hp[e.replacement.instanceId] = hp[e.replacement.instanceId] ?? initialHp[e.replacement.instanceId] ?? 100;
@@ -325,6 +335,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       pokemonItems: items,
       activeWeather: weather,
       trickRoom,
+      tailwindLeft,
+      tailwindRight,
       attackingId: null,
       actionText: entry?.message ?? null,
       finished: targetIdx >= snapshot.log.length - 1,
@@ -556,7 +568,13 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           if (entry.weather) newWeather = entry.weather === 'clear' ? null : entry.weather;
           let newTrick = prev.trickRoom;
           if (typeof entry.trickRoom === 'boolean') newTrick = entry.trickRoom;
-          return { ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonStatus: newStatus, activeWeather: newWeather, trickRoom: newTrick, attackingId: null };
+          let newTwL = prev.tailwindLeft;
+          let newTwR = prev.tailwindRight;
+          if (entry.tailwind) {
+            if (entry.tailwind.side === 'left') newTwL = entry.tailwind.active;
+            else newTwR = entry.tailwind.active;
+          }
+          return { ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonStatus: newStatus, activeWeather: newWeather, trickRoom: newTrick, tailwindLeft: newTwL, tailwindRight: newTwR, attackingId: null };
         });
         animatingRef.current = false;
         return;
@@ -666,6 +684,12 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         if (entry.weather) newWeather = entry.weather === 'clear' ? null : entry.weather;
         let newTrick = prev.trickRoom;
         if (typeof entry.trickRoom === 'boolean') newTrick = entry.trickRoom;
+        let newTwL = prev.tailwindLeft;
+        let newTwR = prev.tailwindRight;
+        if (entry.tailwind) {
+          if (entry.tailwind.side === 'left') newTwL = entry.tailwind.active;
+          else newTwR = entry.tailwind.active;
+        }
         return {
           ...prev,
           currentLogIndex: nextIdx,
@@ -674,6 +698,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           pokemonStatus: newStatus,
           activeWeather: newWeather,
           trickRoom: newTrick,
+          tailwindLeft: newTwL,
+          tailwindRight: newTwR,
           attackingId: null,
           actionText: resultText || prev.actionText,
         };
@@ -706,7 +732,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         {snapshot.round > 0 && !anim.finished && (
           <div className="battle-round-badge">Round {snapshot.round}</div>
         )}
-        <div className="battle-side left">
+        <div className={`battle-side left${anim.tailwindLeft ? ' tailwind-active' : ''}`}>
           {displayedLeft.map((p) => (
             <PokemonCard
               key={p.instanceId}
@@ -722,7 +748,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           ))}
         </div>
         <div className="battle-divider" />
-        <div className="battle-side right">
+        <div className={`battle-side right${anim.tailwindRight ? ' tailwind-active' : ''}`}>
           {displayedRight.map((p) => (
             <PokemonCard
               key={p.instanceId}

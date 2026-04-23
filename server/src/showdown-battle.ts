@@ -1012,13 +1012,18 @@ function parseProtocol(
         const sideIdent = parts[2]; // e.g. "p1: Left"
         const condition = parts[3]; // e.g. "move: Stealth Rock", "Spikes"
         const sideName = sideIdent.startsWith('p1') ? 'Left' : 'Right';
+        const side: 'left' | 'right' = sideIdent.startsWith('p1') ? 'left' : 'right';
         const condName = condition.replace('move: ', '');
+        const isTailwind = condName.toLowerCase() === 'tailwind';
         pushLog({
           round: currentRound,
           attackerInstanceId: '', attackerName: '',
           moveName: '', targetInstanceId: '', targetName: sideName,
           damage: 0, effectiveness: null, targetFainted: false,
-          message: `${condName} was set on ${sideName}'s side!`,
+          message: isTailwind
+            ? `💨 Tailwind whipped up behind ${sideName}'s team!`
+            : `${condName} was set on ${sideName}'s side!`,
+          ...(isTailwind ? { tailwind: { side, active: true } } : {}),
         });
         break;
       }
@@ -1028,13 +1033,18 @@ function parseProtocol(
         const sideEndIdent = parts[2];
         const endCondition = parts[3];
         const sideEndName = sideEndIdent.startsWith('p1') ? 'Left' : 'Right';
+        const endSide: 'left' | 'right' = sideEndIdent.startsWith('p1') ? 'left' : 'right';
         const endCondName = endCondition.replace('move: ', '');
+        const endIsTailwind = endCondName.toLowerCase() === 'tailwind';
         pushLog({
           round: currentRound,
           attackerInstanceId: '', attackerName: '',
           moveName: '', targetInstanceId: '', targetName: sideEndName,
           damage: 0, effectiveness: null, targetFainted: false,
-          message: `${endCondName} was cleared from ${sideEndName}'s side!`,
+          message: endIsTailwind
+            ? `💨 ${sideEndName}'s Tailwind petered out.`
+            : `${endCondName} was cleared from ${sideEndName}'s side!`,
+          ...(endIsTailwind ? { tailwind: { side: endSide, active: false } } : {}),
         });
         break;
       }
