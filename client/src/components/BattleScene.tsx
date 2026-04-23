@@ -5,6 +5,7 @@ import { runMoveAnimation, animateHit, animateStatChange, animateStatusInflict }
 import { playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, preloadStatSounds, playStatChangeSfx, playStatusSfx, playFaintSfx, unlockAudio, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted, toggleSfxMute, isSfxMuted } from './BattleSounds';
 import { getHeldItemSprite } from '@shared/held-item-data';
 import BattleBackground, { pickPreset } from './BattleBackground';
+import TrickRoomBackground from './TrickRoomBackground';
 import './BattleScene.css';
 
 interface BattleSceneProps {
@@ -33,6 +34,7 @@ interface AnimationState {
   actionText: string | null;
   finished: boolean;
   activeWeather: 'rain' | 'sun' | 'sand' | 'hail' | null;
+  trickRoom: boolean;
 }
 
 function getHpClass(current: number, max: number): string {
@@ -274,6 +276,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     actionText: null,
     finished: false,
     activeWeather: null,
+    trickRoom: false,
   });
 
   const [paused, setPaused] = useState(false);
@@ -285,6 +288,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     const status: Record<string, string> = { ...initialStatus };
     const items: Record<string, string | null> = { ...initialItems };
     let weather: 'rain' | 'sun' | 'sand' | 'hail' | null = null;
+    let trickRoom = false;
 
     for (let i = 0; i <= targetIdx && i < snapshot.log.length; i++) {
       const e = snapshot.log[i];
@@ -303,6 +307,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       }
       if (e.statusChange) status[e.statusChange.instanceId] = e.statusChange.status;
       if (e.weather) weather = e.weather === 'clear' ? null : e.weather;
+      if (typeof e.trickRoom === 'boolean') trickRoom = e.trickRoom;
       if (e.itemConsumed) items[e.itemConsumed.instanceId] = null;
       if (e.replacement) {
         hp[e.replacement.instanceId] = hp[e.replacement.instanceId] ?? initialHp[e.replacement.instanceId] ?? 100;
@@ -319,6 +324,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       pokemonStatus: status,
       pokemonItems: items,
       activeWeather: weather,
+      trickRoom,
       attackingId: null,
       actionText: entry?.message ?? null,
       finished: targetIdx >= snapshot.log.length - 1,
@@ -548,7 +554,9 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           }
           let newWeather = prev.activeWeather;
           if (entry.weather) newWeather = entry.weather === 'clear' ? null : entry.weather;
-          return { ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonStatus: newStatus, activeWeather: newWeather, attackingId: null };
+          let newTrick = prev.trickRoom;
+          if (typeof entry.trickRoom === 'boolean') newTrick = entry.trickRoom;
+          return { ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonStatus: newStatus, activeWeather: newWeather, trickRoom: newTrick, attackingId: null };
         });
         animatingRef.current = false;
         return;
@@ -656,6 +664,8 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
         }
         let newWeather = prev.activeWeather;
         if (entry.weather) newWeather = entry.weather === 'clear' ? null : entry.weather;
+        let newTrick = prev.trickRoom;
+        if (typeof entry.trickRoom === 'boolean') newTrick = entry.trickRoom;
         return {
           ...prev,
           currentLogIndex: nextIdx,
@@ -663,6 +673,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           pokemonBoosts: newBoosts,
           pokemonStatus: newStatus,
           activeWeather: newWeather,
+          trickRoom: newTrick,
           attackingId: null,
           actionText: resultText || prev.actionText,
         };
@@ -687,6 +698,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     <div className="battle-scene">
       <div className="battle-arena" ref={arenaRef} data-field-size={fieldSize}>
         <BattleBackground preset={arenaBgPreset} />
+        <TrickRoomBackground active={anim.trickRoom} />
         <div className="battle-arena-vignette" aria-hidden="true" />
         {anim.activeWeather && (
           <div className={`weather-overlay weather-overlay-${anim.activeWeather}`} />

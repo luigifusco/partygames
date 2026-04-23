@@ -40,6 +40,8 @@ export interface BattleLogEntry {
   crit?: boolean;
   message: string;
   weather?: 'rain' | 'sun' | 'sand' | 'hail' | 'clear';
+  /** Trick Room field activation (true = started, false = ended). */
+  trickRoom?: boolean;
   boostChanges?: { instanceId: string; changes: Partial<Record<'atk' | 'def' | 'spa' | 'spd' | 'spe', number>> };
   statusChange?: { instanceId: string; status: string };
   statusDamage?: { instanceId: string; damage: number };

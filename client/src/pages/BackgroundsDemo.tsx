@@ -1,8 +1,9 @@
 import BattleBackground, { BACKGROUND_PRESETS } from '../components/BattleBackground';
+import TrickRoomBackground from '../components/TrickRoomBackground';
 import './BackgroundsDemo.css';
 
 export default function BackgroundsDemo() {
-  const n = BACKGROUND_PRESETS.length;
+  const n = BACKGROUND_PRESETS.length + 1;
   const cols = Math.ceil(Math.sqrt(n));
   const rows = Math.ceil(n / cols);
   return (
@@ -22,6 +23,13 @@ export default function BackgroundsDemo() {
           </div>
         </div>
       ))}
+      <div className="bg-demo-tile">
+        <TrickRoomBackground active />
+        <div className="bg-demo-label">
+          <div className="bg-demo-title">Trick Room</div>
+          <div className="bg-demo-id">trick-room (active)</div>
+        </div>
+      </div>
     </div>
   );
 }

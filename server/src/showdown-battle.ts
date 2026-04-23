@@ -860,6 +860,32 @@ function parseProtocol(
         break;
       }
 
+      case '-fieldstart':
+      case '-fieldend': {
+        const effect = (parts[2] || '').toLowerCase();
+        // Only handle Trick Room for now (the only field we render specially).
+        if (!effect.includes('trick room')) break;
+        flushPendingMove();
+        const started = parts[0] === '-fieldstart';
+        const ofPoke = parts.find((p) => p.startsWith('[of] '));
+        let message = started
+          ? '🔳 It twisted the dimensions!'
+          : '🔳 The twisted dimensions returned to normal!';
+        if (started && ofPoke) {
+          const name = parsePokemonIdent(ofPoke.replace('[of] ', '')).name;
+          message = `${name} twisted the dimensions!`;
+        }
+        pushLog({
+          round: currentRound,
+          attackerInstanceId: '', attackerName: '',
+          moveName: '', targetInstanceId: '', targetName: '',
+          damage: 0, effectiveness: null, targetFainted: false,
+          message,
+          trickRoom: started,
+        });
+        break;
+      }
+
       case '-weather': {
         const weatherName = parts[2];
         // Skip upkeep messages (weather continuing each turn)

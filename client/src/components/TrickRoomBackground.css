@@ -1,0 +1,147 @@
+/* ── Trick Room geometric background ───────────────────────────── */
+
+.trick-room-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 50%,
+      #3a0f5e 0%,
+      #1e063a 45%,
+      #0a0118 100%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  perspective: 900px;
+  perspective-origin: 50% 50%;
+}
+
+.trick-room-bg.active { opacity: 1; }
+
+/* ── Perspective floor + ceiling grid ──────────────────────────── */
+
+.tr-grid {
+  position: absolute;
+  left: -50%;
+  right: -50%;
+  height: 70%;
+  background-image:
+    linear-gradient(90deg, transparent 49.5%, rgba(255, 120, 220, 0.55) 49.5% 50.5%, transparent 50.5%),
+    linear-gradient(0deg,  transparent 49.5%, rgba(255, 120, 220, 0.55) 49.5% 50.5%, transparent 50.5%);
+  background-size: 64px 64px, 64px 64px;
+  transform-origin: 50% 0%;
+  animation: trScroll 8s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 80, 200, 0.35));
+}
+
+.tr-grid-floor {
+  top: 58%;
+  transform: rotateX(75deg);
+  transform-origin: 50% 0%;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.2) 85%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.2) 85%, rgba(0, 0, 0, 0) 100%);
+}
+
+.tr-grid-ceil {
+  top: -28%;
+  transform: rotateX(-75deg);
+  transform-origin: 50% 100%;
+  mask-image: linear-gradient(0deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.2) 85%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-image: linear-gradient(0deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.2) 85%, rgba(0, 0, 0, 0) 100%);
+  opacity: 0.75;
+}
+
+/* ── Flat checkered lattice for square texture ─────────────────── */
+
+.tr-lattice {
+  position: absolute;
+  inset: -4%;
+  background-image:
+    repeating-linear-gradient(0deg,
+      rgba(200, 120, 255, 0.08) 0px,
+      rgba(200, 120, 255, 0.08) 2px,
+      transparent 2px,
+      transparent 52px),
+    repeating-linear-gradient(90deg,
+      rgba(200, 120, 255, 0.08) 0px,
+      rgba(200, 120, 255, 0.08) 2px,
+      transparent 2px,
+      transparent 52px),
+    repeating-conic-gradient(from 0deg at 50% 50%,
+      rgba(255, 120, 220, 0.05) 0deg 10deg,
+      transparent 10deg 45deg);
+  mix-blend-mode: screen;
+  animation: trLatticePulse 5s ease-in-out infinite;
+}
+
+/* ── CRT scanline veil ────────────────────────────────────────── */
+
+.tr-scan {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg,
+    rgba(255, 255, 255, 0.04) 0px,
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 1px,
+    transparent 3px);
+  mix-blend-mode: overlay;
+}
+
+/* ── Rotating square frames ────────────────────────────────────── */
+
+.tr-squares {
+  position: absolute;
+  inset: 0;
+}
+
+.tr-sq {
+  position: absolute;
+  border: 2px solid rgba(255, 130, 220, 0.55);
+  border-radius: 2px;
+  box-shadow:
+    0 0 10px rgba(255, 80, 200, 0.35),
+    inset 0 0 10px rgba(255, 180, 240, 0.12);
+  animation: trSquareSpin 14s linear infinite;
+  will-change: transform;
+}
+
+.tr-sq1 { top:  8%;  left:  6%;  width: 120px; height: 120px; animation-duration: 18s; }
+.tr-sq2 { top: 60%;  left: 80%;  width:  90px; height:  90px; animation-duration: 11s; animation-direction: reverse; border-color: rgba(200, 140, 255, 0.55); }
+.tr-sq3 { top: 72%;  left: 12%;  width:  60px; height:  60px; animation-duration:  9s; border-color: rgba(255, 200, 240, 0.4); }
+.tr-sq4 { top: 15%;  left: 78%;  width:  70px; height:  70px; animation-duration: 15s; animation-direction: reverse; }
+.tr-sq5 { top: 42%;  left: 45%;  width: 160px; height: 160px; animation-duration: 24s; opacity: 0.45; }
+.tr-sq6 { top: 30%;  left: 30%;  width:  40px; height:  40px; animation-duration:  7s; border-color: rgba(255, 255, 255, 0.55); }
+
+/* ── Edge vignette ────────────────────────────────────────────── */
+
+.tr-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%,
+    transparent 55%,
+    rgba(0, 0, 0, 0.45) 100%);
+}
+
+/* ── Keyframes ────────────────────────────────────────────────── */
+
+@keyframes trScroll {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 64px, 64px 0; }
+}
+
+@keyframes trLatticePulse {
+  0%, 100% { opacity: 0.9; }
+  50%      { opacity: 1.0; filter: brightness(1.15); }
+}
+
+@keyframes trSquareSpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Accessibility: honour reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .tr-grid,
+  .tr-lattice,
+  .tr-sq { animation: none; }
+}
