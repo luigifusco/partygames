@@ -46,6 +46,20 @@ export function buildChoice(battle: any, sideIndex: number, opts: AIOptions = {}
   const isMulti = req.active.length > 1;
   const choices: string[] = [];
   const oppAlive = oppSide.pokemon.filter((p: any) => !p.fainted).length;
+  // Bench slots claimed by switch choices earlier in this decision so a
+  // single bench pokemon isn't sent in twice when multiple actives want
+  // to switch on the same turn.
+  const benchChosen = new Set<number>();
+  const pickBenchSwitch = (): number | null => {
+    for (let j = 0; j < side.pokemon.length; j++) {
+      const p = side.pokemon[j];
+      if (!p.fainted && !p.isActive && !benchChosen.has(j)) {
+        benchChosen.add(j);
+        return j;
+      }
+    }
+    return null;
+  };
 
   for (let i = 0; i < req.active.length; i++) {
     const active = req.active[i];
@@ -164,6 +178,26 @@ export function buildChoice(battle: any, sideIndex: number, opts: AIOptions = {}
       bypass = priorityKOBypass(scored, defaultCtx);
     }
     const pick = bypass || pickMove(scored, profile.temperature);
+
+    // If every scored move was ruled out (e.g., triples with only
+    // non-adjacent foes alive and no spread moves available), the
+    // pokemon literally cannot hit anything from here. Try to switch
+    // out — that's what a human player would do instead of firing into
+    // a corpse. If no bench is available, fall through and target any
+    // living foe so Showdown at least doesn't default to a fainted slot.
+    if (!Number.isFinite(pick.score) || pick.score <= -Infinity) {
+      if (req.forceSwitch !== undefined) {
+        // Can't switch during move phase if the request doesn't allow
+        // it; fall through to the fallback below.
+      } else if (!req.trapped && !active.trapped) {
+        const benchIdx = pickBenchSwitch();
+        if (benchIdx !== null) {
+          choices.push(`switch ${benchIdx + 1}`);
+          continue;
+        }
+      }
+    }
+
     const moveIdx = active.moves.indexOf(pick.move) + 1;
 
     // Friendly-fire avoidance / focus-fire targeting. For single-foe moves
@@ -173,9 +207,17 @@ export function buildChoice(battle: any, sideIndex: number, opts: AIOptions = {}
       const tgt = bestTargetByMove.get(pick.move);
       if (tgt) {
         choices.push(`move ${moveIdx} ${tgt.slot + 1}`);
+      } else if (livingOppSlots.length > 0) {
+        // No adjacent foe is alive for this move. Pick *any* living foe
+        // so Showdown doesn't default-target a fainted slot directly
+        // across. Prefer the closest living foe.
+        const mySlot = i;
+        const fieldSizeLocal = oppSide.active.length;
+        const closest = livingOppSlots.slice().sort((a, b) =>
+          Math.abs(mySlot + a + 1 - fieldSizeLocal) - Math.abs(mySlot + b + 1 - fieldSizeLocal)
+        )[0];
+        choices.push(`move ${moveIdx} ${closest + 1}`);
       } else {
-        // No valid target was found for this move (all adjacent foes dead).
-        // Emit without an explicit target so Showdown handles redirection.
         choices.push(`move ${moveIdx}`);
       }
     } else {
