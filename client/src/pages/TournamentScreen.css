@@ -522,49 +522,72 @@
 }
 
 .tournament-match-player {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 50% 28%, rgba(122, 167, 255, 0.18), transparent 58%),
+    var(--color-surface);
   color: var(--color-text-dim);
   font-weight: 600;
-  min-height: 24px;
+  min-height: 72px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .tournament-match-avatar {
+  width: 100% !important;
+  height: 78px !important;
+  border-radius: var(--radius-md) !important;
+  border: none !important;
+  object-fit: cover;
   flex-shrink: 0;
+  display: flex !important;
+  font-size: 26px !important;
+  box-shadow: none !important;
 }
 
 .tournament-match-avatar-tbd {
-  width: 28px;
-  height: 28px;
+  width: 100%;
+  height: 78px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.06);
   color: var(--color-text-faint);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 26px;
 }
 
 .tournament-match-player.winner {
-  background: var(--grad-primary);
+  background:
+    radial-gradient(circle at 50% 26%, rgba(255, 211, 90, 0.20), transparent 58%),
+    var(--grad-primary);
   color: #fff;
   font-weight: 800;
   box-shadow: 0 0 18px rgba(169, 107, 255, 0.35);
 }
 
 .tournament-match-player-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
-  flex: 1;
+  padding: 14px 8px 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.85);
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.72) 52%, rgba(0, 0, 0, 0.88) 100%);
 }
 
 .tournament-match-player-elo {
