@@ -394,6 +394,10 @@
   .tv-podium-row { grid-template-columns: 1fr; }
   .tv-podium-1 { transform: none; }
   .tv-rest-grid { grid-template-columns: 1fr; }
+  .tv-tournament-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tv-tournament-grid { grid-template-columns: 1fr; }
+  .tv-tournament-match { grid-template-columns: 52px minmax(0, 1fr); }
+  .tv-tournament-match-status { display: none; }
 }
 
 /* === Reduced motion === */
@@ -467,3 +471,265 @@
   box-shadow: 0 0 18px rgba(255, 154, 213, 0.45);
 }
 .tv-mode-icon { font-size: 1.1em; }
+
+/* === Tournament TV tab === */
+.tv-tournament-panel {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.tv-tournament-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 2rem 2.4rem;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 211, 90, 0.24), transparent 32%),
+    radial-gradient(circle at 85% 30%, rgba(122, 167, 255, 0.24), transparent 38%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.035));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.34);
+}
+
+.tv-tournament-kicker {
+  color: rgba(240, 242, 255, 0.62);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.tv-tournament-hero h2 {
+  margin: 0.3rem 0 0.75rem;
+  font-size: clamp(2.6rem, 6vw, 5.4rem);
+  line-height: 1;
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.tv-tournament-hero p {
+  margin: 0.85rem 0 0;
+  color: rgba(240, 242, 255, 0.78);
+  font-size: 1.45rem;
+  font-weight: 650;
+}
+
+.tv-tournament-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tv-tournament-status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 16px currentColor;
+}
+
+.tv-tournament-status-registration { color: #ffd35a; }
+.tv-tournament-status-active {
+  color: #5effc6;
+  animation: tv-live-pulse 2s ease-in-out infinite;
+}
+.tv-tournament-status-completed { color: #7aa7ff; }
+.tv-tournament-status-cancelled { color: #ff8e8e; }
+
+.tv-tournament-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.tv-tournament-stat,
+.tv-tournament-progress-card,
+.tv-tournament-card {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 0 28px rgba(255, 255, 255, 0.025);
+}
+
+.tv-tournament-stat {
+  padding: 1rem 1.2rem;
+}
+
+.tv-tournament-stat span,
+.tv-tournament-progress-head span,
+.tv-tournament-result span {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: rgba(240, 242, 255, 0.54);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tv-tournament-stat b {
+  font-size: 2rem;
+  text-transform: uppercase;
+}
+
+.tv-tournament-progress-card {
+  padding: 1.15rem 1.3rem;
+}
+
+.tv-tournament-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.tv-tournament-progress-head b {
+  color: #ffd35a;
+  font-size: 1.6rem;
+}
+
+.tv-tournament-progress-track {
+  height: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.tv-tournament-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffd35a, #ff7ad0, #7aa7ff);
+  box-shadow: 0 0 20px rgba(255, 122, 208, 0.45);
+  transition: width 0.7s ease;
+}
+
+.tv-tournament-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(360px, 0.8fr);
+  gap: 1rem;
+}
+
+.tv-tournament-card {
+  padding: 1.2rem;
+}
+
+.tv-tournament-card h3 {
+  margin: 0 0 0.9rem;
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+}
+
+.tv-tournament-match-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.tv-tournament-match {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 110px;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.tv-tournament-match-active {
+  border-color: rgba(94, 255, 198, 0.34);
+  box-shadow: 0 0 16px rgba(94, 255, 198, 0.08);
+}
+
+.tv-tournament-match-round {
+  color: #ffd35a;
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+
+.tv-tournament-match-names {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.tv-tournament-match-names span:not(.tv-match-vs) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tv-match-vs {
+  color: rgba(240, 242, 255, 0.4);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tv-match-winner {
+  color: #5effc6;
+  text-shadow: 0 0 10px rgba(94, 255, 198, 0.3);
+}
+
+.tv-tournament-match-status {
+  color: rgba(240, 242, 255, 0.62);
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.tv-tournament-result {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.2rem;
+  align-items: center;
+}
+
+.tv-tournament-result b {
+  display: block;
+  margin-bottom: 0.8rem;
+  font-size: 2rem;
+}
+
+.tv-tournament-crown {
+  grid-row: span 2;
+  font-size: 4.5rem;
+  filter: drop-shadow(0 0 16px rgba(255, 211, 90, 0.75));
+}
+
+.tv-tournament-participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.tv-tournament-participants span {
+  padding: 0.48rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.tv-tournament-upcoming,
+.tv-tournament-muted {
+  margin-top: 1rem;
+  color: rgba(240, 242, 255, 0.58);
+  font-size: 1.1rem;
+  font-weight: 650;
+}

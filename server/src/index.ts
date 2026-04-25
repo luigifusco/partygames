@@ -1840,6 +1840,14 @@ app.get(`${BASE_PATH}/api/tournaments`, (_req, res) => {
   return res.json({ tournaments: list });
 });
 
+app.get(`${BASE_PATH}/api/tournaments/latest`, (_req, res) => {
+  const row = db.prepare("SELECT id FROM tournaments ORDER BY created_at DESC LIMIT 1").get() as any;
+  if (!row) return res.json({ tournament: null });
+  const tournament = loadTournament(row.id);
+  if (!tournament) return res.json({ tournament: null });
+  return res.json({ tournament });
+});
+
 app.get(`${BASE_PATH}/api/tournament/:id`, (req, res) => {
   const t = loadTournament(req.params.id);
   if (!t) return res.status(404).json({ error: 'Not found' });
