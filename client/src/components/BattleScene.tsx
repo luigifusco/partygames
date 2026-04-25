@@ -560,6 +560,16 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
           if (!entry.hpState && entry.statusDamage) {
             newHp[entry.statusDamage.instanceId] = Math.max(0, (newHp[entry.statusDamage.instanceId] ?? 0) - entry.statusDamage.damage);
           }
+          let newBoosts = prev.pokemonBoosts;
+          if (entry.boostChanges) {
+            newBoosts = { ...prev.pokemonBoosts };
+            const { instanceId, changes } = entry.boostChanges;
+            const current = { ...(newBoosts[instanceId] ?? { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }) };
+            for (const [stat, delta] of Object.entries(changes)) {
+              current[stat] = (current[stat] ?? 0) + delta;
+            }
+            newBoosts[instanceId] = current;
+          }
           let newStatus = prev.pokemonStatus;
           if (entry.statusChange) {
             newStatus = { ...prev.pokemonStatus };
@@ -575,7 +585,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
             if (entry.tailwind.side === 'left') newTwL = entry.tailwind.active;
             else newTwR = entry.tailwind.active;
           }
-          return { ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonStatus: newStatus, activeWeather: newWeather, trickRoom: newTrick, tailwindLeft: newTwL, tailwindRight: newTwR, attackingId: null };
+          return { ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonBoosts: newBoosts, pokemonStatus: newStatus, activeWeather: newWeather, trickRoom: newTrick, tailwindLeft: newTwL, tailwindRight: newTwR, attackingId: null };
         });
         animatingRef.current = false;
         return;
