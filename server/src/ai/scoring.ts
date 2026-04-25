@@ -250,10 +250,7 @@ function hazardValue(move: any, md: any, ctx: MoveCtx): number {
   if (!dmgFn) return 0;
 
   const perEntry = dmgFn(curLayers + 1);
-  // Big base bonus on the very first layer (turn-1 Stealth Rock is
-  // disproportionately valuable). Later layers add less per cast.
-  const firstLayerBonus = curLayers === 0 ? 0.5 : 0;
-  return perEntry * benchAlive * 2 + firstLayerBonus;
+  return perEntry * benchAlive * 2;
 }
 
 // ── Full move score ────────────────────────────────────────────────
