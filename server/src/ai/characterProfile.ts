@@ -35,9 +35,12 @@ export const PROFILES: Record<ProfileName, CharacterProfile> = {
     name: 'statusSpammer',
     damageWeight: 0.5,
     koBonus: 1.0,
-    statusWeight: 2.5,
+    statusWeight: 2.0,
     setupWeight: 0.4,
-    hazardWeight: 2.0,
+    // Entry hazards are this profile's signature play — weighted above
+    // statusWeight so Stealth Rock / Spikes / Toxic Spikes get laid
+    // down first whenever the field still has capacity.
+    hazardWeight: 4.0,
     recoilTolerance: 0.1,
     riskTolerance: 0.3,
     priorityBias: 0.2,

@@ -43,6 +43,13 @@ const SETUP_BASE: Record<string, { atk?: number; spa?: number; spe?: number; def
   bellydrum: { atk: 6 },
 };
 
+const HAZARD_MAX_LAYERS: Record<string, number> = {
+  stealthrock: 1,
+  spikes: 3,
+  toxicspikes: 2,
+  stickyweb: 1,
+};
+
 const HAZARD_LAYER_DAMAGE: Record<string, (layers: number) => number> = {
   stealthrock: () => 1 / 8,
   spikes: (l) => (l === 1 ? 1 / 8 : l === 2 ? 1 / 6 : 1 / 4),
@@ -233,12 +240,20 @@ function hazardValue(move: any, md: any, ctx: MoveCtx): number {
   const benchAlive = ctx.oppSide.pokemon.filter((p: any) => !p.fainted && !p.isActive).length;
   if (benchAlive === 0) return 0.1;
 
+  // If the hazard's max-layer cap has been reached, refuse to stack —
+  // a fully-loaded field gains nothing and the move would just fail.
+  const curLayers = oppCond[id]?.layers || (oppCond[id] ? 1 : 0);
+  const maxLayers = HAZARD_MAX_LAYERS[id] ?? 1;
+  if (curLayers >= maxLayers) return 0;
+
   const dmgFn = HAZARD_LAYER_DAMAGE[id];
   if (!dmgFn) return 0;
 
-  const curLayers = oppCond[id]?.layers || (oppCond[id] ? 1 : 0);
   const perEntry = dmgFn(curLayers + 1);
-  return perEntry * benchAlive * 2;
+  // Big base bonus on the very first layer (turn-1 Stealth Rock is
+  // disproportionately valuable). Later layers add less per cast.
+  const firstLayerBonus = curLayers === 0 ? 0.5 : 0;
+  return perEntry * benchAlive * 2 + firstLayerBonus;
 }
 
 // ── Full move score ────────────────────────────────────────────────
