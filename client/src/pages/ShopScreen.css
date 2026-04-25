@@ -15,6 +15,62 @@
 }
 
 /* --- Controls row --------------------------------------------- */
+.shop-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: var(--space-2) var(--space-4) 0;
+  flex-shrink: 0;
+}
+
+.shop-search-icon {
+  position: absolute;
+  left: 13px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.shop-search-input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 11px 42px 11px 38px;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.2;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  color: var(--color-text);
+  outline: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.shop-search-input::placeholder { color: var(--color-text-faint); }
+.shop-search-input:focus {
+  border-color: var(--color-border-focus);
+  background: var(--color-surface-2);
+}
+
+.shop-search-clear {
+  position: absolute;
+  right: 4px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .shop-controls {
   display: flex;
   gap: var(--space-3);
@@ -71,6 +127,13 @@
 }
 
 .shop-grid > * { flex-shrink: 0; }
+
+.shop-empty {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
 
 .shop-tm-card {
   display: flex;

@@ -62,6 +62,7 @@ export const CHARACTER_UNLOCK_CHAPTER = 'n-styles-revealed:complete';
 export const MENU_UNLOCK_CHAPTER = 'cynthia-intro:complete';
 export const REAWAKEN_UNLOCK_CHAPTER = 'n-reawakening:complete';
 export const MINIGAMES_UNLOCK_CHAPTER = 'n-finale:complete';
+export const SHOP_UNLOCK_CHAPTER = 'n-finale:complete';
 
 function sp(name: string) { return TRAINERS_PATH + '/' + name + '.png'; }
 
@@ -1045,6 +1046,7 @@ export const STORYLINES: Storyline[] = [
         "I'm going to release them back to the wind and the storm and the deep places they came from. They shouldn't belong to anyone — least of all me.",
         "And then I'm going somewhere quiet. I want to listen again, properly, without questions in my head for once. If you ever hear a small voice you don't recognize, on the road or in a dream — it might be one of mine, passing through. Say hello for me.",
         "Before I go — one more gift. Or maybe a reminder.",
+        "The Dreaming Market will open its deeper shelves to you now. TMs, held items, little tools for trainers who have already proven they won't mistake tools for bonds.",
         "The thread doesn't only get stronger in battle. It grows when you *play*. When you laugh with them, when you throw an apple and they catch it in midair and look at you like you've performed a miracle. I used to watch children do that, and I understood less of it than I should have.",
         "Try it. Take one of them somewhere sunny, somewhere that isn't a fight. You'll feel the thread hum. It's nice.",
       ]},
@@ -1054,8 +1056,9 @@ export const STORYLINES: Storyline[] = [
         "It means the world is a little more woven today than it was yesterday. Because of you. Because of them.",
         "Thank you for taking the long walk. Now — go wherever you'd like to go next. The path is yours.",
       ]},
-      { type: 'info', infoTitle: 'Minigames Unlocked', infoIcon: '🍎', lines: [
-        "A new section has appeared in your menu: **Minigames**.",
+      { type: 'info', infoTitle: 'Shop & Minigames Unlocked', infoIcon: '🛒', lines: [
+        "Two new sections have appeared in your menu: **Shop** and **Minigames**.",
+        "The Shop sells TMs and held items — powerful tools, priced for trainers who have reached the end of N's road.",
         "Pick any Pokémon and play with them. Your score earns that Pokémon Bond XP — another way to help them grow, without ever drawing a move.",
         "The first one is **Apple Catch**. Catch apples, dodge rocks, and see how close you can get them to the clouds.",
       ]},

@@ -33,6 +33,8 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
   const [tab, setTab] = useState<'tms' | 'held'>('tms');
   const [sort, setSort] = useState<SortMode>('type');
   const [filter, setFilter] = useState<FilterType>('all');
+  const [tmSearch, setTmSearch] = useState('');
+  const [heldSearch, setHeldSearch] = useState('');
 
   const allTypes = useMemo(() => {
     const types = new Set<PokemonType>();
@@ -41,6 +43,7 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
   }, []);
 
   const sortedTMs = useMemo(() => {
+    const q = tmSearch.trim().toLowerCase();
     let list = [...ALL_SHOP_TMS];
 
     if (filter === 'stat') {
@@ -49,13 +52,37 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
       list = list.filter((m) => getMoveType(m) === filter);
     }
 
+    if (q) {
+      list = list.filter((m) => {
+        const info = getMoveInfo(m);
+        const type = getMoveType(m);
+        return [
+          m,
+          type,
+          info.category,
+          info.description,
+          STAT_MOVES[m] ? 'stat boost setup status' : '',
+        ].some((field) => String(field).toLowerCase().includes(q));
+      });
+    }
+
     if (sort === 'name') list.sort();
     else if (sort === 'price-asc') list.sort((a, b) => getTMPrice(a) - getTMPrice(b));
     else if (sort === 'price-desc') list.sort((a, b) => getTMPrice(b) - getTMPrice(a));
     else if (sort === 'type') list.sort((a, b) => getMoveType(a).localeCompare(getMoveType(b)) || a.localeCompare(b));
 
     return list;
-  }, [sort, filter]);
+  }, [sort, filter, tmSearch]);
+
+  const filteredHeldItems = useMemo(() => {
+    const q = heldSearch.trim().toLowerCase();
+    if (!q) return HELD_ITEMS;
+    return HELD_ITEMS.filter((item) =>
+      [item.name, item.id, item.description].some((field) =>
+        field.toLowerCase().includes(q)
+      )
+    );
+  }, [heldSearch]);
 
   const handleBuy = (moveName: string) => {
     const price = getTMPrice(moveName);
@@ -99,59 +126,76 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
 
       {tab === 'tms' && (
         <>
-      <div className="shop-controls">
-        <div className="shop-sort">
-          <span>Sort:</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value as SortMode)}>
-            <option value="type">Type</option>
-            <option value="name">Name</option>
-            <option value="price-asc">Price ↑</option>
-            <option value="price-desc">Price ↓</option>
-          </select>
-        </div>
-        <div className="shop-filter">
-          <span>Filter:</span>
-          <select value={filter} onChange={(e) => setFilter(e.target.value as FilterType)}>
-            <option value="all">All</option>
-            <option value="stat">Stat Moves</option>
-            {allTypes.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="shop-grid">
-        {sortedTMs.map((moveName) => {
-          const price = getTMPrice(moveName);
-          const type = getMoveType(moveName);
-          const canAfford = essence >= price;
-          const isStat = !!STAT_MOVES[moveName];
-          const accuracy = getMoveAccuracy(moveName);
-          const accLabel = accuracy === Infinity ? '∞' : `${accuracy}%`;
-
-          return (
-            <div
-              key={moveName}
-              className={`shop-tm-card ${bought === moveName ? 'just-bought' : ''}`}
-              onClick={() => setSelected(moveName)}
-            >
-              <img src={getTMSprite(moveName)} alt={moveName} className="shop-tm-img" />
-              <div className="shop-tm-info">
-                <div className="shop-tm-name">{moveName}</div>
-                <div className="shop-tm-meta">
-                  <span className="shop-tm-type" style={{ background: TYPE_COLORS[type] ?? '#888' }}>{type}</span>
-                  {isStat && <span className="shop-tm-badge stat">STAT</span>}
-                  <span className="shop-tm-acc">Acc: {accLabel}</span>
-                </div>
-              </div>
-              <div className="shop-tm-price">✦ {price}</div>
+          <div className="shop-search-row">
+            <span className="shop-search-icon" aria-hidden>🔍</span>
+            <input
+              className="shop-search-input"
+              type="search"
+              placeholder="Search TMs by name, type, effect…"
+              value={tmSearch}
+              onChange={(e) => setTmSearch(e.target.value)}
+              aria-label="Search TMs"
+            />
+            {tmSearch && (
+              <button className="shop-search-clear" onClick={() => setTmSearch('')} aria-label="Clear TM search">×</button>
+            )}
+          </div>
+          <div className="shop-controls">
+            <div className="shop-sort">
+              <span>Sort:</span>
+              <select value={sort} onChange={(e) => setSort(e.target.value as SortMode)}>
+                <option value="type">Type</option>
+                <option value="name">Name</option>
+                <option value="price-asc">Price ↑</option>
+                <option value="price-desc">Price ↓</option>
+              </select>
             </div>
-          );
-        })}
-      </div>
+            <div className="shop-filter">
+              <span>Filter:</span>
+              <select value={filter} onChange={(e) => setFilter(e.target.value as FilterType)}>
+                <option value="all">All</option>
+                <option value="stat">Stat Moves</option>
+                {allTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-      {selected && (() => {
+          <div className="shop-grid">
+            {sortedTMs.length === 0 && (
+              <div className="shop-empty">No TMs match your search.</div>
+            )}
+            {sortedTMs.map((moveName) => {
+              const price = getTMPrice(moveName);
+              const type = getMoveType(moveName);
+              const canAfford = essence >= price;
+              const isStat = !!STAT_MOVES[moveName];
+              const accuracy = getMoveAccuracy(moveName);
+              const accLabel = accuracy === Infinity ? '∞' : `${accuracy}%`;
+
+              return (
+                <div
+                  key={moveName}
+                  className={`shop-tm-card ${bought === moveName ? 'just-bought' : ''}`}
+                  onClick={() => setSelected(moveName)}
+                >
+                  <img src={getTMSprite(moveName)} alt={moveName} className="shop-tm-img" />
+                  <div className="shop-tm-info">
+                    <div className="shop-tm-name">{moveName}</div>
+                    <div className="shop-tm-meta">
+                      <span className="shop-tm-type" style={{ background: TYPE_COLORS[type] ?? '#888' }}>{type}</span>
+                      {isStat && <span className="shop-tm-badge stat">STAT</span>}
+                      <span className="shop-tm-acc">Acc: {accLabel}</span>
+                    </div>
+                  </div>
+                  <div className="shop-tm-price">✦ {price}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {selected && (() => {
         const moveName = selected;
         const price = getTMPrice(moveName);
         const type = getMoveType(moveName);
@@ -206,10 +250,26 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
       )}
 
       {tab === 'held' && (
-        <div className="shop-grid">
-          {HELD_ITEMS.map((item) => {
-            const canAfford = essence >= item.price;
-            return (
+        <>
+          <div className="shop-search-row">
+            <span className="shop-search-icon" aria-hidden>🔍</span>
+            <input
+              className="shop-search-input"
+              type="search"
+              placeholder="Search held items…"
+              value={heldSearch}
+              onChange={(e) => setHeldSearch(e.target.value)}
+              aria-label="Search held items"
+            />
+            {heldSearch && (
+              <button className="shop-search-clear" onClick={() => setHeldSearch('')} aria-label="Clear held item search">×</button>
+            )}
+          </div>
+          <div className="shop-grid">
+            {filteredHeldItems.length === 0 && (
+              <div className="shop-empty">No held items match your search.</div>
+            )}
+            {filteredHeldItems.map((item) => (
               <div
                 key={item.id}
                 className={`shop-tm-card`}
@@ -224,9 +284,9 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
                 </div>
                 <div className="shop-tm-price">✦ {item.price}</div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {selectedHeldItem && (() => {

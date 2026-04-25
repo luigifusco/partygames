@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
 import Avatar from '../components/Avatar';
-import { MENU_UNLOCK_CHAPTER, MINIGAMES_UNLOCK_CHAPTER } from '@shared/story-data';
+import { MENU_UNLOCK_CHAPTER, MINIGAMES_UNLOCK_CHAPTER, SHOP_UNLOCK_CHAPTER } from '@shared/story-data';
 import { useStoryChaptersStatus } from '../hooks/useStoryChapters';
 import './MenuScreen.css';
 
@@ -20,17 +20,16 @@ interface MenuScreenProps {
 
 export default function MenuScreen({ playerName, playerId, playerPicture, essence, elo, collectionSize, itemCount, notificationCount, onOpenNotifications }: MenuScreenProps) {
   const navigate = useNavigate();
-  const [tmShopEnabled, setTmShopEnabled] = useState(false);
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
   const { chapters, loaded: chaptersLoaded } = useStoryChaptersStatus(playerId);
   const menuUnlocked = chapters.has(MENU_UNLOCK_CHAPTER);
   const minigamesUnlocked = chapters.has(MINIGAMES_UNLOCK_CHAPTER);
+  const shopUnlocked = chapters.has(SHOP_UNLOCK_CHAPTER);
 
   useEffect(() => {
     fetch(BASE_PATH + '/api/settings/features')
       .then(r => r.json())
       .then(data => {
-        setTmShopEnabled(data.tmShopEnabled ?? false);
         setAiBattleEnabled(data.aiBattleEnabled ?? false);
       })
       .catch(() => {});
@@ -139,10 +138,10 @@ export default function MenuScreen({ playerName, playerId, playerPicture, essenc
               <span className="menu-tile-icon">🎁</span>
               <span className="menu-tile-label">Packs</span>
             </button>
-            {tmShopEnabled && (
+            {shopUnlocked && (
               <button className="menu-tile" onClick={() => navigate('/shop')}>
                 <span className="menu-tile-icon">🛒</span>
-                <span className="menu-tile-label">TM Shop</span>
+                <span className="menu-tile-label">Shop</span>
               </button>
             )}
           </div>

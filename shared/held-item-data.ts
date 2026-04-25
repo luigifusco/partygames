@@ -10,8 +10,9 @@ export interface HeldItemDef {
 }
 
 const ITEMS_PATH = '/pokemonparty/assets/items';
+const HELD_ITEM_PRICE_MULTIPLIER = 10;
 
-export const HELD_ITEMS: HeldItemDef[] = [
+const BASE_HELD_ITEMS: HeldItemDef[] = [
   // Recovery
   { id: 'leftovers', name: 'Leftovers', description: 'Restores 1/16 max HP each turn.', price: 200, sprite: `${ITEMS_PATH}/leftovers.png` },
   { id: 'sitrus-berry', name: 'Sitrus Berry', description: 'Restores 25% HP when below 50% HP. Consumed after use.', price: 100, sprite: `${ITEMS_PATH}/sitrus-berry.png` },
@@ -47,6 +48,11 @@ export const HELD_ITEMS: HeldItemDef[] = [
   { id: 'eject-button', name: 'Eject Button', description: 'When hit by an attack, the holder swaps out. Consumed after use.', price: 150, sprite: `${ITEMS_PATH}/eject-button.png` },
 ];
 
+export const HELD_ITEMS: HeldItemDef[] = BASE_HELD_ITEMS.map((item) => ({
+  ...item,
+  price: item.price * HELD_ITEM_PRICE_MULTIPLIER,
+}));
+
 export const HELD_ITEMS_BY_ID: Record<string, HeldItemDef> = {};
 for (const item of HELD_ITEMS) {
   HELD_ITEMS_BY_ID[item.id] = item;
@@ -61,5 +67,5 @@ export function getHeldItemName(itemId: string): string {
 }
 
 export function getHeldItemPrice(itemId: string): number {
-  return HELD_ITEMS_BY_ID[itemId]?.price ?? 100;
+  return HELD_ITEMS_BY_ID[itemId]?.price ?? 100 * HELD_ITEM_PRICE_MULTIPLIER;
 }

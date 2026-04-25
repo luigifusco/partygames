@@ -36,6 +36,8 @@ import { MAX_IV } from '@shared/boost-data';
 import type { StatKey } from '@shared/boost-data';
 import type { PokemonInstance, OwnedItem, MoveId } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
+import { SHOP_UNLOCK_CHAPTER } from '@shared/story-data';
+import { useStoryChaptersStatus } from './hooks/useStoryChapters';
 
 interface PlayerState {
   id: string;
@@ -470,7 +472,7 @@ export default function App() {
         <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} onTeachTM={teachTM} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} playerId={player.id} />} />
         <Route path="/pokedex" element={<PokedexScreen discovered={discovered} />} />
         <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
-        <Route path="/shop" element={<ShopScreen essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
+        <Route path="/shop" element={<ProtectedShopRoute playerId={player.id} essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
         <Route path="/items" element={<ItemsScreen items={items} collection={collection} essence={essence} playerId={player.id} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} onReawaken={reawakenPokemon} />} />
         <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
         <Route path="/battle" element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
@@ -537,4 +539,16 @@ function NotificationsRedirect({ onOpen }: { onOpen: () => void }) {
     navigate('/play', { replace: true });
   }, [onOpen, navigate]);
   return null;
+}
+
+function ProtectedShopRoute({ playerId, essence, onSpendEssence, onAddItems }: {
+  playerId: string;
+  essence: number;
+  onSpendEssence: (amount: number) => void;
+  onAddItems: (items: Array<{ itemType: string; itemData: string }>) => Promise<void>;
+}) {
+  const { chapters, loaded } = useStoryChaptersStatus(playerId);
+  if (!loaded) return null;
+  if (!chapters.has(SHOP_UNLOCK_CHAPTER)) return <Navigate to="/play" replace />;
+  return <ShopScreen essence={essence} onSpendEssence={onSpendEssence} onAddItems={onAddItems} />;
 }

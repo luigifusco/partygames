@@ -1,4 +1,4 @@
-// Move descriptions and stats for display in the TM Shop
+// Move descriptions and stats for display in the Shop
 // Base power and category sourced from Gen IV data
 
 export interface MoveInfo {
