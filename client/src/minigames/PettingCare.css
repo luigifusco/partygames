@@ -64,6 +64,8 @@
   flex: 1;
   width: min(100%, 620px);
   min-height: 0;
+  --petting-idle-duration: 2.8s;
+  --petting-touch-duration: 0.42s;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -78,6 +80,35 @@
   box-shadow: var(--shadow-lg), inset 0 0 0 1px rgba(255,255,255,0.06);
   overflow: hidden;
   touch-action: none;
+}
+
+.petting-card.mood-drowsy {
+  --petting-idle-duration: 3.5s;
+  --petting-touch-duration: 0.72s;
+}
+
+.petting-card.mood-cozy {
+  --petting-idle-duration: 2.8s;
+  --petting-touch-duration: 0.52s;
+}
+
+.petting-card.mood-playful {
+  --petting-idle-duration: 2.1s;
+  --petting-touch-duration: 0.38s;
+}
+
+.petting-card.mood-excited {
+  --petting-idle-duration: 1.45s;
+  --petting-touch-duration: 0.27s;
+}
+
+.petting-card.mood-zoomies {
+  --petting-idle-duration: 0.95s;
+  --petting-touch-duration: 0.18s;
+}
+
+.petting-card.is-mood-shifting {
+  animation: petting-mood-shake 0.34s ease-out;
 }
 
 .petting-target-card {
@@ -150,11 +181,11 @@
   image-rendering: pixelated;
   filter: drop-shadow(0 14px 16px rgba(0,0,0,0.48));
   transform-origin: center;
-  animation: petting-idle 2.8s ease-in-out infinite;
+  animation: petting-idle var(--petting-idle-duration) ease-in-out infinite;
 }
 
 .petting-card.is-touching .petting-sprite {
-  animation: petting-touch 0.42s ease-in-out infinite;
+  animation: petting-touch var(--petting-touch-duration) ease-in-out infinite;
 }
 
 .mood-zoomies .petting-sprite,
@@ -170,6 +201,14 @@
 @keyframes petting-touch {
   0%, 100% { transform: rotate(-1deg) scale(1.02); }
   50% { transform: rotate(1deg) scale(1.045); }
+}
+
+@keyframes petting-mood-shake {
+  0%, 100% { transform: translateX(0); }
+  18% { transform: translateX(-6px) rotate(-0.5deg); }
+  36% { transform: translateX(6px) rotate(0.5deg); }
+  54% { transform: translateX(-4px) rotate(-0.35deg); }
+  72% { transform: translateX(4px) rotate(0.35deg); }
 }
 
 .petting-name {

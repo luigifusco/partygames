@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { playStatChangeSfx, preloadStatSounds, unlockAudio } from '../components/BattleSounds';
 import './PettingCare.css';
 
 interface PettingCareProps {
@@ -82,6 +83,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const speedSamplesRef = useRef<SpeedSample[]>([]);
   const scorePopupAccRef = useRef(0);
   const lastFeedbackAtRef = useRef(0);
+  const moodShiftTimeoutRef = useRef<number | null>(null);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
@@ -92,6 +94,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const [, setAccuracy] = useState(0);
   const [mood, setMood] = useState<MoodDef>(() => MOODS[1]);
   const moodRef = useRef<MoodDef>(MOODS[1]);
+  const [moodShifting, setMoodShifting] = useState(false);
   const [pops, setPops] = useState<Pop[]>([]);
 
   const addPop = (x: number, y: number, text: string, kind: Pop['kind']) => {
@@ -103,9 +106,15 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   };
 
   const switchMood = (elapsed: number) => {
+    const previous = moodRef.current;
     const next = randomMood(moodRef.current.id);
     moodRef.current = next;
     setMood(next);
+    setMoodShifting(false);
+    window.setTimeout(() => setMoodShifting(true), 0);
+    if (moodShiftTimeoutRef.current !== null) window.clearTimeout(moodShiftTimeoutRef.current);
+    moodShiftTimeoutRef.current = window.setTimeout(() => setMoodShifting(false), 360);
+    playStatChangeSfx(next.target >= previous.target ? 'up' : 'down', 0.18);
     nextMoodAtRef.current = elapsed + moodInterval(elapsed);
     comboRef.current = 0;
     currentSpeedRef.current = 0;
@@ -178,6 +187,13 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       addPop(point.x, point.y, closeness > 0.75 ? `Perfect +${popupGain}` : `+${popupGain}`, 'good');
     }
   };
+
+  useEffect(() => {
+    preloadStatSounds();
+    return () => {
+      if (moodShiftTimeoutRef.current !== null) window.clearTimeout(moodShiftTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const el = playAreaRef.current;
@@ -283,6 +299,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   }, [started, ended, onFinish]);
 
   const startGame = () => {
+    unlockAudio();
     elapsedRef.current = 0;
     scoreRef.current = 0;
     scoreFloatRef.current = 0;
@@ -324,7 +341,10 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       </div>
 
       <div className="petting-stage">
-        <div ref={playAreaRef} className={`petting-card mood-${mood.id} ${isTouching ? 'is-touching' : ''}`}>
+        <div
+          ref={playAreaRef}
+          className={`petting-card mood-${mood.id} ${isTouching ? 'is-touching' : ''} ${moodShifting ? 'is-mood-shifting' : ''}`}
+        >
           <div className="petting-target-card" style={{ borderColor: mood.color }}>
             <div
               className="petting-target-fill"
