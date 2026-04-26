@@ -101,6 +101,80 @@ const battlesTotal = new promClient.Counter({ name: 'pokemonparty_battles_total'
 const tradesTotal = new promClient.Counter({ name: 'pokemonparty_trades_total', help: 'Total trades completed', registers: [metricsRegistry] });
 const battleRounds = new promClient.Histogram({ name: 'pokemonparty_battle_rounds', help: 'Rounds per battle', labelNames: ['field_size', 'total_pokemon'], buckets: [5, 10, 15, 20, 30, 40, 50], registers: [metricsRegistry] });
 const playersRegistered = new promClient.Gauge({ name: 'pokemonparty_players_registered', help: 'Total registered players', registers: [metricsRegistry] });
+const httpRequestsTotal = new promClient.Counter({
+  name: 'pokemonparty_http_requests_total',
+  help: 'Total API HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [metricsRegistry],
+});
+const httpRequestDuration = new promClient.Histogram({
+  name: 'pokemonparty_http_request_duration_seconds',
+  help: 'API HTTP request latency',
+  labelNames: ['method', 'route', 'status_class'],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [metricsRegistry],
+});
+const battleSimulationDuration = new promClient.Histogram({
+  name: 'pokemonparty_battle_simulation_duration_seconds',
+  help: 'Server-side Showdown battle simulation latency',
+  labelNames: ['field_size', 'total_pokemon', 'opponent_type'],
+  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [metricsRegistry],
+});
+const gameplayEventsTotal = new promClient.Counter({
+  name: 'pokemonparty_gameplay_events_total',
+  help: 'Gameplay events by type',
+  labelNames: ['event'],
+  registers: [metricsRegistry],
+});
+const bondXpAwarded = new promClient.Counter({
+  name: 'pokemonparty_bond_xp_awarded_total',
+  help: 'Total Bond XP awarded',
+  labelNames: ['mode'],
+  registers: [metricsRegistry],
+});
+const bondAwardsTotal = new promClient.Counter({
+  name: 'pokemonparty_bond_awards_total',
+  help: 'Total Bond XP award records',
+  labelNames: ['mode'],
+  registers: [metricsRegistry],
+});
+const dbRowsGauge = new promClient.Gauge({
+  name: 'pokemonparty_db_rows',
+  help: 'SQLite row counts for core tables',
+  labelNames: ['table'],
+  registers: [metricsRegistry],
+  collect: () => {
+    for (const table of ['players', 'owned_pokemon', 'owned_items', 'battles', 'trades', 'story_progress', 'tournaments']) {
+      const row = db.prepare(`SELECT COUNT(*) as c FROM ${table}`).get() as any;
+      dbRowsGauge.set({ table }, row.c);
+    }
+  },
+});
+const dbSizeBytes = new promClient.Gauge({
+  name: 'pokemonparty_db_size_bytes',
+  help: 'SQLite database size in bytes based on page count',
+  registers: [metricsRegistry],
+  collect: () => {
+    const pageCount = (db.prepare('PRAGMA page_count').get() as any).page_count;
+    const pageSize = (db.prepare('PRAGMA page_size').get() as any).page_size;
+    dbSizeBytes.set(pageCount * pageSize);
+  },
+});
+const tournamentStatusGauge = new promClient.Gauge({
+  name: 'pokemonparty_tournaments',
+  help: 'Tournament counts by status',
+  labelNames: ['status'],
+  registers: [metricsRegistry],
+  collect: () => {
+    tournamentStatusGauge.reset();
+    for (const status of ['registration', 'active', 'completed', 'cancelled']) {
+      tournamentStatusGauge.set({ status }, 0);
+    }
+    const rows = db.prepare('SELECT status, COUNT(*) as c FROM tournaments GROUP BY status').all() as any[];
+    for (const row of rows) tournamentStatusGauge.set({ status: row.status }, row.c);
+  },
+});
 
 // Seed metrics from DB on startup
 const playerCount = (db.prepare('SELECT COUNT(*) as c FROM players').get() as any).c;
@@ -112,6 +186,33 @@ for (const row of battleRows) {
 }
 const tradeCount = (db.prepare('SELECT COUNT(*) as c FROM trades').get() as any).c;
 tradesTotal.inc(tradeCount);
+
+function metricRoute(req: any): string {
+  const routePath = req.route?.path;
+  if (typeof routePath === 'string') return routePath.replace(BASE_PATH || '', '') || '/';
+  return req.path
+    .replace(BASE_PATH || '', '')
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ':id')
+    .replace(/\/[A-Za-z0-9_-]{18,}(?=\/|$)/g, '/:id') || '/';
+}
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith(`${BASE_PATH}/api`)) {
+    next();
+    return;
+  }
+  const started = process.hrtime.bigint();
+  res.on('finish', () => {
+    const route = metricRoute(req);
+    const method = req.method;
+    const statusCode = String(res.statusCode);
+    const statusClass = `${Math.floor(res.statusCode / 100)}xx`;
+    const durationSeconds = Number(process.hrtime.bigint() - started) / 1e9;
+    httpRequestsTotal.inc({ method, route, status_code: statusCode });
+    httpRequestDuration.observe({ method, route, status_class: statusClass }, durationSeconds);
+  });
+  next();
+});
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -176,6 +277,15 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
   }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string; character?: string | null }[];
 
   return runShowdownBattle(leftEntries, rightEntries, activeFieldSize > 1 ? activeFieldSize : 1);
+}
+
+function observeBattleSimulation<T>(labels: { field_size: string; total_pokemon: string; opponent_type: string }, run: () => T): T {
+  const end = battleSimulationDuration.startTimer(labels);
+  try {
+    return run();
+  } finally {
+    end();
+  }
 }
 
 function flipSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
@@ -252,6 +362,10 @@ function awardBondXp(
     }
     awards.push({ instanceId, slot: i, delta, total, threshold, previous });
   }
+  if (awards.length) {
+    bondAwardsTotal.inc({ mode }, awards.length);
+    bondXpAwarded.inc({ mode }, awards.reduce((sum, award) => sum + award.delta, 0));
+  }
   return awards;
 }
 
@@ -271,6 +385,8 @@ function awardBondXpDirect(playerId: string, instanceId: string, delta: number):
     const targetSpecies = firstTargetId != null ? POKEMON_BY_ID[firstTargetId] : undefined;
     if (targetSpecies) threshold = bondThresholdForStep(targetSpecies.tier, step);
   }
+  bondAwardsTotal.inc({ mode: 'direct' });
+  bondXpAwarded.inc({ mode: 'direct' }, delta);
   return { instanceId, slot: 0, delta, total, threshold, previous };
 }
 
@@ -313,6 +429,7 @@ app.post(`${BASE_PATH}/api/register`, (req, res) => {
   const id = uuidv4();
   db.prepare('INSERT INTO players (id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?)').run(id, trimmed, STARTING_ESSENCE, STARTING_ELO, picture);
   playersRegistered.inc();
+  gameplayEventsTotal.inc({ event: 'player_registered' });
 
   const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE id = ?').get(id);
   return res.json({ player });
@@ -397,6 +514,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon`, (req, res) => {
     discover.run(req.params.id, pid);
     created.push({ id, pokemon_id: pid, nature, iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense, iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed, ability, move_1: moves[0], move_2: moves[1] });
   }
+  if (created.length) gameplayEventsTotal.inc({ event: 'pokemon_added' }, created.length);
   return res.json({ ok: true, pokemon: created });
 });
 
@@ -426,6 +544,8 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/remove`, (req, res) => {
     }
     del.run(row.id);
   }
+  if (rows.length) gameplayEventsTotal.inc({ event: 'pokemon_removed' }, rows.length);
+  if (returnedItems.length) gameplayEventsTotal.inc({ event: 'held_item_returned' }, returnedItems.length);
   return res.json({ ok: true, removed: rows.length, returnedItems });
 });
 
@@ -443,6 +563,7 @@ app.post(`${BASE_PATH}/api/player/:id/items`, (req, res) => {
     insert.run(id, req.params.id, item.itemType, item.itemData);
     created.push({ id, item_type: item.itemType, item_data: item.itemData });
   }
+  if (created.length) gameplayEventsTotal.inc({ event: 'item_added' }, created.length);
   return res.json({ ok: true, items: created });
 });
 
@@ -461,6 +582,7 @@ app.post(`${BASE_PATH}/api/player/:id/items/remove`, (req, res) => {
   for (const row of rows) {
     del.run(row.id);
   }
+  if (rows.length) gameplayEventsTotal.inc({ event: 'item_removed' }, rows.length);
   return res.json({ ok: true, removed: rows.length });
 });
 
@@ -490,6 +612,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/evolve`, (req, res) => {
   }
 
   db.prepare('UPDATE owned_pokemon SET pokemon_id = ?, bond_xp = ? WHERE id = ?').run(newPokemonId, leftover, instanceId);
+  gameplayEventsTotal.inc({ event: 'pokemon_evolved' });
   return res.json({ ok: true, bondXp: leftover });
 });
 
@@ -554,6 +677,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
   db.prepare(
     'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(newId, playerId, species.id, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+  gameplayEventsTotal.inc({ event: 'pokemon_reawakened' });
 
   return res.json({
     ok: true,
@@ -610,7 +734,9 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/teach-tm`, (req, res) => {
   ).get(req.params.id, 'tm', moveName) as any;
   if (tmRow) {
     db.prepare('DELETE FROM owned_items WHERE id = ?').run(tmRow.id);
+    gameplayEventsTotal.inc({ event: 'tm_consumed' });
   }
+  gameplayEventsTotal.inc({ event: 'tm_taught' });
 
   return res.json({ ok: true });
 });
@@ -643,7 +769,9 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/use-boost`, (req, res) => {
   ).get(req.params.id, 'boost', stat) as any;
   if (boostRow) {
     db.prepare('DELETE FROM owned_items WHERE id = ?').run(boostRow.id);
+    gameplayEventsTotal.inc({ event: 'boost_consumed' });
   }
+  gameplayEventsTotal.inc({ event: 'boost_used' });
 
   return res.json({ ok: true });
 });
@@ -680,6 +808,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/give-item`, (req, res) => {
   if (itemRow) {
     db.prepare('DELETE FROM owned_items WHERE id = ?').run(itemRow.id);
   }
+  gameplayEventsTotal.inc({ event: 'held_item_given' });
 
   return res.json({ ok: true, returnedItem: pokemon.held_item ?? null });
 });
@@ -709,6 +838,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/take-item`, (req, res) => {
 
   const takenItem = pokemon.held_item;
   db.prepare('UPDATE owned_pokemon SET held_item = NULL WHERE id = ?').run(instanceId);
+  gameplayEventsTotal.inc({ event: 'held_item_taken' });
 
   return res.json({ ok: true, itemId: takenItem, newItemDbId: newItemId });
 });
@@ -1256,6 +1386,7 @@ app.post(`${BASE_PATH}/api/player/:id/story/complete`, (req, res) => {
   const firstClear = !existing;
   if (firstClear) {
     db.prepare('INSERT INTO story_progress (player_id, chapter_id) VALUES (?, ?)').run(req.params.id, key);
+    gameplayEventsTotal.inc({ event: 'story_completed' });
   }
   return res.json({ ok: true, firstClear });
 });
@@ -1285,9 +1416,12 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
   }
   const fs = fieldSize ?? leftTeam.length;
   const mode = selectionMode ?? 'blind';
-  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters);
-
   const labels = { field_size: String(fs), total_pokemon: String(leftTeam.length), selection_mode: mode, opponent_type: 'ai' };
+  const snapshot = observeBattleSimulation(
+    { field_size: labels.field_size, total_pokemon: labels.total_pokemon, opponent_type: labels.opponent_type },
+    () => simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters),
+  );
+
   battlesTotal.inc(labels);
   battleRounds.observe({ field_size: String(fs), total_pokemon: String(leftTeam.length) }, snapshot.round);
 
@@ -1342,6 +1476,7 @@ app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   delta = Math.min(delta, 60);
 
   const award = awardBondXpDirect(player.id, instanceId, delta);
+  if (award) gameplayEventsTotal.inc({ event: 'minigame_reward' });
   const sock = connectedPlayers.get(playerName);
   if (sock && award) io.to(sock).emit('battle:bondUpdate', { awards: [award] });
   return res.json({ ok: true, award, delta });
@@ -1405,6 +1540,21 @@ interface DraftInfo {
   currentPicker: 'p1' | 'p2' | null;
 }
 const activeDrafts = new Map<string, DraftInfo>();
+
+const realtimeStateGauge = new promClient.Gauge({
+  name: 'pokemonparty_realtime_state',
+  help: 'Current in-memory realtime state sizes',
+  labelNames: ['state'],
+  registers: [metricsRegistry],
+  collect: () => {
+    realtimeStateGauge.set({ state: 'connected_players' }, connectedPlayers.size);
+    realtimeStateGauge.set({ state: 'pending_challenges' }, pendingChallenges.size);
+    realtimeStateGauge.set({ state: 'active_battles' }, activeBattles.size);
+    realtimeStateGauge.set({ state: 'pending_trades' }, pendingTrades.size);
+    realtimeStateGauge.set({ state: 'active_trades' }, activeTrades.size);
+    realtimeStateGauge.set({ state: 'active_drafts' }, activeDrafts.size);
+  },
+});
 
 /** Build the per-player battle inputs from their frozen team, in the provided slot order. */
 function frozenToBattle(frozen: FrozenPokemon[], order: number[]) {
@@ -1493,12 +1643,15 @@ function handleTournamentTeamSubmission(
   }
 
   // Both ready — simulate.
-  const snapshot = simulateBattleFromIds(
-    battle.player1Team, battle.player2Team, t.fieldSize,
-    battle.player1HeldItems, battle.player2HeldItems,
-    battle.player1Moves, battle.player2Moves,
-    battle.player1Abilities, battle.player2Abilities,
-    (battle as any).player1Characters, (battle as any).player2Characters,
+  const snapshot = observeBattleSimulation(
+    { field_size: String(t.fieldSize), total_pokemon: String(t.totalPokemon), opponent_type: 'tournament' },
+    () => simulateBattleFromIds(
+      battle.player1Team!, battle.player2Team!, t.fieldSize,
+      battle.player1HeldItems, battle.player2HeldItems,
+      battle.player1Moves, battle.player2Moves,
+      battle.player1Abilities, battle.player2Abilities,
+      (battle as any).player1Characters, (battle as any).player2Characters,
+    ),
   );
 
   const winnerName = snapshot.winner === 'left' ? battle.player1 : battle.player2;
@@ -1531,6 +1684,9 @@ function handleTournamentTeamSubmission(
       'INSERT INTO battles (id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log, tournament_id, tournament_match_id) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run(uuidv4(), winnerId, loserId, t.fieldSize, (battle.player1Team ?? []).length, t.pickMode ?? 'blind', 'tournament', snapshot.round, (snapshot.rawLog ?? []).join('\n'), tournamentId, matchId);
   }
+  const battleLabels = { field_size: String(t.fieldSize), total_pokemon: String(t.totalPokemon), selection_mode: t.pickMode ?? 'blind', opponent_type: 'tournament' };
+  battlesTotal.inc(battleLabels);
+  battleRounds.observe({ field_size: battleLabels.field_size, total_pokemon: battleLabels.total_pokemon }, snapshot.round);
 
   if (p1Row) {
     const p1Awards = awardBondXp(p1Row.id, battle.player1InstanceIds, snapshot.left, snapshot.round, p1Won, 'tournament');
@@ -1638,6 +1794,7 @@ function advanceTournament(t: Tournament) {
     t.runnerUp = finalMatch ? (finalMatch.player1 === finalMatch.winner ? finalMatch.player2 : finalMatch.player1) ?? undefined : undefined;
     t.status = 'completed';
     saveTournament(t);
+    gameplayEventsTotal.inc({ event: 'tournament_completed' });
     broadcastTournamentUpdate(t);
 
     // Distribute prizes
@@ -1770,6 +1927,7 @@ function checkForfeitTimers() {
           match.winner = Math.random() < 0.5 ? match.player1 : match.player2;
         }
         match.status = 'forfeit';
+        gameplayEventsTotal.inc({ event: 'tournament_forfeit' });
         changed = true;
       }
     }
@@ -1795,6 +1953,7 @@ setInterval(() => {
       if (t.participants.length < 2) {
         t.status = 'cancelled';
         saveTournament(t);
+        gameplayEventsTotal.inc({ event: 'tournament_cancelled' });
         broadcastTournamentUpdate(t);
         continue;
       }
@@ -1803,6 +1962,7 @@ setInterval(() => {
       t.currentRound = 1;
       t.status = 'active';
       saveTournament(t);
+      gameplayEventsTotal.inc({ event: 'tournament_started' });
       broadcastTournamentUpdate(t);
       // Notify round 1 players
       for (const match of bracket.filter(m => m.round === 1 && m.status === 'active')) {
@@ -1867,6 +2027,7 @@ app.post(`${BASE_PATH}/api/admin/tournament/create`, (req, res) => {
   const t = loadTournament(id)!;
   // Broadcast to all connected players
   io.emit('tournament:created', { id: t.id, name: t.name, registrationEnd: t.registrationEnd, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon });
+  gameplayEventsTotal.inc({ event: 'tournament_created' });
   broadcastTournamentUpdate(t);
   return res.json({ ok: true, tournament: t });
 });
@@ -1880,6 +2041,7 @@ app.post(`${BASE_PATH}/api/admin/tournament/:id/start`, (req, res) => {
   t.currentRound = 1;
   t.status = 'active';
   saveTournament(t);
+  gameplayEventsTotal.inc({ event: 'tournament_started' });
   broadcastTournamentUpdate(t);
   for (const match of bracket.filter(m => m.round === 1 && m.status === 'active')) {
     if (match.player1) { const s = connectedPlayers.get(match.player1); if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player2 }); }
@@ -1894,6 +2056,7 @@ app.post(`${BASE_PATH}/api/admin/tournament/:id/cancel`, (req, res) => {
   if (!t) return res.status(404).json({ error: 'Not found' });
   t.status = 'cancelled';
   saveTournament(t);
+  gameplayEventsTotal.inc({ event: 'tournament_cancelled' });
   broadcastTournamentUpdate(t);
   return res.json({ ok: true });
 });
@@ -1995,7 +2158,10 @@ io.on('connection', (socket) => {
       const socket2 = connectedPlayers.get(battle.player2);
 
       // Simulate battle on server so both players see the same result
-      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters);
+      const snapshot = observeBattleSimulation(
+        { field_size: String(battle.fieldSize), total_pokemon: String(battle.totalPokemon), opponent_type: 'pvp' },
+        () => simulateBattleFromIds(battle.player1Team!, battle.player2Team!, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters),
+      );
 
       const battleDataP1 = {
         battleId,
@@ -2168,6 +2334,7 @@ io.on('connection', (socket) => {
       if (socket2) io.to(socket2).emit('trade:execute', data);
       activeTrades.delete(tradeId);
       tradesTotal.inc();
+      gameplayEventsTotal.inc({ event: 'trade_completed' });
       console.log(`Trade executed: ${trade.player1} <-> ${trade.player2}`);
     } else {
       socket.emit('trade:waitingConfirm');
