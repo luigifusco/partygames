@@ -256,5 +256,30 @@ export function initDb() {
     db.exec(`ALTER TABLE tournaments ADD COLUMN pick_mode TEXT NOT NULL DEFAULT 'blind'`);
   }
 
+  // Query indexes for the main per-player and battle-history hot paths.
+  // Keep these idempotent so existing DBs get them on the next restart.
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_owned_pokemon_player ON owned_pokemon(player_id);
+    CREATE INDEX IF NOT EXISTS idx_owned_pokemon_player_species ON owned_pokemon(player_id, pokemon_id);
+
+    CREATE INDEX IF NOT EXISTS idx_owned_items_player ON owned_items(player_id);
+    CREATE INDEX IF NOT EXISTS idx_owned_items_player_type_data ON owned_items(player_id, item_type, item_data);
+
+    CREATE INDEX IF NOT EXISTS idx_story_progress_player ON story_progress(player_id);
+
+    CREATE INDEX IF NOT EXISTS idx_battle_team_entries_player_battle ON battle_team_entries(player_id, battle_id);
+    CREATE INDEX IF NOT EXISTS idx_battle_team_entries_battle ON battle_team_entries(battle_id);
+
+    CREATE INDEX IF NOT EXISTS idx_battles_winner_created ON battles(winner_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_battles_loser_created ON battles(loser_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_battles_created ON battles(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_battles_tournament_match ON battles(tournament_id, tournament_match_id);
+
+    CREATE INDEX IF NOT EXISTS idx_battle_pokemon_usage_player_used ON battle_pokemon_usage(player_id, times_used DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_tournaments_status_created ON tournaments(status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_tournaments_created ON tournaments(created_at DESC);
+  `);
+
   return db;
 }
