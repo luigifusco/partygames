@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
 import { getEffectiveMoves, type PokemonInstance } from '@shared/types';
 import AppleCatch from '../minigames/AppleCatch';
+import PettingCare from '../minigames/PettingCare';
 import './MinigamesScreen.css';
 
 interface MinigamesScreenProps {
@@ -10,7 +11,7 @@ interface MinigamesScreenProps {
   collection: PokemonInstance[];
 }
 
-type GameId = 'apple-catch';
+type GameId = 'apple-catch' | 'petting-care';
 
 interface GameDef {
   id: GameId;
@@ -28,9 +29,21 @@ const GAMES: GameDef[] = [
     tagline: 'Catch falling apples, dodge rocks.',
     description: [
       'Apples and the occasional golden star drop from the sky.',
-      'Use ← / → (or drag) to move your Pokémon and catch them.',
+      'Drag anywhere to move your Pokémon and catch them.',
       'Rocks cost you points — let them fall past.',
       'You have 45 seconds. Score as much as you can.',
+    ],
+  },
+  {
+    id: 'petting-care',
+    name: 'Gentle Pet',
+    icon: '💗',
+    tagline: 'Calmly pet your Pokémon and keep it comfortable.',
+    description: [
+      'Use slow, smooth strokes over your Pokémon to build comfort.',
+      'Gentle rhythm earns combos and more points.',
+      'Rubbing too fast makes your Pokémon overexcited — pause to let it calm down.',
+      'You have 30 seconds to make it as happy as possible.',
     ],
   },
 ];
@@ -122,6 +135,16 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
     if (selectedGame.id === 'apple-catch') {
       return (
         <AppleCatch
+          pokemonSprite={selectedInst.pokemon.sprite}
+          pokemonName={selectedInst.pokemon.name}
+          onExit={() => setPhase('pick')}
+          onFinish={handleGameEnd}
+        />
+      );
+    }
+    if (selectedGame.id === 'petting-care') {
+      return (
+        <PettingCare
           pokemonSprite={selectedInst.pokemon.sprite}
           pokemonName={selectedInst.pokemon.name}
           onExit={() => setPhase('pick')}
