@@ -38,12 +38,12 @@ const GAMES: GameDef[] = [
     id: 'petting-care',
     name: 'Gentle Pet',
     icon: '💗',
-    tagline: 'Calmly pet your Pokémon and keep it comfortable.',
+    tagline: 'Match your Pokémon’s changing petting rhythm.',
     description: [
-      'Use slow, smooth strokes over your Pokémon to build comfort.',
-      'Gentle rhythm earns combos and more points.',
-      'Rubbing too fast makes your Pokémon overexcited — pause to let it calm down.',
-      'You have 30 seconds to make it as happy as possible.',
+      'Stroke back and forth directly on your Pokémon.',
+      'Each mood asks for a different number of back-and-forths per second.',
+      'The mood changes at random intervals, and the intervals get shorter as the game goes on.',
+      'Adapt quickly and keep the rhythm as long as you can.',
     ],
   },
 ];

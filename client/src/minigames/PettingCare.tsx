@@ -8,120 +8,219 @@ interface PettingCareProps {
   onExit: () => void;
 }
 
-type Mood = 'calm' | 'happy' | 'overstimulated';
+interface MoodDef {
+  id: string;
+  label: string;
+  cue: string;
+  target: number;
+  color: string;
+}
 
-const GAME_DURATION = 30;
+interface Pop {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+  kind: 'good' | 'miss' | 'shift';
+}
+
+interface Point {
+  x: number;
+  y: number;
+  t: number;
+  onPokemon: boolean;
+}
+
+const GAME_DURATION = 35;
+const RHYTHM_WINDOW_MS = 1400;
+const MIN_REVERSAL_DISTANCE = 18;
+
+const MOODS: MoodDef[] = [
+  { id: 'drowsy', label: 'Drowsy', cue: 'slow strokes', target: 0.7, color: '#98d8ff' },
+  { id: 'cozy', label: 'Cozy', cue: 'easy rhythm', target: 1.1, color: '#ffb6dc' },
+  { id: 'playful', label: 'Playful', cue: 'keep it moving', target: 1.6, color: '#ffd35a' },
+  { id: 'excited', label: 'Excited', cue: 'fast back-and-forth', target: 2.2, color: '#ff9a3c' },
+  { id: 'zoomies', label: 'Zoomies', cue: 'nearly impossible!', target: 3.0, color: '#ff5d7d' },
+];
+
+function randomMood(except?: string): MoodDef {
+  const pool = MOODS.filter((m) => m.id !== except);
+  return pool[Math.floor(Math.random() * pool.length)] ?? MOODS[0];
+}
+
+function moodInterval(elapsed: number): number {
+  const progress = Math.min(1, elapsed / GAME_DURATION);
+  const max = 4.2 - progress * 2.6;
+  const min = 2.5 - progress * 1.75;
+  return Math.max(0.75, min + Math.random() * Math.max(0.3, max - min));
+}
+
+function toleranceFor(elapsed: number): number {
+  const progress = Math.min(1, elapsed / GAME_DURATION);
+  return 0.42 - progress * 0.18;
+}
 
 export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onExit }: PettingCareProps) {
-  const petAreaRef = useRef<HTMLDivElement>(null);
+  const playAreaRef = useRef<HTMLDivElement>(null);
+  const spriteRef = useRef<HTMLImageElement>(null);
   const activePointerIdRef = useRef<number | null>(null);
-  const lastPointRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const lastPointRef = useRef<Point | null>(null);
+  const directionRef = useRef<-1 | 0 | 1>(0);
+  const directionDistanceRef = useRef(0);
+  const reversalTimesRef = useRef<number[]>([]);
+  const elapsedRef = useRef(0);
+  const nextMoodAtRef = useRef(0);
   const scoreRef = useRef(0);
-  const comfortRef = useRef(24);
-  const overstimRef = useRef(0);
   const comboRef = useRef(0);
+  const popIdRef = useRef(0);
+  const finishCalledRef = useRef(false);
+  const isTouchingRef = useRef(false);
   const [score, setScore] = useState(0);
-  const [comfort, setComfort] = useState(24);
-  const [overstim, setOverstim] = useState(0);
   const [combo, setCombo] = useState(0);
-  const [mood, setMood] = useState<Mood>('calm');
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [started, setStarted] = useState(false);
   const [ended, setEnded] = useState(false);
-  const [hearts, setHearts] = useState<{ id: number; x: number; y: number; text: string }[]>([]);
-  const heartIdRef = useRef(0);
+  const [isTouching, setIsTouching] = useState(false);
+  const [currentRhythm, setCurrentRhythm] = useState(0);
+  const [accuracy, setAccuracy] = useState(0);
+  const [mood, setMood] = useState<MoodDef>(() => MOODS[1]);
+  const moodRef = useRef<MoodDef>(MOODS[1]);
+  const [nextMoodIn, setNextMoodIn] = useState(0);
+  const [pops, setPops] = useState<Pop[]>([]);
 
-  const syncMeters = () => {
-    setComfort(Math.round(comfortRef.current));
-    setOverstim(Math.round(overstimRef.current));
-    const nextMood: Mood = overstimRef.current > 62 ? 'overstimulated' : comfortRef.current > 68 ? 'happy' : 'calm';
-    setMood(nextMood);
-  };
-
-  const addHeart = (x: number, y: number, text: string) => {
-    const id = ++heartIdRef.current;
-    setHearts((list) => [...list.slice(-9), { id, x, y, text }]);
+  const addPop = (x: number, y: number, text: string, kind: Pop['kind']) => {
+    const id = ++popIdRef.current;
+    setPops((list) => [...list.slice(-10), { id, x, y, text, kind }]);
     window.setTimeout(() => {
-      setHearts((list) => list.filter((h) => h.id !== id));
-    }, 800);
+      setPops((list) => list.filter((pop) => pop.id !== id));
+    }, 850);
   };
 
-  const awardPet = (x: number, y: number, distance: number, speed: number) => {
-    if (!started || ended) return;
-    if (speed > 1450) {
-      overstimRef.current = Math.min(100, overstimRef.current + 11);
-      comfortRef.current = Math.max(0, comfortRef.current - 2);
+  const switchMood = (elapsed: number) => {
+    const next = randomMood(moodRef.current.id);
+    moodRef.current = next;
+    setMood(next);
+    nextMoodAtRef.current = elapsed + moodInterval(elapsed);
+    comboRef.current = 0;
+    setCombo(0);
+    reversalTimesRef.current = [];
+    setCurrentRhythm(0);
+    setAccuracy(0);
+    const area = playAreaRef.current?.getBoundingClientRect();
+    if (area) addPop(area.width / 2, 90, `${next.label}!`, 'shift');
+  };
+
+  const pointFromEvent = (e: PointerEvent): Point => {
+    const area = playAreaRef.current?.getBoundingClientRect();
+    const sprite = spriteRef.current?.getBoundingClientRect();
+    const x = area ? Math.max(0, Math.min(area.width, e.clientX - area.left)) : 0;
+    const y = area ? Math.max(0, Math.min(area.height, e.clientY - area.top)) : 0;
+    const onPokemon = !!sprite
+      && e.clientX >= sprite.left
+      && e.clientX <= sprite.right
+      && e.clientY >= sprite.top
+      && e.clientY <= sprite.bottom;
+    return { x, y, t: performance.now(), onPokemon };
+  };
+
+  const currentBackAndForths = (now: number) => {
+    const cutoff = now - RHYTHM_WINDOW_MS;
+    reversalTimesRef.current = reversalTimesRef.current.filter((t) => t >= cutoff);
+    return (reversalTimesRef.current.length / 2) / (RHYTHM_WINDOW_MS / 1000);
+  };
+
+  const scoreReversal = (point: Point, rhythm: number) => {
+    const target = moodRef.current.target;
+    const tolerance = toleranceFor(elapsedRef.current);
+    const diff = Math.abs(rhythm - target);
+    const closeness = Math.max(0, 1 - diff / tolerance);
+    setCurrentRhythm(rhythm);
+    setAccuracy(closeness);
+
+    if (closeness <= 0) {
       comboRef.current = 0;
       setCombo(0);
-      addHeart(x, y, 'Too fast!');
-      syncMeters();
+      addPop(point.x, point.y, rhythm < target ? 'Faster!' : 'Slower!', 'miss');
       return;
     }
 
-    const isSweetStroke = speed >= 70 && speed <= 760;
-    if (!isSweetStroke || overstimRef.current > 72) {
-      overstimRef.current = Math.max(0, overstimRef.current - 1.5);
-      syncMeters();
-      return;
-    }
-
-    comboRef.current = Math.min(20, comboRef.current + 1);
-    const comboBonus = 1 + Math.floor(comboRef.current / 6);
-    const gain = Math.max(1, Math.min(5, Math.round(distance / 28) + comboBonus));
+    comboRef.current = Math.min(99, comboRef.current + 1);
+    const gain = Math.max(1, Math.round(2 + closeness * 5 + Math.floor(comboRef.current / 8)));
     scoreRef.current += gain;
-    comfortRef.current = Math.min(100, comfortRef.current + distance * 0.045 + comboBonus);
-    overstimRef.current = Math.max(0, overstimRef.current - 3);
     setScore(scoreRef.current);
     setCombo(comboRef.current);
-    addHeart(x, y, `+${gain}`);
-    syncMeters();
+    addPop(point.x, point.y, closeness > 0.72 ? `Perfect +${gain}` : `+${gain}`, 'good');
   };
 
   useEffect(() => {
-    const el = petAreaRef.current;
+    const el = playAreaRef.current;
     if (!el) return;
-
-    const localPoint = (e: PointerEvent) => {
-      const rect = el.getBoundingClientRect();
-      return {
-        x: Math.max(0, Math.min(rect.width, e.clientX - rect.left)),
-        y: Math.max(0, Math.min(rect.height, e.clientY - rect.top)),
-        t: performance.now(),
-      };
-    };
 
     const onDown = (e: PointerEvent) => {
       if ((e.target as Element | null)?.closest('button, input, select, textarea, a')) return;
       if (!started || ended || activePointerIdRef.current !== null) return;
+      const point = pointFromEvent(e);
+      if (!point.onPokemon) {
+        addPop(point.x, point.y, 'Pet the Pokémon!', 'miss');
+        return;
+      }
       activePointerIdRef.current = e.pointerId;
       el.setPointerCapture?.(e.pointerId);
       e.preventDefault();
-      const point = localPoint(e);
+      isTouchingRef.current = true;
+      setIsTouching(true);
       lastPointRef.current = point;
-      comfortRef.current = Math.min(100, comfortRef.current + 1.5);
-      addHeart(point.x, point.y, '♡');
-      syncMeters();
+      directionRef.current = 0;
+      directionDistanceRef.current = 0;
     };
 
     const onMove = (e: PointerEvent) => {
       if (activePointerIdRef.current !== e.pointerId) return;
       e.preventDefault();
-      const point = localPoint(e);
+      const point = pointFromEvent(e);
       const last = lastPointRef.current;
       lastPointRef.current = point;
       if (!last) return;
+
+      if (!point.onPokemon || !last.onPokemon) {
+        directionDistanceRef.current = 0;
+        setAccuracy(0);
+        return;
+      }
+
       const dx = point.x - last.x;
-      const dy = point.y - last.y;
-      const distance = Math.hypot(dx, dy);
-      const dt = Math.max(16, point.t - last.t);
-      const speed = (distance / dt) * 1000;
-      if (distance >= 4) awardPet(point.x, point.y, distance, speed);
+      const absDx = Math.abs(dx);
+      if (absDx < 2) return;
+      const nextDirection: -1 | 1 = dx > 0 ? 1 : -1;
+
+      if (directionRef.current === 0) {
+        directionRef.current = nextDirection;
+        directionDistanceRef.current = absDx;
+        return;
+      }
+
+      if (nextDirection === directionRef.current) {
+        directionDistanceRef.current += absDx;
+        return;
+      }
+
+      if (directionDistanceRef.current >= MIN_REVERSAL_DISTANCE) {
+        reversalTimesRef.current.push(point.t);
+        const rhythm = currentBackAndForths(point.t);
+        scoreReversal(point, rhythm);
+      }
+      directionRef.current = nextDirection;
+      directionDistanceRef.current = absDx;
     };
 
     const onUp = (e: PointerEvent) => {
       if (activePointerIdRef.current !== e.pointerId) return;
       activePointerIdRef.current = null;
       lastPointRef.current = null;
+      directionRef.current = 0;
+      directionDistanceRef.current = 0;
+      isTouchingRef.current = false;
+      setIsTouching(false);
       el.releasePointerCapture?.(e.pointerId);
     };
 
@@ -141,34 +240,56 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     if (!started || ended) return;
     let raf = 0;
     let last = performance.now();
+    nextMoodAtRef.current = moodInterval(0);
     const tick = (now: number) => {
       const dt = Math.min(0.08, (now - last) / 1000);
       last = now;
-      overstimRef.current = Math.max(0, overstimRef.current - 12 * dt);
-      comfortRef.current = Math.max(0, comfortRef.current - 1.8 * dt);
-      if (overstimRef.current < 35 && comboRef.current > 0) {
-        comboRef.current = Math.max(0, comboRef.current - 0.8 * dt);
-        setCombo(Math.round(comboRef.current));
+      elapsedRef.current += dt;
+      const elapsed = elapsedRef.current;
+      if (elapsed >= nextMoodAtRef.current) switchMood(elapsed);
+      setTimeLeft(Math.max(0, Math.ceil(GAME_DURATION - elapsed)));
+      setNextMoodIn(Math.max(0, nextMoodAtRef.current - elapsed));
+
+      const rhythm = currentBackAndForths(now);
+      setCurrentRhythm(rhythm);
+      const diff = Math.abs(rhythm - moodRef.current.target);
+      const closeness = Math.max(0, 1 - diff / toleranceFor(elapsed));
+      setAccuracy(isTouchingRef.current ? closeness : 0);
+
+      if (elapsed >= GAME_DURATION && !finishCalledRef.current) {
+        finishCalledRef.current = true;
+        setEnded(true);
+        setTimeout(() => onFinish(scoreRef.current), 450);
+        return;
       }
-      syncMeters();
+
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [started, ended]);
+  }, [started, ended, onFinish]);
 
-  useEffect(() => {
-    if (!started || ended) return;
-    if (timeLeft <= 0) {
-      setEnded(true);
-      setTimeout(() => onFinish(scoreRef.current), 450);
-      return;
-    }
-    const t = window.setTimeout(() => setTimeLeft((v) => v - 1), 1000);
-    return () => window.clearTimeout(t);
-  }, [started, ended, timeLeft, onFinish]);
-
-  const moodLabel = mood === 'happy' ? 'Happy!' : mood === 'overstimulated' ? 'Too excited' : 'Calm';
+  const startGame = () => {
+    elapsedRef.current = 0;
+    scoreRef.current = 0;
+    comboRef.current = 0;
+    reversalTimesRef.current = [];
+    directionRef.current = 0;
+    directionDistanceRef.current = 0;
+    isTouchingRef.current = false;
+    finishCalledRef.current = false;
+    moodRef.current = MOODS[1];
+    nextMoodAtRef.current = moodInterval(0);
+    setMood(MOODS[1]);
+    setScore(0);
+    setCombo(0);
+    setCurrentRhythm(0);
+    setAccuracy(0);
+    setIsTouching(false);
+    setTimeLeft(GAME_DURATION);
+    setEnded(false);
+    setStarted(true);
+  };
 
   return (
     <div className="petting-root">
@@ -187,33 +308,44 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       </div>
 
       <div className="petting-stage">
-        <div ref={petAreaRef} className={`petting-card mood-${mood}`}>
-          <div className="petting-mood-pill">{moodLabel}</div>
+        <div ref={playAreaRef} className={`petting-card mood-${mood.id} ${isTouching ? 'is-touching' : ''}`}>
+          <div className="petting-target-card" style={{ borderColor: mood.color }}>
+            <div className="petting-mood-label" style={{ color: mood.color }}>{mood.label}</div>
+            <div className="petting-mood-cue">{mood.cue}</div>
+            <div className="petting-target-rate">{mood.target.toFixed(1)} back-and-forths / sec</div>
+          </div>
+
           <div className="petting-sprite-frame">
-            <img src={pokemonSprite} alt={pokemonName} className="petting-sprite" draggable={false} />
+            <img ref={spriteRef} src={pokemonSprite} alt={pokemonName} className="petting-sprite" draggable={false} />
           </div>
           <div className="petting-name">{pokemonName}</div>
 
-          <div className="petting-meters">
-            <div className="petting-meter">
-              <div className="petting-meter-label">Comfort</div>
-              <div className="petting-meter-track">
-                <div className="petting-meter-fill comfort" style={{ width: `${comfort}%` }} />
-              </div>
+          <div className="petting-rhythm-panel">
+            <div className="petting-rhythm-row">
+              <span>Your rhythm</span>
+              <strong>{currentRhythm.toFixed(1)}/s</strong>
             </div>
-            <div className="petting-meter">
-              <div className="petting-meter-label">Excitement</div>
-              <div className="petting-meter-track">
-                <div className="petting-meter-fill excitement" style={{ width: `${overstim}%` }} />
-              </div>
+            <div className="petting-rhythm-track">
+              <div className="petting-rhythm-band" style={{ left: `${Math.min(100, (mood.target / 3.4) * 100)}%` }} />
+              <div className="petting-rhythm-fill" style={{ width: `${Math.min(100, (currentRhythm / 3.4) * 100)}%` }} />
+            </div>
+            <div className="petting-rhythm-row small">
+              <span>Match</span>
+              <strong>{Math.round(accuracy * 100)}%</strong>
+            </div>
+            <div className="petting-accuracy-track">
+              <div className="petting-accuracy-fill" style={{ width: `${Math.round(accuracy * 100)}%`, background: mood.color }} />
             </div>
           </div>
 
-          {combo >= 4 && <div className="petting-combo">Gentle combo ×{Math.min(4, 1 + Math.floor(combo / 6))}</div>}
+          <div className="petting-countdown">
+            Mood changes in <strong>{nextMoodIn.toFixed(1)}s</strong>
+          </div>
+          {combo >= 3 && <div className="petting-combo">Combo ×{Math.min(5, 1 + Math.floor(combo / 6))}</div>}
 
-          {hearts.map((heart) => (
-            <div key={heart.id} className={heart.text === 'Too fast!' ? 'petting-pop warning' : 'petting-pop'} style={{ left: heart.x, top: heart.y }}>
-              {heart.text}
+          {pops.map((pop) => (
+            <div key={pop.id} className={`petting-pop ${pop.kind}`} style={{ left: pop.x, top: pop.y }}>
+              {pop.text}
             </div>
           ))}
 
@@ -221,9 +353,9 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
             <div className="petting-overlay">
               <div className="petting-overlay-title">Gentle Pet</div>
               <div className="petting-overlay-hint">
-                Use slow, smooth strokes over your Pokémon. If it gets too excited, pause for a moment.
+                Stroke back and forth directly on the Pokémon. Match the mood's rhythm before it changes.
               </div>
-              <button className="ds-btn ds-btn-primary ds-btn-lg" onClick={() => setStarted(true)}>Start</button>
+              <button className="ds-btn ds-btn-primary ds-btn-lg" onClick={startGame}>Start</button>
             </div>
           )}
 
