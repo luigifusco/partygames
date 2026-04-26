@@ -43,6 +43,8 @@
   justify-content: center;
   padding: 12px;
   min-height: 0;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .applecatch-scale-wrap {
   flex: 1;
@@ -87,11 +89,21 @@
   to   { transform: rotate(-8deg); }
 }
 
+.applecatch-player-anchor {
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
 .applecatch-player {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
   image-rendering: pixelated;
   pointer-events: none;
   filter: drop-shadow(0 4px 4px rgba(0,0,0,0.25));
-  transition: left 0.04s linear;
 }
 .applecatch-ground {
   left: 0; right: 0; bottom: 0;

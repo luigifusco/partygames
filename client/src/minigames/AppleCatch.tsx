@@ -10,8 +10,8 @@ interface AppleCatchProps {
 
 const FIELD_W = 480;
 const FIELD_H = 640;
-const PLAYER_W = 72;
-const PLAYER_H = 72;
+const PLAYER_W = 82;
+const PLAYER_H = 82;
 const ITEM_SIZE = 36;
 const GAME_DURATION = 45;
 
@@ -53,6 +53,7 @@ export default function AppleCatch({ pokemonSprite, pokemonName, onFinish, onExi
   const spawnAccRef = useRef(0);
   const nextIdRef = useRef(1);
   const keysRef = useRef({ left: false, right: false });
+  const activePointerIdRef = useRef<number | null>(null);
   const [flash, setFlash] = useState<{ x: number; y: number; text: string; id: number } | null>(null);
   const flashIdRef = useRef(0);
 
@@ -76,7 +77,6 @@ export default function AppleCatch({ pokemonSprite, pokemonName, onFinish, onExi
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
-    let dragging = false;
     const updateFromEvent = (e: PointerEvent) => {
       const f = fieldRef.current;
       if (!f) return;
@@ -87,18 +87,33 @@ export default function AppleCatch({ pokemonSprite, pokemonName, onFinish, onExi
       playerXRef.current = Math.max(PLAYER_W / 2, Math.min(FIELD_W - PLAYER_W / 2, localX));
       setPlayerX(playerXRef.current);
     };
-    const onDown = (e: PointerEvent) => { dragging = true; updateFromEvent(e); };
-    const onMove = (e: PointerEvent) => { if (dragging) updateFromEvent(e); };
-    const onUp = () => { dragging = false; };
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as Element | null)?.closest('button, input, select, textarea, a')) return;
+      if (activePointerIdRef.current !== null) return;
+      activePointerIdRef.current = e.pointerId;
+      el.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+      updateFromEvent(e);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (activePointerIdRef.current !== e.pointerId) return;
+      e.preventDefault();
+      updateFromEvent(e);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (activePointerIdRef.current !== e.pointerId) return;
+      activePointerIdRef.current = null;
+      el.releasePointerCapture?.(e.pointerId);
+    };
     el.addEventListener('pointerdown', onDown);
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
-    el.addEventListener('pointerleave', onUp);
+    el.addEventListener('pointercancel', onUp);
     return () => {
       el.removeEventListener('pointerdown', onDown);
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
-      el.removeEventListener('pointerleave', onUp);
+      el.removeEventListener('pointercancel', onUp);
     };
   }, []);
 
@@ -225,18 +240,22 @@ export default function AppleCatch({ pokemonSprite, pokemonName, onFinish, onExi
               {flash.text}
             </div>
           )}
-          <img
-            src={pokemonSprite}
-            alt={pokemonName}
-            className="applecatch-player"
-            draggable={false}
+          <div
+            className="applecatch-player-anchor"
             style={{ left: playerX - PLAYER_W / 2, top: FIELD_H - PLAYER_H - 8, width: PLAYER_W, height: PLAYER_H }}
-          />
+          >
+            <img
+              src={pokemonSprite}
+              alt={pokemonName}
+              className="applecatch-player"
+              draggable={false}
+            />
+          </div>
           <div className="applecatch-ground" />
           {!started && (
             <div className="applecatch-overlay">
               <div className="applecatch-overlay-title">Apple Catch</div>
-              <div className="applecatch-overlay-hint">← → to move · catch 🍎 and ⭐ · avoid 🪨</div>
+              <div className="applecatch-overlay-hint">Drag anywhere to move · catch 🍎 and ⭐ · avoid 🪨</div>
               <button className="ds-btn ds-btn-primary ds-btn-lg" onClick={() => setStarted(true)}>Start</button>
             </div>
           )}

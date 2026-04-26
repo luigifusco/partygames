@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BASE_PATH } from '../config';
-import type { PokemonInstance } from '@shared/types';
+import { getEffectiveMoves, type PokemonInstance } from '@shared/types';
 import AppleCatch from '../minigames/AppleCatch';
 import './MinigamesScreen.css';
 
@@ -46,6 +46,29 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
   const [reward, setReward] = useState<{ delta: number; total: number; threshold: number | null } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pokemonSearch, setPokemonSearch] = useState('');
+
+  const filteredCollection = useMemo(() => {
+    const q = pokemonSearch.trim().toLowerCase();
+    const list = [...collection].sort((a, b) => {
+      const fav = Number(!!b.favorite) - Number(!!a.favorite);
+      if (fav !== 0) return fav;
+      return a.pokemon.id - b.pokemon.id;
+    });
+    if (!q) return list;
+    return list.filter((inst) => {
+      const fields = [
+        inst.pokemon.name,
+        String(inst.pokemon.id),
+        inst.pokemon.tier,
+        inst.nature,
+        inst.ability,
+        ...inst.pokemon.types,
+        ...getEffectiveMoves(inst),
+      ];
+      return fields.some((field) => field.toLowerCase().includes(q));
+    });
+  }, [collection, pokemonSearch]);
 
   const openGame = (g: GameDef) => {
     setSelectedGame(g);
@@ -171,22 +194,57 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
               <div className="ds-empty-text">You don't have any Pokémon yet.</div>
             </div>
           ) : (
-            <div className="minigame-pick-grid">
-              {collection.map(inst => (
-                <button
-                  key={inst.instanceId}
-                  type="button"
-                  className="minigame-pick-card"
-                  onClick={() => pickPokemon(inst)}
-                >
-                  <img src={inst.pokemon.sprite} alt={inst.pokemon.name} className="minigame-pick-sprite" />
-                  <div className="minigame-pick-name">{inst.pokemon.name}</div>
-                  <div className="minigame-pick-bond">
-                    ❤️ {inst.bondXp ?? 0} bond
-                  </div>
-                </button>
-              ))}
-            </div>
+            <>
+              <div className="minigame-pick-search-row">
+                <span className="minigame-pick-search-icon" aria-hidden>🔍</span>
+                <input
+                  type="search"
+                  className="minigame-pick-search-input"
+                  placeholder="Search name, type, move, ability…"
+                  value={pokemonSearch}
+                  onChange={(e) => setPokemonSearch(e.target.value)}
+                  aria-label="Search Pokémon"
+                />
+                {pokemonSearch && (
+                  <button
+                    type="button"
+                    className="minigame-pick-search-clear"
+                    onClick={() => setPokemonSearch('')}
+                    aria-label="Clear Pokémon search"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              {filteredCollection.length === 0 ? (
+                <div className="minigame-pick-empty">
+                  <div className="minigame-pick-empty-icon">🔍</div>
+                  <div className="minigame-pick-empty-title">No matches</div>
+                  <div className="minigame-pick-empty-text">No Pokémon match <b>{pokemonSearch}</b>.</div>
+                </div>
+              ) : (
+                <div className="minigame-pick-grid">
+                  {filteredCollection.map(inst => (
+                    <button
+                      key={inst.instanceId}
+                      type="button"
+                      className={`minigame-pick-card ${inst.favorite ? 'is-favorite' : ''}`}
+                      onClick={() => pickPokemon(inst)}
+                    >
+                      {inst.favorite && <span className="minigame-pick-favorite" aria-label="Favorite">★</span>}
+                      <span className="minigame-pick-sprite-frame">
+                        <img src={inst.pokemon.sprite} alt={inst.pokemon.name} className="minigame-pick-sprite" />
+                      </span>
+                      <span className="minigame-pick-name">{inst.pokemon.name}</span>
+                      <span className="minigame-pick-meta">
+                        <span>{inst.pokemon.types.join(' / ')}</span>
+                        <span>❤️ {inst.bondXp ?? 0}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

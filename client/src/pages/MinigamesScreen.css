@@ -77,44 +77,175 @@
   font-size: 14px;
 }
 
+.minigame-pick-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4) 0;
+  max-width: 720px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.minigame-pick-search-icon {
+  position: absolute;
+  left: calc(var(--space-4) + 12px);
+  font-size: 0.95em;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.minigame-pick-search-input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 42px 10px 38px;
+  font-family: inherit;
+  font-size: 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  color: var(--color-text);
+  outline: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+.minigame-pick-search-input::placeholder { color: var(--color-text-faint); }
+.minigame-pick-search-input:focus {
+  border-color: var(--color-border-focus);
+  background: var(--color-surface-2);
+  box-shadow: 0 0 0 2px rgba(122, 167, 255, 0.22);
+}
+.minigame-pick-search-clear {
+  position: absolute;
+  right: calc(var(--space-4) + 4px);
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.minigame-pick-search-clear:hover { color: var(--color-text); }
+
 .minigame-pick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   padding: 12px;
   max-width: 720px;
   margin: 0 auto;
 }
 .minigame-pick-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 8px;
-  background: var(--ds-surface-raised, rgba(255,255,255,0.04));
-  border: 1px solid var(--ds-border, rgba(255,255,255,0.1));
-  border-radius: 10px;
+  justify-content: flex-start;
+  min-height: 170px;
+  padding: 10px 8px 12px;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: transform 0.1s, border-color 0.1s;
-  color: inherit;
+  color: var(--color-text);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
 }
 .minigame-pick-card:hover {
   transform: translateY(-2px);
-  border-color: var(--ds-accent, #ff9a3c);
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+}
+.minigame-pick-card:active { transform: translateY(0); }
+.minigame-pick-card.is-favorite {
+  border-color: rgba(255, 184, 77, 0.85);
+  box-shadow: 0 0 18px rgba(255, 184, 77, 0.25);
+}
+.minigame-pick-favorite {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  color: #ffb84d;
+  font-size: 16px;
+  line-height: 1;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.95), 0 0 8px rgba(255, 184, 77, 0.6);
+}
+.minigame-pick-sprite-frame {
+  width: 100%;
+  height: 104px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 6px;
+  pointer-events: none;
 }
 .minigame-pick-sprite {
-  width: 72px;
-  height: 72px;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
   image-rendering: pixelated;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35));
 }
 .minigame-pick-name {
-  font-weight: 600;
+  width: 100%;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.minigame-pick-meta {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--color-text-muted);
   margin-top: 4px;
+  text-transform: capitalize;
+}
+.minigame-pick-empty {
+  max-width: 420px;
+  margin: 32px auto;
+  padding: 28px 18px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.minigame-pick-empty-icon {
+  font-size: 34px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.minigame-pick-empty-title {
+  color: var(--color-text);
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.minigame-pick-empty-text {
   font-size: 13px;
 }
-.minigame-pick-bond {
-  font-size: 11px;
-  color: var(--ds-text-muted, #aaa);
-  margin-top: 2px;
+
+@media (min-width: 560px) {
+  .minigame-pick-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
 }
 
 .minigame-result {
@@ -135,7 +266,14 @@
 .minigame-result-icon { font-size: 56px; line-height: 1; }
 .minigame-result-title { color: var(--ds-text-muted, #aaa); margin-top: 8px; font-size: 13px; }
 .minigame-result-score { font-size: 56px; font-weight: 800; margin: 4px 0 12px; }
-.minigame-result-sprite { width: 96px; height: 96px; image-rendering: pixelated; }
+.minigame-result-sprite {
+  width: auto;
+  height: auto;
+  max-width: 112px;
+  max-height: 112px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 .minigame-result-name { font-weight: 600; margin-top: 4px; }
 .minigame-result-xp {
   margin-top: 16px;
