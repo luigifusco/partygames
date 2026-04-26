@@ -32,14 +32,14 @@ interface Point {
 }
 
 const GAME_DURATION = 35;
-const MAX_DISPLAY_SPEED = 900;
+const MAX_DISPLAY_SPEED = 2100;
 
 const MOODS: MoodDef[] = [
-  { id: 'drowsy', label: 'Drowsy', cue: 'very slow strokes', target: 120, color: '#98d8ff' },
-  { id: 'cozy', label: 'Cozy', cue: 'gentle speed', target: 220, color: '#ffb6dc' },
-  { id: 'playful', label: 'Playful', cue: 'steady speed', target: 360, color: '#ffd35a' },
-  { id: 'excited', label: 'Excited', cue: 'fast strokes', target: 540, color: '#ff9a3c' },
-  { id: 'zoomies', label: 'Zoomies', cue: 'as fast as you can!', target: 760, color: '#ff5d7d' },
+  { id: 'drowsy', label: 'Drowsy', cue: 'slow strokes', target: 320, color: '#98d8ff' },
+  { id: 'cozy', label: 'Cozy', cue: 'gentle speed', target: 600, color: '#ffb6dc' },
+  { id: 'playful', label: 'Playful', cue: 'steady speed', target: 950, color: '#ffd35a' },
+  { id: 'excited', label: 'Excited', cue: 'fast strokes', target: 1350, color: '#ff9a3c' },
+  { id: 'zoomies', label: 'Zoomies', cue: 'very fast!', target: 1850, color: '#ff5d7d' },
 ];
 
 function randomMood(except?: string): MoodDef {
@@ -56,7 +56,7 @@ function moodInterval(elapsed: number): number {
 
 function toleranceFor(target: number, elapsed: number): number {
   const progress = Math.min(1, elapsed / GAME_DURATION);
-  return Math.max(55, target * (0.38 - progress * 0.16));
+  return Math.max(115, target * (0.42 - progress * 0.16));
 }
 
 export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onExit }: PettingCareProps) {
@@ -67,12 +67,13 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const elapsedRef = useRef(0);
   const nextMoodAtRef = useRef(0);
   const scoreRef = useRef(0);
+  const scoreFloatRef = useRef(0);
   const comboRef = useRef(0);
   const popIdRef = useRef(0);
   const finishCalledRef = useRef(false);
   const isTouchingRef = useRef(false);
   const currentSpeedRef = useRef(0);
-  const scoreDistanceRef = useRef(0);
+  const scorePopupAccRef = useRef(0);
   const lastFeedbackAtRef = useRef(0);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -101,8 +102,8 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     setMood(next);
     nextMoodAtRef.current = elapsed + moodInterval(elapsed);
     comboRef.current = 0;
-    scoreDistanceRef.current = 0;
     currentSpeedRef.current = 0;
+    scorePopupAccRef.current = 0;
     setCombo(0);
     setCurrentSpeed(0);
     setAccuracy(0);
@@ -123,14 +124,13 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     return { x, y, t: performance.now(), onPokemon };
   };
 
-  const scoreStroke = (point: Point, speed: number, distance: number) => {
+  const scoreStroke = (point: Point, speed: number, dt: number) => {
     const target = moodRef.current.target;
     const tolerance = toleranceFor(target, elapsedRef.current);
     const diff = Math.abs(speed - target);
     const closeness = Math.max(0, 1 - diff / tolerance);
     setAccuracy(closeness);
 
-    scoreDistanceRef.current += distance;
     if (closeness <= 0) {
       comboRef.current = 0;
       setCombo(0);
@@ -141,14 +141,19 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       return;
     }
 
-    if (scoreDistanceRef.current < 28) return;
-    scoreDistanceRef.current = 0;
-    comboRef.current = Math.min(99, comboRef.current + 1);
-    const gain = Math.max(1, Math.round(1 + closeness * 4 + Math.floor(comboRef.current / 10)));
-    scoreRef.current += gain;
+    comboRef.current = Math.min(99, comboRef.current + dt * 3);
+    const comboBonus = Math.min(0.7, comboRef.current / 80);
+    const gain = dt * (0.8 + closeness * 1.6 + comboBonus);
+    scoreFloatRef.current += gain;
+    scorePopupAccRef.current += gain;
+    scoreRef.current = Math.floor(scoreFloatRef.current);
     setScore(scoreRef.current);
-    setCombo(comboRef.current);
-    addPop(point.x, point.y, closeness > 0.75 ? `Perfect +${gain}` : `+${gain}`, 'good');
+    setCombo(Math.round(comboRef.current));
+    if (scorePopupAccRef.current >= 1) {
+      const popupGain = Math.floor(scorePopupAccRef.current);
+      scorePopupAccRef.current -= popupGain;
+      addPop(point.x, point.y, closeness > 0.75 ? `Perfect +${popupGain}` : `+${popupGain}`, 'good');
+    }
   };
 
   useEffect(() => {
@@ -169,7 +174,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       isTouchingRef.current = true;
       setIsTouching(true);
       lastPointRef.current = point;
-      scoreDistanceRef.current = 0;
+      scorePopupAccRef.current = 0;
     };
 
     const onMove = (e: PointerEvent) => {
@@ -181,7 +186,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       if (!last) return;
 
       if (!point.onPokemon || !last.onPokemon) {
-        scoreDistanceRef.current = 0;
+        scorePopupAccRef.current = 0;
         currentSpeedRef.current = 0;
         setCurrentSpeed(0);
         setAccuracy(0);
@@ -194,10 +199,10 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       const instantSpeed = distance / dt;
       const speed = currentSpeedRef.current === 0
         ? instantSpeed
-        : currentSpeedRef.current * 0.62 + instantSpeed * 0.38;
+        : currentSpeedRef.current * 0.55 + instantSpeed * 0.45;
       currentSpeedRef.current = speed;
       setCurrentSpeed(speed);
-      scoreStroke(point, speed, distance);
+      scoreStroke(point, speed, dt);
     };
 
     const onUp = (e: PointerEvent) => {
@@ -205,7 +210,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       activePointerIdRef.current = null;
       lastPointRef.current = null;
       currentSpeedRef.current = 0;
-      scoreDistanceRef.current = 0;
+      scorePopupAccRef.current = 0;
       isTouchingRef.current = false;
       setIsTouching(false);
       setCurrentSpeed(0);
@@ -265,8 +270,9 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const startGame = () => {
     elapsedRef.current = 0;
     scoreRef.current = 0;
+    scoreFloatRef.current = 0;
     comboRef.current = 0;
-    scoreDistanceRef.current = 0;
+    scorePopupAccRef.current = 0;
     currentSpeedRef.current = 0;
     isTouchingRef.current = false;
     finishCalledRef.current = false;

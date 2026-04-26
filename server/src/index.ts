@@ -1455,6 +1455,28 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
 
 // --- Minigame reward ---
 const MINIGAMES_UNLOCK_CHAPTER_ID = 'n-finale:complete';
+
+function minigameBondXp(minigame: string, score: number): number | null {
+  if (minigame === 'apple-catch') {
+    // Solid Apple Catch runs (~40-60 points) are comparable to winning an AI battle,
+    // with diminishing returns and a hard cap so minigames cannot farm final forms.
+    const clamped = Math.max(0, Math.min(200, Math.floor(score)));
+    const delta = clamped <= 60
+      ? Math.round(clamped * 0.75)
+      : Math.round(60 * 0.75 + (clamped - 60) * 0.2);
+    return Math.min(delta, 60);
+  }
+
+  if (minigame === 'petting-care') {
+    // Gentle Pet is scored around 0-100. A very good run can pay for a basic
+    // evolution step, but it still caps at the common/uncommon base threshold.
+    const clamped = Math.max(0, Math.min(100, Math.floor(score)));
+    return Math.min(60, Math.round(clamped * 0.6));
+  }
+
+  return null;
+}
+
 app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   const { playerName, instanceId, minigame, score } = req.body as {
     playerName?: string; instanceId?: string; minigame?: string; score?: number;
@@ -1470,17 +1492,8 @@ app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   const own = db.prepare('SELECT id FROM owned_pokemon WHERE id = ? AND player_id = ?').get(instanceId, player.id) as any;
   if (!own) return res.status(404).json({ error: 'Pokemon not found' });
 
-  // Scale score → bond XP. Tuned so a solid Apple Catch run (~40-60 points)
-  // is comparable to winning an AI battle, with diminishing returns past that.
-  const clamped = Math.max(0, Math.min(200, Math.floor(score)));
-  let delta = 0;
-  if (clamped <= 60) {
-    delta = Math.round(clamped * 0.75);
-  } else {
-    // Beyond 60, each point is worth much less to avoid infinite grinding.
-    delta = Math.round(60 * 0.75 + (clamped - 60) * 0.2);
-  }
-  delta = Math.min(delta, 60);
+  const delta = minigameBondXp(minigame, score);
+  if (delta === null) return res.status(400).json({ error: 'Unknown minigame' });
 
   const award = awardBondXpDirect(player.id, instanceId, delta);
   if (award) gameplayEventsTotal.inc({ event: 'minigame_reward' });
