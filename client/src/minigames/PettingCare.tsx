@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { playStatChangeSfx, preloadStatSounds, unlockAudio } from '../components/BattleSounds';
 import './PettingCare.css';
 
 interface PettingCareProps {
@@ -85,7 +84,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const lastFeedbackAtRef = useRef(0);
   const moodShiftTimeoutRef = useRef<number | null>(null);
   const [score, setScore] = useState(0);
-  const [combo, setCombo] = useState(0);
+  const [, setCombo] = useState(0);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [started, setStarted] = useState(false);
   const [ended, setEnded] = useState(false);
@@ -106,7 +105,6 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   };
 
   const switchMood = (elapsed: number) => {
-    const previous = moodRef.current;
     const next = randomMood(moodRef.current.id);
     moodRef.current = next;
     setMood(next);
@@ -114,7 +112,6 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     window.setTimeout(() => setMoodShifting(true), 0);
     if (moodShiftTimeoutRef.current !== null) window.clearTimeout(moodShiftTimeoutRef.current);
     moodShiftTimeoutRef.current = window.setTimeout(() => setMoodShifting(false), 360);
-    playStatChangeSfx(next.target >= previous.target ? 'up' : 'down', 0.18);
     nextMoodAtRef.current = elapsed + moodInterval(elapsed);
     comboRef.current = 0;
     currentSpeedRef.current = 0;
@@ -124,7 +121,10 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     setCurrentSpeed(0);
     setAccuracy(0);
     const area = playAreaRef.current?.getBoundingClientRect();
-    if (area) addPop(area.width / 2, 90, `${next.label}!`, 'shift');
+    const sprite = spriteRef.current?.getBoundingClientRect();
+    if (area && sprite) {
+      addPop(sprite.left - area.left + sprite.width / 2, sprite.top - area.top + sprite.height * 0.22, '✨', 'shift');
+    }
   };
 
   const pointFromEvent = (e: PointerEvent): Point => {
@@ -167,7 +167,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       comboRef.current = 0;
       setCombo(0);
       if (point.t - lastFeedbackAtRef.current > 520) {
-        addPop(point.x, point.y, speed < target ? 'Faster!' : 'Slower!', 'miss');
+        addPop(point.x, point.y, speed < target ? '⚡' : '🐢', 'miss');
         lastFeedbackAtRef.current = point.t;
       }
       return;
@@ -182,14 +182,12 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     setScore(scoreRef.current);
     setCombo(Math.round(comboRef.current));
     if (scorePopupAccRef.current >= 1) {
-      const popupGain = Math.floor(scorePopupAccRef.current);
-      scorePopupAccRef.current -= popupGain;
-      addPop(point.x, point.y, closeness > 0.75 ? `Perfect +${popupGain}` : `+${popupGain}`, 'good');
+      scorePopupAccRef.current -= Math.floor(scorePopupAccRef.current);
+      addPop(point.x, point.y, closeness > 0.82 ? '💖' : '✨', 'good');
     }
   };
 
   useEffect(() => {
-    preloadStatSounds();
     return () => {
       if (moodShiftTimeoutRef.current !== null) window.clearTimeout(moodShiftTimeoutRef.current);
     };
@@ -204,7 +202,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       if (!started || ended || activePointerIdRef.current !== null) return;
       const point = pointFromEvent(e);
       if (!point.onPokemon) {
-        addPop(point.x, point.y, 'Pet the Pokémon!', 'miss');
+        addPop(point.x, point.y, '🐾', 'miss');
         return;
       }
       activePointerIdRef.current = e.pointerId;
@@ -299,7 +297,6 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   }, [started, ended, onFinish]);
 
   const startGame = () => {
-    unlockAudio();
     elapsedRef.current = 0;
     scoreRef.current = 0;
     scoreFloatRef.current = 0;
@@ -366,8 +363,6 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
             <img ref={spriteRef} src={pokemonSprite} alt={pokemonName} className="petting-sprite" draggable={false} />
           </div>
           <div className="petting-name">{pokemonName}</div>
-
-          {combo >= 3 && <div className="petting-combo">Combo ×{Math.min(5, 1 + Math.floor(combo / 6))}</div>}
 
           {pops.map((pop) => (
             <div key={pop.id} className={`petting-pop ${pop.kind}`} style={{ left: pop.x, top: pop.y }}>

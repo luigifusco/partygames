@@ -64,8 +64,8 @@
   flex: 1;
   width: min(100%, 620px);
   min-height: 0;
-  --petting-idle-duration: 2.8s;
-  --petting-touch-duration: 0.42s;
+  --petting-idle-duration: 2.1s;
+  --petting-touch-duration: 0.38s;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -83,31 +83,31 @@
 }
 
 .petting-card.mood-drowsy {
-  --petting-idle-duration: 3.5s;
-  --petting-touch-duration: 0.72s;
-}
-
-.petting-card.mood-cozy {
   --petting-idle-duration: 2.8s;
   --petting-touch-duration: 0.52s;
 }
 
-.petting-card.mood-playful {
+.petting-card.mood-cozy {
   --petting-idle-duration: 2.1s;
   --petting-touch-duration: 0.38s;
 }
 
-.petting-card.mood-excited {
+.petting-card.mood-playful {
   --petting-idle-duration: 1.45s;
   --petting-touch-duration: 0.27s;
 }
 
-.petting-card.mood-zoomies {
+.petting-card.mood-excited {
   --petting-idle-duration: 0.95s;
   --petting-touch-duration: 0.18s;
 }
 
-.petting-card.is-mood-shifting {
+.petting-card.mood-zoomies {
+  --petting-idle-duration: 0.65s;
+  --petting-touch-duration: 0.13s;
+}
+
+.petting-card.is-mood-shifting .petting-sprite-frame {
   animation: petting-mood-shake 0.34s ease-out;
 }
 
@@ -219,21 +219,12 @@
   pointer-events: none;
 }
 
-.petting-combo {
-  min-height: 20px;
-  color: #ff8ac9;
-  font-size: 13px;
-  font-weight: 900;
-  text-shadow: 0 0 12px rgba(255, 79, 165, 0.38);
-  pointer-events: none;
-}
-
 .petting-pop {
   position: absolute;
   z-index: 4;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  font-size: 18px;
+  font-size: 34px;
   font-weight: 900;
   white-space: nowrap;
   text-shadow: 0 2px 0 rgba(0,0,0,0.28), 0 0 12px rgba(255, 79, 165, 0.45);
@@ -246,12 +237,12 @@
 
 .petting-pop.miss {
   color: #ffd35a;
-  font-size: 14px;
+  font-size: 30px;
 }
 
 .petting-pop.shift {
   color: #fff;
-  font-size: 24px;
+  font-size: 38px;
   text-shadow: 0 0 18px rgba(255,255,255,0.55), 0 2px 0 rgba(0,0,0,0.32);
 }
 
