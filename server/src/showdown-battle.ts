@@ -4,18 +4,22 @@
 // Uses the BattleStream API from pokemon-showdown to run a full battle
 // with proper abilities, items, crits, priority, etc.
 
-import { Teams, Dex } from '../../pokemon-showdown/dist/sim/index.js';
-// Battle imported dynamically to avoid circular issues at module load time
-let BattleClass: any = null;
-function getBattleClass() {
-  if (!BattleClass) {
-    BattleClass = require('../../pokemon-showdown/dist/sim/index.js').Battle;
-  }
-  return BattleClass;
-}
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
 import type { Pokemon } from '../../shared/types.js';
 import { buildChoice as aiBuildChoice } from './ai/chooseAction.js';
+import { showdownSimPath } from './paths.js';
+
+interface ShowdownSim {
+  Teams: { pack(team: unknown): string };
+  Dex: { forGen(gen: number): any };
+  Battle: any;
+}
+
+const { Teams, Dex, Battle: ShowdownBattle } = require(showdownSimPath()) as ShowdownSim;
+
+function getBattleClass() {
+  return ShowdownBattle;
+}
 
 const GEN5_DEX = Dex.forGen(5);
 

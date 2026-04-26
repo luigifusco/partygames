@@ -2,9 +2,9 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import * as promClient from 'prom-client';
 import { initDb } from './db.js';
 import { STARTING_ESSENCE, BOX_COSTS } from '../../shared/essence.js';
@@ -24,8 +24,15 @@ import { computeBondXp, bondThresholdForStep, reawakenCost, type BondBattleMode 
 import { evolutionStepFor } from '../../shared/evolution-helpers.js';
 import { REAWAKEN_UNLOCK_CHAPTER } from '../../shared/story-data.js';
 import { runShowdownBattle, randomAbilityForSpecies, replayParseSnapshot } from './showdown-battle.js';
-import { Dex as ShowdownDex } from '../../pokemon-showdown/dist/sim/index.js';
+import { clientDistPath, dataDirPath, showdownSimPath } from './paths.js';
 
+interface ShowdownDexApi {
+  forGen(gen: number): ShowdownDexApi;
+  moves: { get(name: string): any };
+  abilities: { get(name: string): any };
+}
+
+const { Dex: ShowdownDex } = require(showdownSimPath()) as { Dex: ShowdownDexApi };
 const GEN5_DEX = ShowdownDex.forGen(5);
 
 /** Move-info lookup that covers every move in the Gen 5 dex (not just the
@@ -538,7 +545,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/remove`, (req, res) => {
   for (const row of rows) {
     // Return held item to inventory if present
     if (row.held_item) {
-      const itemDbId = require('crypto').randomUUID();
+      const itemDbId = randomUUID();
       insertItem.run(itemDbId, req.params.id, 'held_item', row.held_item);
       returnedItems.push(row.held_item);
     }
@@ -792,7 +799,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/give-item`, (req, res) => {
 
   // If pokemon already holds an item, return it to inventory first
   if (pokemon.held_item) {
-    const returnId = require('crypto').randomUUID();
+    const returnId = randomUUID();
     db.prepare(
       'INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)'
     ).run(returnId, req.params.id, 'held_item', pokemon.held_item);
@@ -831,7 +838,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/take-item`, (req, res) => {
   }
 
   // Return item to inventory
-  const newItemId = require('crypto').randomUUID();
+  const newItemId = randomUUID();
   db.prepare(
     'INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)'
   ).run(newItemId, req.params.id, 'held_item', pokemon.held_item);
@@ -1262,7 +1269,7 @@ app.post(`${BASE_PATH}/api/admin/create-test-user`, (req, res) => {
 // analyzed offline.
 app.post(`${BASE_PATH}/api/admin/archive-db`, (_req, res) => {
   try {
-    const dataDir = path.join(__dirname, '../../data');
+    const dataDir = dataDirPath();
     const archiveDir = path.join(dataDir, 'archives');
     fs.mkdirSync(archiveDir, { recursive: true });
 
@@ -1302,7 +1309,7 @@ app.post(`${BASE_PATH}/api/admin/archive-db`, (_req, res) => {
 
 app.get(`${BASE_PATH}/api/admin/archives`, (_req, res) => {
   try {
-    const archiveDir = path.join(__dirname, '../../data/archives');
+    const archiveDir = path.join(dataDirPath(), 'archives');
     if (!fs.existsSync(archiveDir)) return res.json({ archives: [] });
     const files = fs.readdirSync(archiveDir)
       .filter(f => f.endsWith('.db'))
@@ -2528,18 +2535,17 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 
 // Serve built client files in production
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const clientDistPath = path.join(__dirname, '../../client/dist');
-if (fs.existsSync(clientDistPath)) {
+const clientDist = clientDistPath();
+if (fs.existsSync(clientDist)) {
   // Must come before express.static, otherwise the static middleware
   // 301-redirects /music to /music/ (since a directory by that name exists)
   // and our handler never runs.
   app.get(`${BASE_PATH}/music`, (_req, res) => {
-    res.sendFile(path.join(clientDistPath, 'music.html'));
+    res.sendFile(path.join(clientDist, 'music.html'));
   });
-  app.use(BASE_PATH || '/', express.static(clientDistPath));
+  app.use(BASE_PATH || '/', express.static(clientDist));
   app.get(`${BASE_PATH}/*`, (_req, res) => {
-    res.sendFile(path.join(clientDistPath, 'index.html'));
+    res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
 

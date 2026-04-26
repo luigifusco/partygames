@@ -1,14 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { STARTING_ELO } from '../../shared/elo.js';
 import { NATURES } from '../../shared/natures.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { dataDirPath } from './paths.js';
 
 export function initDb() {
-  const dataDir = path.join(__dirname, '../../data');
+  const dataDir = dataDirPath();
   fs.mkdirSync(dataDir, { recursive: true });
   const dbPath = path.join(dataDir, 'game.db');
   const db = new DatabaseSync(dbPath);
