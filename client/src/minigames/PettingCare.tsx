@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import './PettingCare.css';
 
 interface PettingCareProps {
@@ -19,6 +19,9 @@ interface Pop {
   id: number;
   x: number;
   y: number;
+  dx: number;
+  dy: number;
+  rotate: number;
   text: string;
   kind: 'good' | 'miss' | 'shift';
 }
@@ -41,11 +44,11 @@ const MAX_DISPLAY_SPEED = 5.5;
 const SPEED_AVERAGE_WINDOW_MS = 250;
 
 const MOODS: MoodDef[] = [
-  { id: 'drowsy', label: 'Drowsy', target: 0.8, color: '#98d8ff' },
-  { id: 'cozy', label: 'Cozy', target: 1.4, color: '#ffb6dc' },
-  { id: 'playful', label: 'Playful', target: 2.2, color: '#ffd35a' },
-  { id: 'excited', label: 'Excited', target: 3.4, color: '#ff9a3c' },
-  { id: 'zoomies', label: 'Zoomies', target: 4.8, color: '#ff5d7d' },
+  { id: 'drowsy', label: 'Drowsy', target: 1.1, color: '#98d8ff' },
+  { id: 'cozy', label: 'Cozy', target: 1.7, color: '#ffb6dc' },
+  { id: 'playful', label: 'Playful', target: 2.5, color: '#ffd35a' },
+  { id: 'excited', label: 'Excited', target: 3.7, color: '#ff9a3c' },
+  { id: 'zoomies', label: 'Zoomies', target: MAX_DISPLAY_SPEED, color: '#ff5d7d' },
 ];
 
 function randomMood(except?: string): MoodDef {
@@ -63,6 +66,14 @@ function moodInterval(elapsed: number): number {
 function toleranceFor(target: number, elapsed: number): number {
   const progress = Math.min(1, elapsed / GAME_DURATION);
   return Math.max(0.22, target * (0.42 - progress * 0.16));
+}
+
+function closenessForSpeed(mood: MoodDef, speed: number, elapsed: number): number {
+  const tolerance = toleranceFor(mood.target, elapsed);
+  const diff = mood.id === 'zoomies'
+    ? Math.max(0, mood.target - speed)
+    : Math.abs(speed - mood.target);
+  return Math.max(0, 1 - diff / tolerance);
 }
 
 export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onExit }: PettingCareProps) {
@@ -98,7 +109,20 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
   const addPop = (x: number, y: number, text: string, kind: Pop['kind']) => {
     const id = ++popIdRef.current;
-    setPops((list) => [...list.slice(-10), { id, x, y, text, kind }]);
+    const angle = (-155 + Math.random() * 130) * (Math.PI / 180);
+    const distance = kind === 'shift' ? 130 : kind === 'good' ? 110 + Math.random() * 58 : 82 + Math.random() * 42;
+    const startJitter = kind === 'shift' ? 20 : 34;
+    const pop = {
+      id,
+      x: x + (Math.random() - 0.5) * startJitter,
+      y: y - 18 - Math.random() * startJitter,
+      dx: Math.cos(angle) * distance,
+      dy: Math.sin(angle) * distance,
+      rotate: -24 + Math.random() * 48,
+      text,
+      kind,
+    };
+    setPops((list) => [...list.slice(-10), pop]);
     window.setTimeout(() => {
       setPops((list) => list.filter((pop) => pop.id !== id));
     }, 850);
@@ -157,17 +181,15 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   };
 
   const scoreStroke = (point: Point, speed: number, dt: number) => {
-    const target = moodRef.current.target;
-    const tolerance = toleranceFor(target, elapsedRef.current);
-    const diff = Math.abs(speed - target);
-    const closeness = Math.max(0, 1 - diff / tolerance);
+    const mood = moodRef.current;
+    const closeness = closenessForSpeed(mood, speed, elapsedRef.current);
     setAccuracy(closeness);
 
     if (closeness <= 0) {
       comboRef.current = 0;
       setCombo(0);
       if (point.t - lastFeedbackAtRef.current > 520) {
-        addPop(point.x, point.y, speed < target ? '⚡' : '🐢', 'miss');
+        addPop(point.x, point.y, speed < mood.target ? '⚡' : '🐢', 'miss');
         lastFeedbackAtRef.current = point.t;
       }
       return;
@@ -278,9 +300,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       setTimeLeft(Math.max(0, Math.ceil(GAME_DURATION - elapsed)));
       updateRollingSpeed(now);
 
-      const target = moodRef.current.target;
-      const diff = Math.abs(currentSpeedRef.current - target);
-      const closeness = Math.max(0, 1 - diff / toleranceFor(target, elapsed));
+      const closeness = closenessForSpeed(moodRef.current, currentSpeedRef.current, elapsed);
       setAccuracy(isTouchingRef.current ? closeness : 0);
 
       if (elapsed >= GAME_DURATION && !finishCalledRef.current) {
@@ -320,6 +340,13 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   };
 
   const displaySpeed = Math.min(MAX_DISPLAY_SPEED, currentSpeed);
+  const targetTolerance = toleranceFor(mood.target, elapsedRef.current);
+  const targetRangeStart = Math.max(0, mood.target - targetTolerance);
+  const targetRangeEnd = mood.id === 'zoomies'
+    ? MAX_DISPLAY_SPEED
+    : Math.min(MAX_DISPLAY_SPEED, mood.target + targetTolerance);
+  const targetRangeLeft = (targetRangeStart / MAX_DISPLAY_SPEED) * 100;
+  const targetRangeWidth = Math.max(2.5, ((targetRangeEnd - targetRangeStart) / MAX_DISPLAY_SPEED) * 100);
 
   return (
     <div className="petting-root">
@@ -352,7 +379,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
             />
             <div
               className="petting-target-marker"
-              style={{ left: `${Math.min(100, (mood.target / MAX_DISPLAY_SPEED) * 100)}%` }}
+              style={{ left: `${targetRangeLeft}%`, width: `${targetRangeWidth}%` }}
             />
             <div className="petting-target-content">
               <div className="petting-mood-label">{mood.label}</div>
@@ -365,7 +392,17 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
           <div className="petting-name">{pokemonName}</div>
 
           {pops.map((pop) => (
-            <div key={pop.id} className={`petting-pop ${pop.kind}`} style={{ left: pop.x, top: pop.y }}>
+            <div
+              key={pop.id}
+              className={`petting-pop ${pop.kind}`}
+              style={{
+                left: pop.x,
+                top: pop.y,
+                '--pop-dx': `${pop.dx}px`,
+                '--pop-dy': `${pop.dy}px`,
+                '--pop-rotate': `${pop.rotate}deg`,
+              } as CSSProperties}
+            >
               {pop.text}
             </div>
           ))}

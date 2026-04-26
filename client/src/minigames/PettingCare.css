@@ -141,11 +141,24 @@
   top: 9px;
   bottom: 9px;
   z-index: 1;
-  width: 4px;
+  min-width: 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.24);
+  border-inline: 2px solid rgba(255,255,255,0.92);
+  box-shadow: inset 0 0 10px rgba(255,255,255,0.26), 0 0 14px rgba(255,255,255,0.62);
+}
+
+.petting-target-marker::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 50%;
+  width: 3px;
   transform: translateX(-50%);
   border-radius: var(--radius-pill);
-  background: rgba(255,255,255,0.94);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.24), 0 0 14px rgba(255,255,255,0.72);
+  background: rgba(255,255,255,0.96);
+  box-shadow: 0 0 8px rgba(255,255,255,0.8);
 }
 
 .petting-target-content {
@@ -222,13 +235,17 @@
 .petting-pop {
   position: absolute;
   z-index: 4;
+  --pop-dx: 0px;
+  --pop-dy: -110px;
+  --pop-rotate: 0deg;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  font-size: 34px;
+  font-size: 52px;
   font-weight: 900;
   white-space: nowrap;
-  text-shadow: 0 2px 0 rgba(0,0,0,0.28), 0 0 12px rgba(255, 79, 165, 0.45);
-  animation: petting-pop 0.85s ease-out forwards;
+  opacity: 1;
+  text-shadow: 0 3px 0 rgba(0,0,0,0.34), 0 0 18px rgba(255, 79, 165, 0.62), 0 0 28px rgba(255,255,255,0.34);
+  animation: petting-pop 1s cubic-bezier(0.16, 0.92, 0.28, 1) forwards;
 }
 
 .petting-pop.good {
@@ -237,18 +254,28 @@
 
 .petting-pop.miss {
   color: #ffd35a;
-  font-size: 30px;
+  font-size: 46px;
 }
 
 .petting-pop.shift {
   color: #fff;
-  font-size: 38px;
+  font-size: 58px;
   text-shadow: 0 0 18px rgba(255,255,255,0.55), 0 2px 0 rgba(0,0,0,0.32);
 }
 
 @keyframes petting-pop {
-  from { opacity: 1; transform: translate(-50%, -30%) scale(0.85); }
-  to { opacity: 0; transform: translate(-50%, -150%) scale(1.22); }
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.72) rotate(0deg);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--pop-dx)), calc(-50% + var(--pop-dy))) scale(1.26) rotate(var(--pop-rotate));
+  }
+  100% {
+    opacity: 0.16;
+    transform: translate(calc(-50% + var(--pop-dx)), calc(-50% + var(--pop-dy))) scale(1.36) rotate(var(--pop-rotate));
+  }
 }
 
 .petting-overlay {
