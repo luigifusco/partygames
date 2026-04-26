@@ -31,8 +31,14 @@ interface Point {
   pokemonWidth: number;
 }
 
+interface SpeedSample {
+  t: number;
+  speed: number;
+}
+
 const GAME_DURATION = 35;
 const MAX_DISPLAY_SPEED = 5.5;
+const SPEED_AVERAGE_WINDOW_MS = 250;
 
 const MOODS: MoodDef[] = [
   { id: 'drowsy', label: 'Drowsy', target: 0.8, color: '#98d8ff' },
@@ -73,6 +79,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const finishCalledRef = useRef(false);
   const isTouchingRef = useRef(false);
   const currentSpeedRef = useRef(0);
+  const speedSamplesRef = useRef<SpeedSample[]>([]);
   const scorePopupAccRef = useRef(0);
   const lastFeedbackAtRef = useRef(0);
   const [score, setScore] = useState(0);
@@ -102,6 +109,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     nextMoodAtRef.current = elapsed + moodInterval(elapsed);
     comboRef.current = 0;
     currentSpeedRef.current = 0;
+    speedSamplesRef.current = [];
     scorePopupAccRef.current = 0;
     setCombo(0);
     setCurrentSpeed(0);
@@ -122,6 +130,21 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       && e.clientY >= sprite.top
       && e.clientY <= sprite.bottom;
     return { x, y, t: performance.now(), onPokemon, pokemonWidth };
+  };
+
+  const averageRecentSpeeds = (now: number): number => {
+    const cutoff = now - SPEED_AVERAGE_WINDOW_MS;
+    const samples = speedSamplesRef.current.filter((sample) => sample.t >= cutoff);
+    speedSamplesRef.current = samples;
+    if (samples.length === 0) return 0;
+    return samples.reduce((sum, sample) => sum + sample.speed, 0) / samples.length;
+  };
+
+  const updateRollingSpeed = (now: number): number => {
+    const speed = averageRecentSpeeds(now);
+    currentSpeedRef.current = speed;
+    setCurrentSpeed(speed);
+    return speed;
   };
 
   const scoreStroke = (point: Point, speed: number, dt: number) => {
@@ -175,6 +198,8 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       setIsTouching(true);
       lastPointRef.current = point;
       scorePopupAccRef.current = 0;
+      speedSamplesRef.current = [];
+      updateRollingSpeed(point.t);
     };
 
     const onMove = (e: PointerEvent) => {
@@ -187,8 +212,8 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
       if (!point.onPokemon || !last.onPokemon) {
         scorePopupAccRef.current = 0;
-        currentSpeedRef.current *= 0.7;
-        setCurrentSpeed(currentSpeedRef.current);
+        speedSamplesRef.current = [];
+        updateRollingSpeed(point.t);
         setAccuracy(0);
         return;
       }
@@ -197,11 +222,8 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       if (distance < 3) return;
       const dt = Math.max(16, point.t - last.t) / 1000;
       const instantSpeed = (distance / point.pokemonWidth) / dt;
-      const speed = currentSpeedRef.current === 0
-        ? instantSpeed
-        : currentSpeedRef.current * 0.75 + instantSpeed * 0.25;
-      currentSpeedRef.current = speed;
-      setCurrentSpeed(speed);
+      speedSamplesRef.current.push({ t: point.t, speed: instantSpeed });
+      const speed = updateRollingSpeed(point.t);
       scoreStroke(point, speed, dt);
     };
 
@@ -240,11 +262,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       const elapsed = elapsedRef.current;
       if (elapsed >= nextMoodAtRef.current) switchMood(elapsed);
       setTimeLeft(Math.max(0, Math.ceil(GAME_DURATION - elapsed)));
-
-      if (!isTouchingRef.current && currentSpeedRef.current > 0) {
-        currentSpeedRef.current = Math.max(0, currentSpeedRef.current - 5.5 * dt);
-        setCurrentSpeed(currentSpeedRef.current);
-      }
+      updateRollingSpeed(now);
 
       const target = moodRef.current.target;
       const diff = Math.abs(currentSpeedRef.current - target);
@@ -271,6 +289,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     comboRef.current = 0;
     scorePopupAccRef.current = 0;
     currentSpeedRef.current = 0;
+    speedSamplesRef.current = [];
     isTouchingRef.current = false;
     finishCalledRef.current = false;
     moodRef.current = MOODS[1];
@@ -313,6 +332,10 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
                 width: `${(displaySpeed / MAX_DISPLAY_SPEED) * 100}%`,
                 background: `linear-gradient(90deg, ${mood.color}, rgba(255,255,255,0.2))`,
               }}
+            />
+            <div
+              className="petting-target-marker"
+              style={{ left: `${Math.min(100, (mood.target / MAX_DISPLAY_SPEED) * 100)}%` }}
             />
             <div className="petting-target-content">
               <div className="petting-mood-label">{mood.label}</div>

@@ -105,9 +105,21 @@
   opacity: 0.78;
 }
 
+.petting-target-marker {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  z-index: 1;
+  width: 4px;
+  transform: translateX(-50%);
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.94);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.24), 0 0 14px rgba(255,255,255,0.72);
+}
+
 .petting-target-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .petting-mood-label {
