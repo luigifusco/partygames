@@ -113,6 +113,7 @@
 
 .petting-target-card {
   position: relative;
+  z-index: 4;
   width: min(100%, 410px);
   min-height: 74px;
   display: flex;
@@ -232,7 +233,7 @@
 
 .petting-pop {
   position: absolute;
-  z-index: 4;
+  z-index: 3;
   --pop-dx: 0px;
   --pop-dy: -110px;
   --pop-rotate: 0deg;
