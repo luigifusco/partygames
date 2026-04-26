@@ -1398,9 +1398,9 @@ function rollMoveset(
   defaultMoves: [string, string],
   opts: MoveRollOptions,
 ): [string, string] {
-  if (!pool || pool.length < 2) return defaultMoves;
+  if (!pool || pool.length === 0) return defaultMoves;
   const weighted = buildWeightedPool(pool, moveInfoLookup, opts);
-  if (weighted.length < 2) return defaultMoves;
+  if (weighted.length === 0) return defaultMoves;
   const move1 = pickWeighted(weighted);
   const remaining = weighted.filter(e => e.name !== move1);
   if (remaining.length === 0) return [move1, defaultMoves[1]];

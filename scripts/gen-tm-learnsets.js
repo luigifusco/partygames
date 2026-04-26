@@ -21,7 +21,7 @@ function parseShowdownTS(filePath, varName) {
   return require(tmpFile);
 }
 
-// Parse moves.ts for name / num / isNonstandard
+// Parse moves.ts for name / num / type / isNonstandard
 function parseMovesTS(filePath) {
   const src = fs.readFileSync(filePath, 'utf8');
   const moves = {};
@@ -38,6 +38,8 @@ function parseMovesTS(filePath) {
     if (nameMatch) moves[currentId].name = nameMatch[1];
     const numMatch = rawLine.match(/^\t\tnum: (-?\d+)/);
     if (numMatch) moves[currentId].num = parseInt(numMatch[1], 10);
+    const typeMatch = rawLine.match(/^\t\ttype: "(.+?)"/);
+    if (typeMatch) moves[currentId].type = typeMatch[1].toLowerCase();
     const nonstdMatch = rawLine.match(/^\t\tisNonstandard: "(.+?)"/);
     if (nonstdMatch) moves[currentId].isNonstandard = nonstdMatch[1];
     const isZMatch = rawLine.match(/^\t\tisZ: /);
@@ -187,6 +189,80 @@ console.log(`Wrote ${totalEntries} species`);
 console.log(`  full pool: avg ${(totalMoves/totalEntries).toFixed(1)} moves, ${distinctMoves.size} distinct`);
 console.log(`  level-up:  avg ${(totalLevelMoves/Object.keys(outLevel).length).toFixed(1)} moves, ${distinctLevelMoves.size} distinct`);
 
+// ─── Keep UI move-type display in sync with learnset moves ───────────────
+// Pack rolls can now choose any level-up move, so every generated learnset
+// move needs an entry in MOVE_TYPES. Otherwise getMoveType() falls back to
+// Normal and moves like Leech Seed render with the wrong badge/sprite.
+function escapeTsString(value) {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function updateMoveTypes(distinctMoveNames) {
+  const moveDataPath = path.join(ROOT, 'shared/move-data.ts');
+  let moveDataSrc = fs.readFileSync(moveDataPath, 'utf8');
+  const moveTypesRe = /export const MOVE_TYPES: Record<string, PokemonType> = \{[\s\S]*?\n\};/;
+  const currentBlock = moveDataSrc.match(moveTypesRe)?.[0];
+  if (!currentBlock) {
+    console.error('Could not find MOVE_TYPES block in move-data.ts — skipping update');
+    return;
+  }
+
+  const moveTypes = new Map();
+  const entryRe = /'((?:\\'|[^'])+)': '([a-z]+)'/g;
+  let match;
+  while ((match = entryRe.exec(currentBlock))) {
+    moveTypes.set(match[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'), match[2]);
+  }
+
+  for (const moveName of distinctMoveNames) {
+    const move = showdownMoves[moveName.toLowerCase().replace(/[^a-z0-9]/g, '')];
+    if (move?.type) moveTypes.set(moveName, move.type);
+  }
+
+  const typeOrder = [
+    'normal', 'fire', 'water', 'electric', 'grass', 'ice',
+    'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug',
+    'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy',
+  ];
+  const movesByType = new Map(typeOrder.map(type => [type, []]));
+  for (const [moveName, type] of moveTypes) {
+    if (!movesByType.has(type)) movesByType.set(type, []);
+    movesByType.get(type).push(moveName);
+  }
+
+  let nextBlock = "export const MOVE_TYPES: Record<string, PokemonType> = {\n";
+  for (const type of typeOrder) {
+    const moves = movesByType.get(type)?.sort((a, b) => a.localeCompare(b));
+    if (!moves || moves.length === 0) continue;
+    nextBlock += `  // ${type.charAt(0).toUpperCase() + type.slice(1)}\n`;
+    for (const moveName of moves) {
+      nextBlock += `  '${escapeTsString(moveName)}': '${type}',\n`;
+    }
+  }
+  nextBlock += "};";
+
+  moveDataSrc = moveDataSrc.replace(moveTypesRe, nextBlock);
+  fs.writeFileSync(moveDataPath, moveDataSrc);
+  console.log(`Updated MOVE_TYPES in shared/move-data.ts (${moveTypes.size} moves)`);
+
+  const moveDataJsPath = path.join(ROOT, 'shared/move-data.js');
+  if (fs.existsSync(moveDataJsPath)) {
+    let moveDataJsSrc = fs.readFileSync(moveDataJsPath, 'utf8');
+    const jsMoveTypesRe = /export const MOVE_TYPES = \{[\s\S]*?\n\};/;
+    if (jsMoveTypesRe.test(moveDataJsSrc)) {
+      const jsBlock = nextBlock.replace(
+        'export const MOVE_TYPES: Record<string, PokemonType> = {',
+        'export const MOVE_TYPES = {',
+      );
+      moveDataJsSrc = moveDataJsSrc.replace(jsMoveTypesRe, jsBlock);
+      fs.writeFileSync(moveDataJsPath, moveDataJsSrc);
+      console.log(`Updated MOVE_TYPES in shared/move-data.js (${moveTypes.size} moves)`);
+    }
+  }
+}
+
+updateMoveTypes(distinctMoves);
+
 // ─── Emit shared/tm-learnsets.ts (preserving exported helpers) ───────
 const HEADER = `// Auto-generated learnset data for AI move-choice and pack-move rolling.
 // Built from pokemon-showdown/data/learnsets.ts via scripts/gen-tm-learnsets.js.
@@ -297,9 +373,9 @@ function rollMoveset(
   defaultMoves: [string, string],
   opts: MoveRollOptions,
 ): [string, string] {
-  if (!pool || pool.length < 2) return defaultMoves;
+  if (!pool || pool.length === 0) return defaultMoves;
   const weighted = buildWeightedPool(pool, moveInfoLookup, opts);
-  if (weighted.length < 2) return defaultMoves;
+  if (weighted.length === 0) return defaultMoves;
   const move1 = pickWeighted(weighted);
   const remaining = weighted.filter(e => e.name !== move1);
   if (remaining.length === 0) return [move1, defaultMoves[1]];
@@ -376,9 +452,9 @@ function buildWeightedPool(moves, moveInfoLookup, opts) {
 }
 
 function rollMoveset(pool, moveInfoLookup, defaultMoves, opts) {
-  if (!pool || pool.length < 2) return defaultMoves;
+  if (!pool || pool.length === 0) return defaultMoves;
   const weighted = buildWeightedPool(pool, moveInfoLookup, opts);
-  if (weighted.length < 2) return defaultMoves;
+  if (weighted.length === 0) return defaultMoves;
   const move1 = pickWeighted(weighted);
   const remaining = weighted.filter(e => e.name !== move1);
   if (remaining.length === 0) return [move1, defaultMoves[1]];
