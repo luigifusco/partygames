@@ -11,7 +11,6 @@ interface PettingCareProps {
 interface MoodDef {
   id: string;
   label: string;
-  cue: string;
   target: number;
   color: string;
 }
@@ -36,11 +35,11 @@ const GAME_DURATION = 35;
 const MAX_DISPLAY_SPEED = 5.5;
 
 const MOODS: MoodDef[] = [
-  { id: 'drowsy', label: 'Drowsy', cue: 'slow strokes', target: 0.8, color: '#98d8ff' },
-  { id: 'cozy', label: 'Cozy', cue: 'gentle speed', target: 1.4, color: '#ffb6dc' },
-  { id: 'playful', label: 'Playful', cue: 'steady speed', target: 2.2, color: '#ffd35a' },
-  { id: 'excited', label: 'Excited', cue: 'fast strokes', target: 3.4, color: '#ff9a3c' },
-  { id: 'zoomies', label: 'Zoomies', cue: 'very fast!', target: 4.8, color: '#ff5d7d' },
+  { id: 'drowsy', label: 'Drowsy', target: 0.8, color: '#98d8ff' },
+  { id: 'cozy', label: 'Cozy', target: 1.4, color: '#ffb6dc' },
+  { id: 'playful', label: 'Playful', target: 2.2, color: '#ffd35a' },
+  { id: 'excited', label: 'Excited', target: 3.4, color: '#ff9a3c' },
+  { id: 'zoomies', label: 'Zoomies', target: 4.8, color: '#ff5d7d' },
 ];
 
 function randomMood(except?: string): MoodDef {
@@ -83,10 +82,9 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const [ended, setEnded] = useState(false);
   const [isTouching, setIsTouching] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
-  const [accuracy, setAccuracy] = useState(0);
+  const [, setAccuracy] = useState(0);
   const [mood, setMood] = useState<MoodDef>(() => MOODS[1]);
   const moodRef = useRef<MoodDef>(MOODS[1]);
-  const [nextMoodIn, setNextMoodIn] = useState(0);
   const [pops, setPops] = useState<Pop[]>([]);
 
   const addPop = (x: number, y: number, text: string, kind: Pop['kind']) => {
@@ -242,7 +240,6 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       const elapsed = elapsedRef.current;
       if (elapsed >= nextMoodAtRef.current) switchMood(elapsed);
       setTimeLeft(Math.max(0, Math.ceil(GAME_DURATION - elapsed)));
-      setNextMoodIn(Math.max(0, nextMoodAtRef.current - elapsed));
 
       if (!isTouchingRef.current && currentSpeedRef.current > 0) {
         currentSpeedRef.current = Math.max(0, currentSpeedRef.current - 5.5 * dt);
@@ -310,9 +307,16 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       <div className="petting-stage">
         <div ref={playAreaRef} className={`petting-card mood-${mood.id} ${isTouching ? 'is-touching' : ''}`}>
           <div className="petting-target-card" style={{ borderColor: mood.color }}>
-            <div className="petting-mood-label" style={{ color: mood.color }}>{mood.label}</div>
-            <div className="petting-mood-cue">{mood.cue}</div>
-            <div className="petting-target-rate">Target speed {mood.target.toFixed(1)} widths/s</div>
+            <div
+              className="petting-target-fill"
+              style={{
+                width: `${(displaySpeed / MAX_DISPLAY_SPEED) * 100}%`,
+                background: `linear-gradient(90deg, ${mood.color}, rgba(255,255,255,0.2))`,
+              }}
+            />
+            <div className="petting-target-content">
+              <div className="petting-mood-label">{mood.label}</div>
+            </div>
           </div>
 
           <div className="petting-sprite-frame">
@@ -320,27 +324,6 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
           </div>
           <div className="petting-name">{pokemonName}</div>
 
-          <div className="petting-rhythm-panel">
-            <div className="petting-rhythm-row">
-              <span>Your speed</span>
-              <strong>{displaySpeed.toFixed(1)} widths/s</strong>
-            </div>
-            <div className="petting-rhythm-track">
-              <div className="petting-rhythm-band" style={{ left: `${Math.min(100, (mood.target / MAX_DISPLAY_SPEED) * 100)}%` }} />
-              <div className="petting-rhythm-fill" style={{ width: `${(displaySpeed / MAX_DISPLAY_SPEED) * 100}%` }} />
-            </div>
-            <div className="petting-rhythm-row small">
-              <span>Match</span>
-              <strong>{Math.round(accuracy * 100)}%</strong>
-            </div>
-            <div className="petting-accuracy-track">
-              <div className="petting-accuracy-fill" style={{ width: `${Math.round(accuracy * 100)}%`, background: mood.color }} />
-            </div>
-          </div>
-
-          <div className="petting-countdown">
-            Mood changes in <strong>{nextMoodIn.toFixed(1)}s</strong>
-          </div>
           {combo >= 3 && <div className="petting-combo">Combo ×{Math.min(5, 1 + Math.floor(combo / 6))}</div>}
 
           {pops.map((pop) => (
