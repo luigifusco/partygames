@@ -482,11 +482,16 @@ export function stopBattleBgm(): void {
 
 // ─── Pokémon cries ───────────────────────────────────────────────────────
 
-export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): HTMLAudioElement | null {
-  if (sfxMuted) return null;
+export function cryUrlForPokemon(pokemonName: string): string | null {
   if (!pokemonName) return null;
   const id = pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
-  const url = `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
+  return `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
+}
+
+export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): HTMLAudioElement | null {
+  if (sfxMuted) return null;
+  const url = cryUrlForPokemon(pokemonName);
+  if (!url) return null;
   const entry = getOrCreate(url);
   if (entry.failed) return null;
   try {
@@ -503,9 +508,9 @@ export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): 
 }
 
 export function preloadCries(pokemonNames: string[]): void {
-  const urls = pokemonNames.map((n) => {
-    const id = n.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    return `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
+  const urls = pokemonNames.flatMap((n) => {
+    const url = cryUrlForPokemon(n);
+    return url ? [url] : [];
   });
   preloadAudio(urls);
 }

@@ -1,5 +1,5 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
-import { playCry, preloadCries, unlockAudio } from '../components/BattleSounds';
+import { cryUrlForPokemon, isSfxMuted, preloadCries, unlockAudio } from '../components/BattleSounds';
 import './PettingCare.css';
 
 interface PettingCareProps {
@@ -95,6 +95,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const lastFeedbackAtRef = useRef(0);
   const lastGoodFeedbackAtRef = useRef(0);
   const moodShiftTimeoutRef = useRef<number | null>(null);
+  const cryAudioRef = useRef<HTMLAudioElement | null>(null);
   const cryPlayingRef = useRef(false);
   const cryTimeoutRef = useRef<number | null>(null);
   const [score, setScore] = useState(0);
@@ -139,8 +140,10 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
   const playXpCry = () => {
     if (cryPlayingRef.current) return;
-    const node = playCry(pokemonName, 0.24);
+    if (isSfxMuted()) return;
+    const node = cryAudioRef.current;
     if (!node) return;
+    if (!node.paused && !node.ended) return;
     cryPlayingRef.current = true;
     const clearCry = () => {
       cryPlayingRef.current = false;
@@ -151,6 +154,20 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     };
     node.addEventListener('ended', clearCry, { once: true });
     node.addEventListener('error', clearCry, { once: true });
+    try {
+      node.pause();
+      node.currentTime = 0;
+      node.muted = false;
+      node.volume = 0.24;
+      node.playbackRate = 1;
+      const play = node.play();
+      if (play && typeof play.then === 'function') {
+        play.catch(clearCry);
+      }
+    } catch {
+      clearCry();
+      return;
+    }
     cryTimeoutRef.current = window.setTimeout(clearCry, 2200);
   };
 
@@ -220,9 +237,29 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
   useEffect(() => {
     preloadCries([pokemonName]);
+    cryPlayingRef.current = false;
+    if (cryTimeoutRef.current !== null) {
+      window.clearTimeout(cryTimeoutRef.current);
+      cryTimeoutRef.current = null;
+    }
+    cryAudioRef.current?.pause();
+    cryAudioRef.current = null;
+    const url = cryUrlForPokemon(pokemonName);
+    if (url) {
+      const audio = new Audio(url);
+      audio.preload = 'auto';
+      audio.volume = 0.24;
+      audio.setAttribute('playsinline', 'true');
+      audio.setAttribute('webkit-playsinline', 'true');
+      try { audio.load(); } catch { /* noop */ }
+      cryAudioRef.current = audio;
+    }
     return () => {
       if (moodShiftTimeoutRef.current !== null) window.clearTimeout(moodShiftTimeoutRef.current);
       if (cryTimeoutRef.current !== null) window.clearTimeout(cryTimeoutRef.current);
+      cryAudioRef.current?.pause();
+      cryAudioRef.current = null;
+      cryPlayingRef.current = false;
     };
   }, [pokemonName]);
 
@@ -335,6 +372,28 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
   const startGame = () => {
     unlockAudio();
+    const cryAudio = cryAudioRef.current;
+    if (cryAudio) {
+      cryAudio.muted = true;
+      const unmuteAfterPrime = () => {
+        cryAudio.pause();
+        cryAudio.currentTime = 0;
+        cryAudio.muted = false;
+      };
+      const play = cryAudio.play();
+      window.setTimeout(() => {
+        if (cryAudio.muted) unmuteAfterPrime();
+      }, 180);
+      if (play && typeof play.then === 'function') {
+        play
+          .then(unmuteAfterPrime)
+          .catch(() => {
+            cryAudio.muted = false;
+          });
+      } else {
+        unmuteAfterPrime();
+      }
+    }
     elapsedRef.current = 0;
     scoreRef.current = 0;
     nextXpAtRef.current = XP_TICK_SECONDS;
