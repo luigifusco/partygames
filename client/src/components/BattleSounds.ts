@@ -42,7 +42,13 @@ export function isSfxMuted(): boolean { return sfxMuted; }
 export function setBgmMuted(muted: boolean): void {
   bgmMuted = muted;
   saveFlag(BGM_MUTE_KEY, muted);
-  if (currentBgm) currentBgm.muted = muted;
+  if (currentBgm) {
+    currentBgm.muted = muted;
+    if (!muted) {
+      const p = currentBgm.play();
+      if (p && typeof p.then === 'function') p.catch(() => {});
+    }
+  }
 }
 export function setSfxMuted(muted: boolean): void {
   sfxMuted = muted;
@@ -144,13 +150,25 @@ function playUrl(url: string, volume = 0.4, playbackRate = 1.0): boolean {
     node.playbackRate = playbackRate;
     const p = node.play();
     if (p && typeof p.then === 'function') {
-      p.catch(() => { entry.failed = true; });
+      // Mobile browsers can reject transiently when the audio session is
+      // interrupted. Keep the asset retryable unless the element itself errors.
+      p.catch(() => {});
     }
     return true;
   } catch {
-    entry.failed = true;
     return false;
   }
+}
+
+const sfxCooldownUntil = new Map<string, number>();
+
+function canPlaySfx(channel: string, cooldownMs: number): boolean {
+  if (sfxMuted) return false;
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const nextAllowed = sfxCooldownUntil.get(channel) ?? 0;
+  if (now < nextAllowed) return false;
+  sfxCooldownUntil.set(channel, now + cooldownMs);
+  return true;
 }
 
 // Decoded AudioBuffer cache — used for channel-swapped playback when a
@@ -322,6 +340,7 @@ function moveSfxUrl(moveName: string): string {
 
 export function playMoveSfx(moveName: string, volume = 0.35, reversed = false): void {
   if (!moveName) return;
+  if (!canPlaySfx('move', 90)) return;
   const url = moveSfxUrl(moveName);
   if (reversed) playUrlReversed(url, volume);
   else playUrl(url, volume);
@@ -337,6 +356,7 @@ const HIT_SOUNDS: Record<string, string> = {
 
 export function playHitSound(effectiveness: 'super' | 'neutral' | 'not-very' | 'immune' | null, volume = 0.4, reversed = false): void {
   if (!effectiveness || effectiveness === 'immune') return;
+  if (!canPlaySfx('hit', 90)) return;
   const url = HIT_SOUNDS[effectiveness] ?? HIT_SOUNDS['neutral'];
   if (reversed) playUrlReversed(url, volume);
   else playUrl(url, volume);
@@ -354,6 +374,7 @@ const STAT_SFX: Record<'up' | 'down', string> = {
 };
 
 export function playStatChangeSfx(direction: 'up' | 'down', volume = 0.4): void {
+  if (!canPlaySfx('stat', 140)) return;
   playUrl(STAT_SFX[direction], volume);
 }
 
@@ -368,6 +389,7 @@ const STATUS_SFX: Record<string, string> = {
 };
 
 export function playStatusSfx(status: string, volume = 0.4): void {
+  if (!canPlaySfx('status', 180)) return;
   const url = STATUS_SFX[status];
   if (url) playUrl(url, volume);
 }
@@ -375,6 +397,7 @@ export function playStatusSfx(status: string, volume = 0.4): void {
 const FAINT_SFX_URL = `${BASE_PATH}/sfx/${encodeURIComponent('In-Battle Faint No Health')}.mp3`;
 
 export function playFaintSfx(volume = 0.4): void {
+  if (!canPlaySfx('faint', 220)) return;
   playUrl(FAINT_SFX_URL, volume);
 }
 
@@ -457,6 +480,9 @@ export function startBattleBgm(volume = 0.25, trainerId?: string, speciesNames?:
         ? TRAINER_BGM[trainerId]
         : BATTLE_BGMS[Math.floor(Math.random() * BATTLE_BGMS.length)];
     const audio = new Audio(track.url.startsWith('/') || /^https?:\/\//.test(track.url) ? track.url : `${SHOWDOWN_CDN}/${track.url}`);
+    audio.preload = 'auto';
+    audio.setAttribute('playsinline', 'true');
+    audio.setAttribute('webkit-playsinline', 'true');
     audio.volume = volume;
     audio.muted = bgmMuted;
     bgmLoopHandler = () => {
@@ -467,6 +493,14 @@ export function startBattleBgm(volume = 0.25, trainerId?: string, speciesNames?:
     if (p && typeof p.then === 'function') p.catch(() => {});
     currentBgm = audio;
   } catch { /* noop */ }
+}
+
+export function resumeBattleBgm(): void {
+  unlockAudio();
+  if (!currentBgm || bgmMuted) return;
+  currentBgm.muted = false;
+  const p = currentBgm.play();
+  if (p && typeof p.then === 'function') p.catch(() => {});
 }
 
 export function stopBattleBgm(): void {
@@ -488,6 +522,100 @@ export function cryUrlForPokemon(pokemonName: string): string | null {
   return `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
 }
 
+interface BattleCryEntry {
+  audio: HTMLAudioElement;
+  playing: boolean;
+  timeout: number | null;
+  failed: boolean;
+}
+
+const battleCryChannels = new Map<string, BattleCryEntry>();
+
+function getOrCreateBattleCry(pokemonName: string): BattleCryEntry | null {
+  const url = cryUrlForPokemon(pokemonName);
+  if (!url) return null;
+  const cached = battleCryChannels.get(url);
+  if (cached) return cached;
+  const audio = new Audio(url);
+  audio.preload = 'auto';
+  audio.setAttribute('playsinline', 'true');
+  audio.setAttribute('webkit-playsinline', 'true');
+  const entry: BattleCryEntry = { audio, playing: false, timeout: null, failed: false };
+  audio.addEventListener('error', () => { entry.failed = true; entry.playing = false; });
+  try { audio.load(); } catch { /* noop */ }
+  battleCryChannels.set(url, entry);
+  return entry;
+}
+
+function clearBattleCry(entry: BattleCryEntry): void {
+  entry.playing = false;
+  if (entry.timeout !== null) {
+    window.clearTimeout(entry.timeout);
+    entry.timeout = null;
+  }
+}
+
+export function prepareBattleCries(pokemonNames: readonly string[]): void {
+  for (const name of pokemonNames) getOrCreateBattleCry(name);
+  preloadCries([...pokemonNames]);
+}
+
+export function primeBattleCries(): void {
+  if (sfxMuted) return;
+  for (const entry of battleCryChannels.values()) {
+    if (entry.failed || entry.playing) continue;
+    try {
+      entry.audio.muted = true;
+      const p = entry.audio.play();
+      const reset = () => {
+        entry.audio.pause();
+        entry.audio.currentTime = 0;
+        entry.audio.muted = false;
+      };
+      window.setTimeout(() => {
+        if (entry.audio.muted) reset();
+      }, 180);
+      if (p && typeof p.then === 'function') p.then(reset).catch(() => { entry.audio.muted = false; });
+      else reset();
+    } catch {
+      entry.audio.muted = false;
+    }
+  }
+}
+
+export function playBattleCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): HTMLAudioElement | null {
+  if (sfxMuted) return null;
+  const entry = getOrCreateBattleCry(pokemonName);
+  if (!entry || entry.failed || entry.playing || (!entry.audio.paused && !entry.audio.ended)) return null;
+  try {
+    entry.playing = true;
+    entry.audio.pause();
+    entry.audio.currentTime = 0;
+    entry.audio.muted = false;
+    entry.audio.volume = Math.max(0, Math.min(1, volume));
+    entry.audio.playbackRate = playbackRate;
+    const clear = () => clearBattleCry(entry);
+    entry.audio.addEventListener('ended', clear, { once: true });
+    entry.audio.addEventListener('error', clear, { once: true });
+    const p = entry.audio.play();
+    if (p && typeof p.then === 'function') p.catch(clear);
+    entry.timeout = window.setTimeout(clear, Math.min(4200, Math.max(2200, 2200 / Math.max(0.4, playbackRate))));
+    return entry.audio;
+  } catch {
+    clearBattleCry(entry);
+    return null;
+  }
+}
+
+export function releaseBattleCries(): void {
+  for (const entry of battleCryChannels.values()) {
+    if (entry.timeout !== null) window.clearTimeout(entry.timeout);
+    try { entry.audio.pause(); } catch { /* noop */ }
+    entry.playing = false;
+  }
+  battleCryChannels.clear();
+}
+
 export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): HTMLAudioElement | null {
   if (sfxMuted) return null;
   const url = cryUrlForPokemon(pokemonName);
@@ -499,10 +627,9 @@ export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): 
     node.volume = Math.max(0, Math.min(1, volume));
     node.playbackRate = playbackRate;
     const p = node.play();
-    if (p && typeof p.then === 'function') p.catch(() => { entry.failed = true; });
+    if (p && typeof p.then === 'function') p.catch(() => {});
     return node;
   } catch {
-    entry.failed = true;
     return null;
   }
 }

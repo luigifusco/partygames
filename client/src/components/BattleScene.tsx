@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { BattlePokemonState, BattleLogEntry, BattleSnapshot } from '@shared/battle-types';
 import { getMoveAnim } from '../data/moveAnimations';
 import { runMoveAnimation, animateHit, animateStatChange, animateStatusInflict } from './BattleAnimationEngine';
-import { playMoveSfx, playCry, preloadCries, playHitSound, preloadHitSounds, preloadStatSounds, playStatChangeSfx, playStatusSfx, playFaintSfx, unlockAudio, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted, toggleSfxMute, isSfxMuted } from './BattleSounds';
+import { playMoveSfx, playBattleCry, prepareBattleCries, primeBattleCries, releaseBattleCries, resumeBattleBgm, playHitSound, preloadHitSounds, preloadStatSounds, playStatChangeSfx, playStatusSfx, playFaintSfx, unlockAudio, startBattleBgm, stopBattleBgm, toggleBgmMute, isBgmMuted, toggleSfxMute, isSfxMuted } from './BattleSounds';
 import { getHeldItemSprite } from '@shared/held-item-data';
 import BattleBackground, { pickPreset } from './BattleBackground';
 import TrickRoomBackground from './TrickRoomBackground';
@@ -404,12 +404,35 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
   // Start BGM on mount, preload cries, stop on unmount
   useEffect(() => {
     const allNames = [...snapshot.left, ...snapshot.right].map(p => p.name);
+    prepareBattleCries(allNames);
     startBattleBgm(0.25, trainerId, allNames);
-    preloadCries(allNames);
     preloadHitSounds();
     preloadStatSounds();
     unlockAudio();
-    return () => stopBattleBgm();
+    const resumeAudio = () => {
+      unlockAudio();
+      resumeBattleBgm();
+      primeBattleCries();
+    };
+    const onVisibility = () => {
+      if (!document.hidden) resumeAudio();
+    };
+    window.addEventListener('pointerdown', resumeAudio, { passive: true });
+    window.addEventListener('touchstart', resumeAudio, { passive: true });
+    window.addEventListener('keydown', resumeAudio);
+    window.addEventListener('focus', resumeAudio);
+    window.addEventListener('pageshow', resumeAudio);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pointerdown', resumeAudio);
+      window.removeEventListener('touchstart', resumeAudio);
+      window.removeEventListener('keydown', resumeAudio);
+      window.removeEventListener('focus', resumeAudio);
+      window.removeEventListener('pageshow', resumeAudio);
+      document.removeEventListener('visibilitychange', onVisibility);
+      stopBattleBgm();
+      releaseBattleCries();
+    };
   }, []);
 
   // Stop BGM and notify parent when battle finishes
@@ -428,7 +451,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       const nextIntro = anim.introIndex + 1;
       if (nextIntro < anim.introTotal) {
         const entry = entryOrder.current[nextIntro];
-        playCry(entry.name, 0.3);
+        playBattleCry(entry.name, 0.3);
       }
       setAnim((prev) => ({ ...prev, introIndex: nextIntro }));
     }, anim.introIndex === -1 ? 400 : 600);
@@ -516,7 +539,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
               }
               return displayed;
             });
-            playCry(rep.name, 0.3);
+            playBattleCry(rep.name, 0.3);
           }
           return {
             ...prev, currentLogIndex: nextIdx, pokemonHp: newHp, pokemonBoosts: newBoosts, pokemonStatus: newStatus, attackingId: null,
@@ -533,7 +556,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       if (!entry.moveName) {
         if (entry.targetFainted) {
           playFaintSfx();
-          playCry(entry.targetName, 0.25, 0.6);
+          playBattleCry(entry.targetName, 0.25, 0.6);
         }
         // Standalone stat changes (e.g., Intimidate, Sticky Web) — animate
         // them on the affected pokemon.
@@ -662,7 +685,7 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
       // Play faint sounds before state update
       if (entry.targetFainted) {
         playFaintSfx();
-        playCry(entry.targetName, 0.25, 0.6);
+        playBattleCry(entry.targetName, 0.25, 0.6);
       }
 
       setAnim((prev) => {
