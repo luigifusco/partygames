@@ -38,12 +38,12 @@ const GAMES: GameDef[] = [
     id: 'petting-care',
     name: 'Gentle Pet',
     icon: '💗',
-    tagline: 'Match your Pokémon’s changing petting rhythm.',
+    tagline: 'Match your Pokémon’s changing petting speed.',
     description: [
-      'Stroke back and forth directly on your Pokémon.',
-      'Each mood asks for a different number of back-and-forths per second.',
+      'Stroke directly on your Pokémon.',
+      'Each mood asks for a different petting speed.',
       'The mood changes at random intervals, and the intervals get shorter as the game goes on.',
-      'Adapt quickly and keep the rhythm as long as you can.',
+      'Adapt quickly and keep the right speed as long as you can.',
     ],
   },
 ];

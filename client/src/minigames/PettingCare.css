@@ -116,9 +116,9 @@
 }
 
 .petting-sprite-frame {
-  width: min(96vw, 600px);
-  height: min(56dvh, 520px);
-  min-height: 280px;
+  width: min(88vw, 500px);
+  height: min(48dvh, 430px);
+  min-height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -320,8 +320,8 @@
   .petting-stage { padding: 8px; }
   .petting-card { gap: 5px; padding-top: 8px; }
   .petting-sprite-frame {
-    height: min(49dvh, 420px);
-    min-height: 220px;
+    height: min(43dvh, 360px);
+    min-height: 200px;
   }
   .petting-target-card,
   .petting-rhythm-panel {
