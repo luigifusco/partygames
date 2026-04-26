@@ -482,20 +482,24 @@ export function stopBattleBgm(): void {
 
 // ─── Pokémon cries ───────────────────────────────────────────────────────
 
-export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): void {
-  if (sfxMuted) return;
-  if (!pokemonName) return;
+export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): HTMLAudioElement | null {
+  if (sfxMuted) return null;
+  if (!pokemonName) return null;
   const id = pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
   const url = `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
   const entry = getOrCreate(url);
-  if (entry.failed) return;
+  if (entry.failed) return null;
   try {
     const node = entry.el.cloneNode(true) as HTMLAudioElement;
     node.volume = Math.max(0, Math.min(1, volume));
     node.playbackRate = playbackRate;
     const p = node.play();
     if (p && typeof p.then === 'function') p.catch(() => { entry.failed = true; });
-  } catch { entry.failed = true; }
+    return node;
+  } catch {
+    entry.failed = true;
+    return null;
+  }
 }
 
 export function preloadCries(pokemonNames: string[]): void {

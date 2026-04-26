@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { playCry, preloadCries, unlockAudio } from '../components/BattleSounds';
 import './PettingCare.css';
 
 interface PettingCareProps {
@@ -94,6 +95,8 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const lastFeedbackAtRef = useRef(0);
   const lastGoodFeedbackAtRef = useRef(0);
   const moodShiftTimeoutRef = useRef<number | null>(null);
+  const cryPlayingRef = useRef(false);
+  const cryTimeoutRef = useRef<number | null>(null);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [started, setStarted] = useState(false);
@@ -132,6 +135,23 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     const sprite = spriteRef.current?.getBoundingClientRect();
     if (!area || !sprite) return;
     addPop(sprite.left - area.left + sprite.width / 2, sprite.top - area.top + sprite.height * 0.22, text, kind);
+  };
+
+  const playXpCry = () => {
+    if (cryPlayingRef.current) return;
+    const node = playCry(pokemonName, 0.24);
+    if (!node) return;
+    cryPlayingRef.current = true;
+    const clearCry = () => {
+      cryPlayingRef.current = false;
+      if (cryTimeoutRef.current !== null) {
+        window.clearTimeout(cryTimeoutRef.current);
+        cryTimeoutRef.current = null;
+      }
+    };
+    node.addEventListener('ended', clearCry, { once: true });
+    node.addEventListener('error', clearCry, { once: true });
+    cryTimeoutRef.current = window.setTimeout(clearCry, 2200);
   };
 
   const switchMood = (elapsed: number) => {
@@ -199,10 +219,12 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   };
 
   useEffect(() => {
+    preloadCries([pokemonName]);
     return () => {
       if (moodShiftTimeoutRef.current !== null) window.clearTimeout(moodShiftTimeoutRef.current);
+      if (cryTimeoutRef.current !== null) window.clearTimeout(cryTimeoutRef.current);
     };
-  }, []);
+  }, [pokemonName]);
 
   useEffect(() => {
     const el = playAreaRef.current;
@@ -293,6 +315,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
           scoreRef.current += 1;
           setScore(scoreRef.current);
           addPokemonPop('💖', 'xp');
+          playXpCry();
         }
         nextXpAtRef.current += XP_TICK_SECONDS;
       }
@@ -311,6 +334,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   }, [started, ended, onFinish]);
 
   const startGame = () => {
+    unlockAudio();
     elapsedRef.current = 0;
     scoreRef.current = 0;
     nextXpAtRef.current = XP_TICK_SECONDS;
