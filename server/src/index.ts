@@ -1468,10 +1468,9 @@ function minigameBondXp(minigame: string, score: number): number | null {
   }
 
   if (minigame === 'petting-care') {
-    // Gentle Pet is scored around 0-100. A very good run can pay for a basic
-    // evolution step, but it still caps at the common/uncommon base threshold.
-    const clamped = Math.max(0, Math.min(100, Math.floor(score)));
-    return Math.min(60, Math.round(clamped * 0.6));
+    // Gentle Pet score is already Bond XP: the client grants one point on each
+    // successful fixed 500ms cadence check during the 35s game.
+    return Math.max(0, Math.min(70, Math.floor(score)));
   }
 
   return null;

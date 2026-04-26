@@ -168,7 +168,7 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
         <div className="ds-screen-scroll minigame-result">
           <div className="minigame-result-card">
             <div className="minigame-result-icon">{selectedGame.icon}</div>
-            <div className="minigame-result-title">Final score</div>
+            <div className="minigame-result-title">{selectedGame.id === 'petting-care' ? 'Bond XP earned' : 'Final score'}</div>
             <div className="minigame-result-score">{finalScore}</div>
             <img src={selectedInst.pokemon.sprite} alt={selectedInst.pokemon.name} className="minigame-result-sprite" />
             <div className="minigame-result-name">{selectedInst.pokemon.name}</div>
