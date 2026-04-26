@@ -29,17 +29,18 @@ interface Point {
   y: number;
   t: number;
   onPokemon: boolean;
+  pokemonWidth: number;
 }
 
 const GAME_DURATION = 35;
-const MAX_DISPLAY_SPEED = 2100;
+const MAX_DISPLAY_SPEED = 5.5;
 
 const MOODS: MoodDef[] = [
-  { id: 'drowsy', label: 'Drowsy', cue: 'slow strokes', target: 320, color: '#98d8ff' },
-  { id: 'cozy', label: 'Cozy', cue: 'gentle speed', target: 600, color: '#ffb6dc' },
-  { id: 'playful', label: 'Playful', cue: 'steady speed', target: 950, color: '#ffd35a' },
-  { id: 'excited', label: 'Excited', cue: 'fast strokes', target: 1350, color: '#ff9a3c' },
-  { id: 'zoomies', label: 'Zoomies', cue: 'very fast!', target: 1850, color: '#ff5d7d' },
+  { id: 'drowsy', label: 'Drowsy', cue: 'slow strokes', target: 0.8, color: '#98d8ff' },
+  { id: 'cozy', label: 'Cozy', cue: 'gentle speed', target: 1.4, color: '#ffb6dc' },
+  { id: 'playful', label: 'Playful', cue: 'steady speed', target: 2.2, color: '#ffd35a' },
+  { id: 'excited', label: 'Excited', cue: 'fast strokes', target: 3.4, color: '#ff9a3c' },
+  { id: 'zoomies', label: 'Zoomies', cue: 'very fast!', target: 4.8, color: '#ff5d7d' },
 ];
 
 function randomMood(except?: string): MoodDef {
@@ -56,7 +57,7 @@ function moodInterval(elapsed: number): number {
 
 function toleranceFor(target: number, elapsed: number): number {
   const progress = Math.min(1, elapsed / GAME_DURATION);
-  return Math.max(115, target * (0.42 - progress * 0.16));
+  return Math.max(0.22, target * (0.42 - progress * 0.16));
 }
 
 export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onExit }: PettingCareProps) {
@@ -116,12 +117,13 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     const sprite = spriteRef.current?.getBoundingClientRect();
     const x = area ? Math.max(0, Math.min(area.width, e.clientX - area.left)) : 0;
     const y = area ? Math.max(0, Math.min(area.height, e.clientY - area.top)) : 0;
+    const pokemonWidth = Math.max(1, sprite?.width ?? 1);
     const onPokemon = !!sprite
       && e.clientX >= sprite.left
       && e.clientX <= sprite.right
       && e.clientY >= sprite.top
       && e.clientY <= sprite.bottom;
-    return { x, y, t: performance.now(), onPokemon };
+    return { x, y, t: performance.now(), onPokemon, pokemonWidth };
   };
 
   const scoreStroke = (point: Point, speed: number, dt: number) => {
@@ -187,8 +189,8 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
       if (!point.onPokemon || !last.onPokemon) {
         scorePopupAccRef.current = 0;
-        currentSpeedRef.current = 0;
-        setCurrentSpeed(0);
+        currentSpeedRef.current *= 0.7;
+        setCurrentSpeed(currentSpeedRef.current);
         setAccuracy(0);
         return;
       }
@@ -196,10 +198,10 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       const distance = Math.hypot(point.x - last.x, point.y - last.y);
       if (distance < 3) return;
       const dt = Math.max(16, point.t - last.t) / 1000;
-      const instantSpeed = distance / dt;
+      const instantSpeed = (distance / point.pokemonWidth) / dt;
       const speed = currentSpeedRef.current === 0
         ? instantSpeed
-        : currentSpeedRef.current * 0.55 + instantSpeed * 0.45;
+        : currentSpeedRef.current * 0.75 + instantSpeed * 0.25;
       currentSpeedRef.current = speed;
       setCurrentSpeed(speed);
       scoreStroke(point, speed, dt);
@@ -209,11 +211,9 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       if (activePointerIdRef.current !== e.pointerId) return;
       activePointerIdRef.current = null;
       lastPointRef.current = null;
-      currentSpeedRef.current = 0;
       scorePopupAccRef.current = 0;
       isTouchingRef.current = false;
       setIsTouching(false);
-      setCurrentSpeed(0);
       setAccuracy(0);
       el.releasePointerCapture?.(e.pointerId);
     };
@@ -245,7 +245,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       setNextMoodIn(Math.max(0, nextMoodAtRef.current - elapsed));
 
       if (!isTouchingRef.current && currentSpeedRef.current > 0) {
-        currentSpeedRef.current = Math.max(0, currentSpeedRef.current - 900 * dt);
+        currentSpeedRef.current = Math.max(0, currentSpeedRef.current - 5.5 * dt);
         setCurrentSpeed(currentSpeedRef.current);
       }
 
@@ -289,6 +289,8 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     setStarted(true);
   };
 
+  const displaySpeed = Math.min(MAX_DISPLAY_SPEED, currentSpeed);
+
   return (
     <div className="petting-root">
       <div className="petting-top">
@@ -310,7 +312,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
           <div className="petting-target-card" style={{ borderColor: mood.color }}>
             <div className="petting-mood-label" style={{ color: mood.color }}>{mood.label}</div>
             <div className="petting-mood-cue">{mood.cue}</div>
-            <div className="petting-target-rate">Target speed {mood.target}</div>
+            <div className="petting-target-rate">Target speed {mood.target.toFixed(1)} widths/s</div>
           </div>
 
           <div className="petting-sprite-frame">
@@ -321,11 +323,11 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
           <div className="petting-rhythm-panel">
             <div className="petting-rhythm-row">
               <span>Your speed</span>
-              <strong>{Math.round(currentSpeed)}</strong>
+              <strong>{displaySpeed.toFixed(1)} widths/s</strong>
             </div>
             <div className="petting-rhythm-track">
               <div className="petting-rhythm-band" style={{ left: `${Math.min(100, (mood.target / MAX_DISPLAY_SPEED) * 100)}%` }} />
-              <div className="petting-rhythm-fill" style={{ width: `${Math.min(100, (currentSpeed / MAX_DISPLAY_SPEED) * 100)}%` }} />
+              <div className="petting-rhythm-fill" style={{ width: `${(displaySpeed / MAX_DISPLAY_SPEED) * 100}%` }} />
             </div>
             <div className="petting-rhythm-row small">
               <span>Match</span>

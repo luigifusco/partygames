@@ -41,7 +41,7 @@ const GAMES: GameDef[] = [
     tagline: 'Match your Pokémon’s changing petting speed.',
     description: [
       'Stroke directly on your Pokémon.',
-      'Each mood asks for a different petting speed.',
+      'Each mood asks for a different petting speed relative to that Pokémon’s size.',
       'The mood changes at random intervals, and the intervals get shorter as the game goes on.',
       'Adapt quickly and keep the right speed as long as you can.',
     ],
