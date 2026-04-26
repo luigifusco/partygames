@@ -11,6 +11,7 @@ import TeamSelectGrid from '../components/TeamSelectGrid';
 import type { BattleSnapshot } from '@shared/battle-types';
 import type { PokemonInstance } from '@shared/types';
 import { BASE_PATH } from '../config';
+import { getLocalizedStoryStepText } from '../storyLocalization';
 import './StoryScreen.css';
 
 const API = BASE_PATH;
@@ -276,7 +277,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   const handleDialogueContinue = useCallback(async () => {
     if (!activeStoryline) return;
     const step = activeStoryline.steps[activeStepIdx];
-    const lines = step.lines ?? [];
+    const lines = getLocalizedStoryStepText(activeStoryline.id, activeStepIdx, step).lines;
 
     // For dialogue steps we walk through lines one at a time. Info
     // steps render all lines at once so we skip the per-line loop.
@@ -432,12 +433,13 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
 
   // ─── Info View ───
   if (phase === 'info' && activeStoryline && step?.type === 'info') {
-    const lines = step.lines ?? [];
+    const localizedStep = getLocalizedStoryStepText(activeStoryline.id, activeStepIdx, step);
+    const lines = localizedStep.lines;
     return (
       <div className="story-screen">
         <div className="story-info-card">
           <div className="story-info-icon">{step.infoIcon ?? 'ℹ️'}</div>
-          <div className="story-info-title">{step.infoTitle ?? 'Info'}</div>
+          <div className="story-info-title">{localizedStep.infoTitle ?? 'Info'}</div>
           <ul className="story-info-lines">
             {lines.map((ln, i) => <li key={i}>{ln}</li>)}
           </ul>
@@ -449,7 +451,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
 
   // ─── Dialogue View ───
   if (phase === 'dialogue' && activeStoryline && step?.type === 'dialogue') {
-    const lines = step.lines ?? [];
+    const lines = getLocalizedStoryStepText(activeStoryline.id, activeStepIdx, step).lines;
     return (
       <div className="story-screen">
         <div className="story-dialogue story-dialogue--scene">
@@ -458,7 +460,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
             <div className="story-dialogue-name">{step.speaker}</div>
           </div>
           <div className="story-dialogue-body">
-            <div className="story-dialogue-text">{renderDialogueText(lines[dialogueLineIdx])}</div>
+            <div className="story-dialogue-text">{renderDialogueText(lines[dialogueLineIdx] ?? '')}</div>
           </div>
           <div className="story-dialogue-actions">
             <button className="story-retreat-btn" onClick={() => { setPhase('hub'); setActiveStoryline(null); }}>← Back</button>
