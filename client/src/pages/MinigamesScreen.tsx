@@ -36,14 +36,14 @@ const GAMES: GameDef[] = [
   },
   {
     id: 'petting-care',
-    name: 'Gentle Pet',
-    icon: '💗',
-    tagline: 'Match your Pokémon’s changing petting speed.',
+    name: 'Shower Brush',
+    icon: '🧽',
+    tagline: 'Scrub your Pokémon at the right shower speed.',
     description: [
-      'Stroke directly on your Pokémon.',
-      'Each mood asks for a different petting speed relative to that Pokémon’s size.',
+      'Brush directly on your Pokémon with the sponge.',
+      'Each mood asks for a different scrubbing speed relative to that Pokémon’s size.',
       'The mood changes at random intervals, and the intervals get shorter as the game goes on.',
-      'Adapt quickly and keep the right speed as long as you can.',
+      'Adapt quickly, keep the right shower rhythm, and earn Bond XP when the scrub speed is in range.',
     ],
   },
 ];

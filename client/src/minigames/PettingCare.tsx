@@ -113,6 +113,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const gifFrameRateRef = useRef(MOODS[1].frameRate);
   const [gifCanvasReady, setGifCanvasReady] = useState(false);
   const [moodShifting, setMoodShifting] = useState(false);
+  const [spongePoint, setSpongePoint] = useState<{ x: number; y: number } | null>(null);
   const [pops, setPops] = useState<Pop[]>([]);
 
   const addPop = (x: number, y: number, text: string, kind: Pop['kind']) => {
@@ -189,7 +190,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     speedSamplesRef.current = [];
     setCurrentSpeed(0);
     setAccuracy(0);
-    addPokemonPop('✨', 'shift');
+    addPokemonPop('🫧', 'shift');
   };
 
   const pointFromEvent = (e: PointerEvent): Point => {
@@ -228,14 +229,14 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
     if (closeness <= 0) {
       if (point.t - lastFeedbackAtRef.current > 520) {
-        addPop(point.x, point.y, speed < mood.target ? '⚡' : '🐢', 'miss');
+        addPop(point.x, point.y, '🫧', 'miss');
         lastFeedbackAtRef.current = point.t;
       }
       return;
     }
 
     if (point.t - lastGoodFeedbackAtRef.current > 520) {
-      addPop(point.x, point.y, closeness > 0.82 ? '💖' : '✨', 'good');
+      addPop(point.x, point.y, closeness > 0.82 ? '💖' : '🫧', 'good');
       lastGoodFeedbackAtRef.current = point.t;
     }
   };
@@ -368,7 +369,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       if (!started || ended || activePointerIdRef.current !== null) return;
       const point = pointFromEvent(e);
       if (!point.onPokemon) {
-        addPop(point.x, point.y, '🐾', 'miss');
+        addPop(point.x, point.y, '🫧', 'miss');
         return;
       }
       activePointerIdRef.current = e.pointerId;
@@ -376,6 +377,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       e.preventDefault();
       isTouchingRef.current = true;
       setIsTouching(true);
+      setSpongePoint({ x: point.x, y: point.y });
       lastPointRef.current = point;
       speedSamplesRef.current = [];
       updateRollingSpeed(point.t);
@@ -385,6 +387,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       if (activePointerIdRef.current !== e.pointerId) return;
       e.preventDefault();
       const point = pointFromEvent(e);
+      setSpongePoint({ x: point.x, y: point.y });
       const last = lastPointRef.current;
       lastPointRef.current = point;
       if (!last) return;
@@ -411,6 +414,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       lastPointRef.current = null;
       isTouchingRef.current = false;
       setIsTouching(false);
+      setSpongePoint(null);
       setAccuracy(0);
       el.releasePointerCapture?.(e.pointerId);
     };
@@ -504,6 +508,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
     setCurrentSpeed(0);
     setAccuracy(0);
     setIsTouching(false);
+    setSpongePoint(null);
     setTimeLeft(GAME_DURATION);
     setEnded(false);
     setStarted(true);
@@ -579,6 +584,16 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
           </div>
           <div className="petting-name">{pokemonName}</div>
 
+          {spongePoint && (
+            <div
+              className="petting-sponge"
+              style={{ left: spongePoint.x, top: spongePoint.y } as CSSProperties}
+              aria-hidden="true"
+            >
+              🧽
+            </div>
+          )}
+
           {pops.map((pop) => (
             <div
               key={pop.id}
@@ -597,9 +612,9 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
           {!started && (
             <div className="petting-overlay">
-              <div className="petting-overlay-title">Gentle Pet</div>
+              <div className="petting-overlay-title">Shower Brush</div>
               <div className="petting-overlay-hint">
-                Stroke directly on the Pokémon. Match the mood's speed before it changes.
+                Brush directly on the Pokémon with the sponge. Match the mood's scrubbing speed before it changes.
               </div>
               <button className="ds-btn ds-btn-primary ds-btn-lg" onClick={startGame}>Start</button>
             </div>
@@ -607,7 +622,7 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
 
           {ended && (
             <div className="petting-overlay">
-              <div className="petting-overlay-title">All Done!</div>
+              <div className="petting-overlay-title">All Clean!</div>
               <div className="petting-overlay-score">XP: {score}</div>
             </div>
           )}
