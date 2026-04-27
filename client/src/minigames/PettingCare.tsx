@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { decompressFrames, parseGIF, type ParsedFrame } from 'gifuct-js';
 import { cryUrlForPokemon, isSfxMuted, preloadCries, unlockAudio } from '../components/BattleSounds';
 import './PettingCare.css';
 
@@ -13,6 +14,7 @@ interface MoodDef {
   id: string;
   label: string;
   target: number;
+  frameRate: number;
   color: string;
 }
 
@@ -46,11 +48,11 @@ const SPEED_AVERAGE_WINDOW_MS = 250;
 const XP_TICK_SECONDS = 0.5;
 
 const MOODS: MoodDef[] = [
-  { id: 'drowsy', label: 'Drowsy', target: 1.1, color: '#98d8ff' },
-  { id: 'cozy', label: 'Cozy', target: 1.7, color: '#ffb6dc' },
-  { id: 'playful', label: 'Playful', target: 2.5, color: '#ffd35a' },
-  { id: 'excited', label: 'Excited', target: 3.7, color: '#ff9a3c' },
-  { id: 'zoomies', label: 'Zoomies', target: MAX_DISPLAY_SPEED, color: '#ff5d7d' },
+  { id: 'drowsy', label: 'Drowsy', target: 1.1, frameRate: 0.5, color: '#98d8ff' },
+  { id: 'cozy', label: 'Cozy', target: 1.7, frameRate: 0.875, color: '#ffb6dc' },
+  { id: 'playful', label: 'Playful', target: 2.5, frameRate: 1.25, color: '#ffd35a' },
+  { id: 'excited', label: 'Excited', target: 3.7, frameRate: 1.625, color: '#ff9a3c' },
+  { id: 'zoomies', label: 'Zoomies', target: MAX_DISPLAY_SPEED, frameRate: 2, color: '#ff5d7d' },
 ];
 
 function randomMood(except?: string): MoodDef {
@@ -79,8 +81,9 @@ function closenessForSpeed(mood: MoodDef, speed: number, elapsed: number): numbe
 }
 
 export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onExit }: PettingCareProps) {
-  const playAreaRef = useRef<HTMLDivElement>(null);
-  const spriteRef = useRef<HTMLImageElement>(null);
+  const playAreaRef = useRef<HTMLDivElement | null>(null);
+  const spriteRef = useRef<HTMLCanvasElement | HTMLImageElement | null>(null);
+  const spriteCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
   const lastPointRef = useRef<Point | null>(null);
   const elapsedRef = useRef(0);
@@ -107,6 +110,8 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
   const [, setAccuracy] = useState(0);
   const [mood, setMood] = useState<MoodDef>(() => MOODS[1]);
   const moodRef = useRef<MoodDef>(MOODS[1]);
+  const gifFrameRateRef = useRef(MOODS[1].frameRate);
+  const [gifCanvasReady, setGifCanvasReady] = useState(false);
   const [moodShifting, setMoodShifting] = useState(false);
   const [pops, setPops] = useState<Pop[]>([]);
 
@@ -234,6 +239,97 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
       lastGoodFeedbackAtRef.current = point.t;
     }
   };
+
+  useEffect(() => {
+    gifFrameRateRef.current = mood.frameRate;
+  }, [mood]);
+
+  useEffect(() => {
+    const canvas = spriteCanvasRef.current;
+    if (!canvas) return;
+    let cancelled = false;
+    let raf = 0;
+
+    const drawGif = async () => {
+      setGifCanvasReady(false);
+      try {
+        const res = await fetch(pokemonSprite);
+        if (!res.ok) throw new Error('Failed to load sprite GIF');
+        const parsed = parseGIF(await res.arrayBuffer());
+        const frames = decompressFrames(parsed, true);
+        if (cancelled || frames.length === 0) return;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.width = parsed.lsd.width;
+        canvas.height = parsed.lsd.height;
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        if (!tempCtx) return;
+
+        let currentFrame = 0;
+        let previousFrame: ParsedFrame | null = null;
+        let restoreSnapshot: ImageData | null = null;
+        let accumulator = 0;
+        let lastTime = performance.now();
+
+        const disposePreviousFrame = () => {
+          if (!previousFrame) return;
+          if (previousFrame.disposalType === 2) {
+            const { left, top, width, height } = previousFrame.dims;
+            ctx.clearRect(left, top, width, height);
+          } else if (previousFrame.disposalType === 3 && restoreSnapshot) {
+            ctx.putImageData(restoreSnapshot, 0, 0);
+          }
+          restoreSnapshot = null;
+        };
+
+        const renderFrame = (frame: ParsedFrame) => {
+          disposePreviousFrame();
+          const { left, top, width, height } = frame.dims;
+          if (frame.disposalType === 3) {
+            restoreSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          }
+          if (tempCanvas.width !== width) tempCanvas.width = width;
+          if (tempCanvas.height !== height) tempCanvas.height = height;
+          const imageData = tempCtx.createImageData(width, height);
+          imageData.data.set(frame.patch);
+          tempCtx.putImageData(imageData, 0, 0);
+          ctx.drawImage(tempCanvas, left, top);
+          previousFrame = frame;
+        };
+
+        renderFrame(frames[0]);
+        setGifCanvasReady(true);
+
+        const tick = (now: number) => {
+          if (cancelled) return;
+          const rate = Math.max(0.1, gifFrameRateRef.current);
+          accumulator += (now - lastTime) * rate;
+          lastTime = now;
+
+          let guard = 0;
+          while (accumulator >= Math.max(20, frames[currentFrame].delay || 100) && guard < frames.length) {
+            accumulator -= Math.max(20, frames[currentFrame].delay || 100);
+            currentFrame = (currentFrame + 1) % frames.length;
+            renderFrame(frames[currentFrame]);
+            guard += 1;
+          }
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+      } catch (err) {
+        console.warn('Falling back to native GIF sprite playback', err);
+        if (!cancelled) setGifCanvasReady(false);
+      }
+    };
+
+    void drawGif();
+    return () => {
+      cancelled = true;
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [pokemonSprite]);
 
   useEffect(() => {
     preloadCries([pokemonName]);
@@ -461,7 +557,25 @@ export default function PettingCare({ pokemonSprite, pokemonName, onFinish, onEx
           </div>
 
           <div className="petting-sprite-frame">
-            <img ref={spriteRef} src={pokemonSprite} alt={pokemonName} className="petting-sprite" draggable={false} />
+            <canvas
+              ref={(el) => {
+                spriteCanvasRef.current = el;
+                if (el) spriteRef.current = el;
+              }}
+              className={`petting-sprite petting-sprite-canvas${gifCanvasReady ? '' : ' is-hidden'}`}
+              aria-label={pokemonName}
+            />
+            {!gifCanvasReady && (
+              <img
+                ref={(el) => {
+                  if (el) spriteRef.current = el;
+                }}
+                src={pokemonSprite}
+                alt={pokemonName}
+                className="petting-sprite"
+                draggable={false}
+              />
+            )}
           </div>
           <div className="petting-name">{pokemonName}</div>
 

@@ -196,6 +196,10 @@
   animation: petting-idle var(--petting-idle-duration) ease-in-out infinite;
 }
 
+.petting-sprite-canvas.is-hidden {
+  display: none;
+}
+
 .petting-card.is-touching .petting-sprite {
   animation: petting-touch var(--petting-touch-duration) ease-in-out infinite;
 }
