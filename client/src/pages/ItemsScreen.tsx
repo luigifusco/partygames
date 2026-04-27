@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTMSprite, getMoveType } from '@shared/move-data';
 import { getBoostSprite, getBoostName, BOOST_ITEMS, MAX_IV } from '@shared/boost-data';
@@ -70,6 +70,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
   const [boostPhase, setBoostPhase] = useState<BoostPhase | null>(null);
   const [successAnim, setSuccessAnim] = useState<{ icon: string; text: string; pokemonSprite: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'tms' | 'boosts' | 'held' | 'tokens'>('tms');
+  const [pokemonPickerSearch, setPokemonPickerSearch] = useState('');
   const [reawakenPrompt, setReawakenPrompt] = useState<Pokemon | null>(null);
   const [reawakenError, setReawakenError] = useState<string | null>(null);
   const [reawakening, setReawakening] = useState<{ species: Pokemon } | null>(null);
@@ -139,14 +140,17 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
   const hasItems = tmGroups.length > 0 || tokenGroups.length > 0 || boostGroups.length > 0 || heldItemGroups.length > 0 || pokemonWithItems.length > 0;
 
   const handleUseTM = (moveName: string) => {
+    setPokemonPickerSearch('');
     setTeachPhase({ step: 'pickPokemon', moveName });
   };
 
   const handleUseBoost = (stat: StatKey) => {
+    setPokemonPickerSearch('');
     setBoostPhase({ step: 'pickPokemon', stat });
   };
 
   const handleGiveHeldItem = (itemId: string) => {
+    setPokemonPickerSearch('');
     setHeldItemPhase({ step: 'pickPokemon', itemId });
   };
 
@@ -178,7 +182,68 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
   };
 
   // Sorted collection for pokemon picker
-  const sortedCollection = [...collection].sort((a, b) => a.pokemon.id - b.pokemon.id);
+  const sortedCollection = [...collection].sort((a, b) => {
+    const fav = Number(!!b.favorite) - Number(!!a.favorite);
+    if (fav !== 0) return fav;
+    return a.pokemon.id - b.pokemon.id;
+  });
+  const normalizedPickerSearch = pokemonPickerSearch.trim().toLowerCase();
+  const matchesPokemonPickerSearch = (inst: PokemonInstance) => {
+    if (!normalizedPickerSearch) return true;
+    const fields = [
+      inst.pokemon.name,
+      String(inst.pokemon.id),
+      inst.pokemon.tier,
+      inst.nature,
+      inst.ability,
+      ...inst.pokemon.types,
+      ...getEffectiveMoves(inst),
+    ];
+    return fields.some((field) => field.toLowerCase().includes(normalizedPickerSearch));
+  };
+  const filterPokemonPicker = (list: PokemonInstance[]) => list.filter(matchesPokemonPickerSearch);
+  const pokemonPickerSearchRow = (
+    <div className="teach-search-row">
+      <span className="teach-search-icon" aria-hidden>🔍</span>
+      <input
+        className="teach-search-input"
+        type="search"
+        value={pokemonPickerSearch}
+        onChange={(e) => setPokemonPickerSearch(e.target.value)}
+        placeholder="Search name, move, ability, nature…"
+        aria-label="Search Pokémon"
+      />
+      {pokemonPickerSearch && (
+        <button
+          type="button"
+          className="teach-search-clear"
+          onClick={() => setPokemonPickerSearch('')}
+          aria-label="Clear Pokémon search"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+  const renderPokemonPickerCard = (
+    inst: PokemonInstance,
+    onClick: () => void,
+    extra?: ReactNode,
+    className = '',
+  ) => (
+    <div
+      key={inst.instanceId}
+      className={`teach-pokemon-card ${inst.favorite ? 'favorite' : ''} ${className}`}
+      onClick={onClick}
+    >
+      {inst.favorite && <div className="teach-pokemon-favorite" title="Favorite">★</div>}
+      <span className="teach-pokemon-sprite-frame">
+        <img src={inst.pokemon.sprite} alt={inst.pokemon.name} />
+      </span>
+      <div className="teach-pokemon-name">{inst.pokemon.name}</div>
+      {extra}
+    </div>
+  );
 
   return (
     <div className="items-screen">
@@ -374,6 +439,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
       {/* Step 1: Pick a pokemon to teach the TM to */}
       {teachPhase?.step === 'pickPokemon' && (() => {
         const eligible = sortedCollection.filter((inst) => canLearnMove(inst.pokemon.name, teachPhase.moveName));
+        const visible = filterPokemonPicker(eligible);
         return (
         <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setTeachPhase(null)}>
           <div className="teach-content">
@@ -381,16 +447,14 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
               <span>Teach <strong>{teachPhase.moveName}</strong> to...</span>
               <button className="teach-close" onClick={() => setTeachPhase(null)}>✕</button>
             </div>
+            {eligible.length > 0 && pokemonPickerSearchRow}
             {eligible.length === 0 ? (
               <div className="teach-empty">No Pokémon in your collection can learn this move</div>
+            ) : visible.length === 0 ? (
+              <div className="teach-empty">No Pokémon match that search</div>
             ) : (
               <div className="teach-pokemon-grid">
-                {eligible.map((inst) => (
-                  <div key={inst.instanceId} className="teach-pokemon-card" onClick={() => handlePickPokemon(inst)}>
-                    <img src={inst.pokemon.sprite} alt={inst.pokemon.name} />
-                    <div className="teach-pokemon-name">{inst.pokemon.name}</div>
-                  </div>
-                ))}
+                {visible.map((inst) => renderPokemonPickerCard(inst, () => handlePickPokemon(inst)))}
               </div>
             )}
           </div>
@@ -444,24 +508,24 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
               <button className="teach-close" onClick={() => setBoostPhase(null)}>✕</button>
             </div>
             <div className="boost-hint">Max {STAT_LABELS[boostPhase.stat]} IV → {MAX_IV}</div>
+            {sortedCollection.length > 0 && pokemonPickerSearchRow}
             {sortedCollection.length === 0 ? (
               <div className="teach-empty">No Pokémon in your collection</div>
+            ) : filterPokemonPicker(sortedCollection).length === 0 ? (
+              <div className="teach-empty">No Pokémon match that search</div>
             ) : (
               <div className="teach-pokemon-grid">
-                {sortedCollection.map((inst) => {
+                {filterPokemonPicker(sortedCollection).map((inst) => {
                   const isMaxed = inst.ivs[boostPhase.stat] >= MAX_IV;
-                  return (
-                    <div
-                      key={inst.instanceId}
-                      className={`teach-pokemon-card ${isMaxed ? 'boost-maxed' : ''}`}
-                      onClick={() => !isMaxed && handleBoostPickPokemon(inst)}
-                    >
-                      <img src={inst.pokemon.sprite} alt={inst.pokemon.name} />
-                      <div className="teach-pokemon-name">{inst.pokemon.name}</div>
+                  return renderPokemonPickerCard(
+                    inst,
+                    () => !isMaxed && handleBoostPickPokemon(inst),
+                    (
                       <div className="boost-iv-label">
                         {STAT_LABELS[boostPhase.stat]}: {inst.ivs[boostPhase.stat]}{isMaxed ? ' ✓' : ''}
                       </div>
-                    </div>
+                    ),
+                    isMaxed ? 'boost-maxed' : '',
                   );
                 })}
               </div>
@@ -473,6 +537,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
       {/* Held Item: Pick a pokemon to give the item to */}
       {heldItemPhase?.step === 'pickPokemon' && (() => {
         const eligible = sortedCollection.filter((inst) => !inst.heldItem);
+        const visible = filterPokemonPicker(eligible);
         return (
         <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setHeldItemPhase(null)}>
           <div className="teach-content">
@@ -483,16 +548,14 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
             <div className="held-item-desc" style={{ fontSize: '11px', color: '#aaa', padding: '0 12px 8px', textAlign: 'center' }}>
               {HELD_ITEMS_BY_ID[heldItemPhase.itemId]?.description}
             </div>
+            {eligible.length > 0 && pokemonPickerSearchRow}
             {eligible.length === 0 ? (
               <div className="teach-empty">All Pokémon are already holding items</div>
+            ) : visible.length === 0 ? (
+              <div className="teach-empty">No Pokémon match that search</div>
             ) : (
               <div className="teach-pokemon-grid">
-                {eligible.map((inst) => (
-                  <div key={inst.instanceId} className="teach-pokemon-card" onClick={() => handleHeldItemPickPokemon(inst)}>
-                    <img src={inst.pokemon.sprite} alt={inst.pokemon.name} />
-                    <div className="teach-pokemon-name">{inst.pokemon.name}</div>
-                  </div>
-                ))}
+                {visible.map((inst) => renderPokemonPickerCard(inst, () => handleHeldItemPickPokemon(inst)))}
               </div>
             )}
           </div>
