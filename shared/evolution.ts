@@ -9,7 +9,7 @@ const BOND_THRESHOLDS: Record<BoxTier, number> = {
   common: 60,       // e.g. Caterpie → Metapod
   uncommon: 60,     // treated as common→uncommon cost
   rare: 150,        // e.g. Metapod → Butterfree, Ivysaur → Venusaur
-  epic: 350,        // e.g. Dragonair → Dragonite
+  epic: 220,        // e.g. Dragonair → Dragonite
   legendary: 700,   // any future legendary evolution
 };
 
