@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { PokemonInstance, Pokemon, BoxTier, OwnedItem } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
@@ -13,6 +13,7 @@ import { useStoryChapters } from '../hooks/useStoryChapters';
 import './CollectionScreen.css';
 
 const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary'];
+const COLLECTION_STATE_KEY_PREFIX = 'pokemonparty:collection-state';
 
 interface CollectionScreenProps {
   collection: PokemonInstance[];
@@ -30,10 +31,51 @@ function getEvoTargets(pokemon: Pokemon): Pokemon[] {
     .filter(Boolean);
 }
 
+interface CollectionViewState {
+  filter: BoxTier | 'all';
+  nameQuery: string;
+  scrollTop: number;
+}
+
+function isTierFilter(value: unknown): value is BoxTier | 'all' {
+  return typeof value === 'string' && TIERS.includes(value as BoxTier | 'all');
+}
+
+function collectionStateKey(playerId?: string): string {
+  return `${COLLECTION_STATE_KEY_PREFIX}:${playerId ?? 'anonymous'}`;
+}
+
+function loadCollectionState(playerId?: string): CollectionViewState {
+  if (typeof window === 'undefined') return { filter: 'all', nameQuery: '', scrollTop: 0 };
+  try {
+    const raw = window.sessionStorage.getItem(collectionStateKey(playerId));
+    if (!raw) return { filter: 'all', nameQuery: '', scrollTop: 0 };
+    const parsed = JSON.parse(raw) as Partial<CollectionViewState>;
+    return {
+      filter: isTierFilter(parsed.filter) ? parsed.filter : 'all',
+      nameQuery: typeof parsed.nameQuery === 'string' ? parsed.nameQuery : '',
+      scrollTop: typeof parsed.scrollTop === 'number' && Number.isFinite(parsed.scrollTop) ? parsed.scrollTop : 0,
+    };
+  } catch {
+    return { filter: 'all', nameQuery: '', scrollTop: 0 };
+  }
+}
+
+function saveCollectionState(playerId: string | undefined, state: CollectionViewState) {
+  try {
+    window.sessionStorage.setItem(collectionStateKey(playerId), JSON.stringify(state));
+  } catch {
+    // Losing this cache should never block collection use.
+  }
+}
+
 export default function CollectionScreen({ collection, items, onShard, playerId, onRefresh }: CollectionScreenProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const bondUnlocked = chapters.has(BOND_UNLOCK_CHAPTER);
+  const restoredStateRef = useRef(loadCollectionState(playerId));
+  const restoredScrollOnceRef = useRef(false);
+  const gridRef = useRef<HTMLDivElement | null>(null);
 
   // Ensure the collection reflects any bond-XP / evolution changes that
   // happened during the preceding battle. If a socket event was missed
@@ -45,11 +87,27 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [filter, setFilter] = useState<BoxTier | 'all'>('all');
-  const [nameQuery, setNameQuery] = useState('');
+  const [filter, setFilter] = useState<BoxTier | 'all'>(restoredStateRef.current.filter);
+  const [nameQuery, setNameQuery] = useState(restoredStateRef.current.nameQuery);
   const [shardMode, setShardMode] = useState(false);
   const [shardSelected, setShardSelected] = useState<Set<string>>(new Set());
   const [shardPreview, setShardPreview] = useState<PokemonInstance[] | null>(null);
+
+  const persistViewState = (next?: Partial<CollectionViewState>) => {
+    const state = {
+      filter,
+      nameQuery,
+      scrollTop: gridRef.current?.scrollTop ?? restoredStateRef.current.scrollTop,
+      ...next,
+    };
+    restoredStateRef.current = state;
+    saveCollectionState(playerId, state);
+  };
+
+  useEffect(() => {
+    persistViewState({ filter, nameQuery });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, nameQuery, playerId]);
 
   const normalizedQuery = nameQuery.trim().toLowerCase();
   const matchesQuery = (inst: PokemonInstance) => {
@@ -70,6 +128,13 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
       if (aFav !== bFav) return aFav - bFav;
       return a.pokemon.id - b.pokemon.id;
     });
+
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || restoredScrollOnceRef.current) return;
+    grid.scrollTop = restoredStateRef.current.scrollTop;
+    restoredScrollOnceRef.current = true;
+  }, [filtered.length]);
 
   // Evolution is triggered from the Pokemon detail screen — clicking a
   // ready-to-evolve card just navigates there via the normal onClick.
@@ -158,7 +223,14 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
       {filtered.length === 0 ? (
         <div className="collection-empty">No Pokémon yet — visit the shop!</div>
       ) : (
-        <div className="collection-grid">
+        <div
+          ref={gridRef}
+          className="collection-grid"
+          onScroll={(e) => {
+            restoredStateRef.current.scrollTop = e.currentTarget.scrollTop;
+            persistViewState({ scrollTop: e.currentTarget.scrollTop });
+          }}
+        >
           {filtered.map((inst) => {
             const targets = getEvoTargets(inst.pokemon);
             const firstTarget = targets[0];
@@ -176,7 +248,10 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
                 instance={inst}
                 onClick={() => {
                   if (shardMode) toggleShardSelect(inst);
-                  else navigate(`/pokemon/${getCollectionIndex(inst)}`);
+                  else {
+                    persistViewState({ scrollTop: gridRef.current?.scrollTop ?? 0 });
+                    navigate(`/pokemon/${getCollectionIndex(inst)}`);
+                  }
                 }}
                 className={`${shardMode && isShardSelected ? 'shard-selected' : ''} ${inst.favorite ? 'favorite' : ''} ${!shardMode && canEvolve ? 'ready-to-evolve' : ''}`}
               >
