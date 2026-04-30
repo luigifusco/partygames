@@ -408,7 +408,6 @@ export default function BattleScene({ snapshot, turnDelayMs = 1200, essenceGaine
     preloadCries(allNames);
     preloadHitSounds();
     preloadStatSounds();
-    unlockAudio();
     return () => stopBattleBgm();
   }, []);
 

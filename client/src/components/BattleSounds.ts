@@ -7,9 +7,10 @@
 //   the user's first click/touch (e.g., the "Start Battle" button), and we
 //   also auto-attach a one-shot pointerdown/touchstart/keydown listener as
 //   a safety net.
-// - We pool & cache HTMLAudioElement instances keyed by URL, and use
-//   .cloneNode(true) on each play so overlapping plays work without
-//   leaking elements or stalling on mobile.
+// - We pool & cache HTMLAudioElement instances keyed by URL for longer SFX.
+//   Short Pokémon cries use same-origin Web Audio first, with fresh
+//   HTMLAudioElement fallback, because iOS Safari is unreliable with cloned
+//   cross-origin media elements.
 // - Every Audio() and AudioContext call is wrapped so missing files /
 //   blocked autoplay never throw past the public API.
 
@@ -56,6 +57,10 @@ export function toggleSfxMute(): boolean { setSfxMuted(!sfxMuted); return sfxMut
 
 let ctx: AudioContext | null = null;
 let unlocked = false;
+let unlockProbe: HTMLAudioElement | null = null;
+
+const SILENT_WAV =
+  'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQQAAAAAAA==';
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -63,9 +68,6 @@ function getCtx(): AudioContext | null {
     const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!Ctor) return null;
     try { ctx = new Ctor(); } catch { return null; }
-  }
-  if (ctx && ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
   }
   return ctx;
 }
@@ -75,8 +77,8 @@ function getCtx(): AudioContext | null {
  *  Auto-called on first pointer/touch/key event as a safety net. */
 export function unlockAudio(): void {
   if (unlocked) return;
-  unlocked = true;
   const ac = getCtx();
+  let webAudioUnlocked = false;
   if (ac) {
     try {
       const buf = ac.createBuffer(1, 1, 22050);
@@ -84,29 +86,48 @@ export function unlockAudio(): void {
       src.buffer = buf;
       src.connect(ac.destination);
       src.start(0);
+      webAudioUnlocked = ac.state === 'running';
+      if (ac.state === 'suspended') {
+        ac.resume()
+          .then(() => { unlocked = ac.state === 'running' || unlocked; })
+          .catch(() => {});
+      }
     } catch { /* noop */ }
   }
   try {
-    const a = new Audio();
+    const a = unlockProbe ?? new Audio();
+    unlockProbe = a;
     a.muted = true;
-    a.src = `${BASE_PATH}/hit-normal-damage.mp3`;
+    a.preload = 'auto';
+    a.src = SILENT_WAV;
     const p = a.play();
     if (p && typeof p.then === 'function') {
-      p.then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+      p.then(() => {
+        a.pause();
+        a.currentTime = 0;
+        unlocked = true;
+      }).catch(() => { unlocked = webAudioUnlocked || unlocked; });
+    } else {
+      unlocked = true;
     }
   } catch { /* noop */ }
+  unlocked = webAudioUnlocked || unlocked;
 }
 
 if (typeof window !== 'undefined') {
   const handler = () => {
     unlockAudio();
-    window.removeEventListener('pointerdown', handler);
-    window.removeEventListener('touchstart', handler);
-    window.removeEventListener('keydown', handler);
+    if (unlocked) {
+      window.removeEventListener('pointerdown', handler);
+      window.removeEventListener('touchstart', handler);
+      window.removeEventListener('click', handler);
+      window.removeEventListener('keydown', handler);
+    }
   };
-  window.addEventListener('pointerdown', handler, { once: true, passive: true });
-  window.addEventListener('touchstart', handler, { once: true, passive: true });
-  window.addEventListener('keydown', handler, { once: true });
+  window.addEventListener('pointerdown', handler, { passive: true });
+  window.addEventListener('touchstart', handler, { passive: true });
+  window.addEventListener('click', handler);
+  window.addEventListener('keydown', handler);
 }
 
 // ─── HTMLAudioElement cache / pool ───────────────────────────────────────
@@ -120,6 +141,20 @@ interface CacheEntry {
   failed: boolean;
 }
 const audioCache = new Map<string, CacheEntry>();
+const activeAudio = new Set<HTMLAudioElement>();
+
+function retainForPlayback(node: HTMLAudioElement): void {
+  activeAudio.add(node);
+  const release = () => {
+    activeAudio.delete(node);
+    node.removeEventListener('ended', release);
+    node.removeEventListener('error', release);
+    node.removeEventListener('abort', release);
+  };
+  node.addEventListener('ended', release);
+  node.addEventListener('error', release);
+  node.addEventListener('abort', release);
+}
 
 function getOrCreate(url: string): CacheEntry {
   let entry = audioCache.get(url);
@@ -142,13 +177,29 @@ function playUrl(url: string, volume = 0.4, playbackRate = 1.0): boolean {
     const node = entry.el.cloneNode(true) as HTMLAudioElement;
     node.volume = Math.max(0, Math.min(1, volume));
     node.playbackRate = playbackRate;
+    retainForPlayback(node);
     const p = node.play();
     if (p && typeof p.then === 'function') {
-      p.catch(() => { entry.failed = true; });
+      p.catch(() => { activeAudio.delete(node); });
     }
     return true;
   } catch {
-    entry.failed = true;
+    return false;
+  }
+}
+
+function playFreshAudio(url: string, volume = 0.4, playbackRate = 1.0): boolean {
+  if (sfxMuted) return true;
+  try {
+    const node = new Audio(url);
+    node.preload = 'auto';
+    node.volume = Math.max(0, Math.min(1, volume));
+    node.playbackRate = playbackRate;
+    retainForPlayback(node);
+    const p = node.play();
+    if (p && typeof p.then === 'function') p.catch(() => { activeAudio.delete(node); });
+    return true;
+  } catch {
     return false;
   }
 }
@@ -156,16 +207,26 @@ function playUrl(url: string, volume = 0.4, playbackRate = 1.0): boolean {
 // Decoded AudioBuffer cache — used for channel-swapped playback when a
 // move originates from the opponent's side. Falls back to HTMLAudio if
 // decoding fails or Web Audio is unavailable.
+const audioDataCache = new Map<string, Promise<ArrayBuffer | null>>();
 const bufferCache = new Map<string, Promise<AudioBuffer | null>>();
+
+function loadAudioData(url: string): Promise<ArrayBuffer | null> {
+  const cached = audioDataCache.get(url);
+  if (cached) return cached;
+  const p = fetch(url)
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('bad'))))
+    .catch(() => null);
+  audioDataCache.set(url, p);
+  return p;
+}
 
 function loadBuffer(url: string): Promise<AudioBuffer | null> {
   const cached = bufferCache.get(url);
   if (cached) return cached;
   const ac = getCtx();
   if (!ac) return Promise.resolve(null);
-  const p = fetch(url)
-    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('bad'))))
-    .then((ab) => ac.decodeAudioData(ab))
+  const p = loadAudioData(url)
+    .then((ab) => (ab ? ac.decodeAudioData(ab.slice(0)) : null))
     .catch(() => null);
   bufferCache.set(url, p);
   return p;
@@ -482,26 +543,57 @@ export function stopBattleBgm(): void {
 
 // ─── Pokémon cries ───────────────────────────────────────────────────────
 
+function cryIdForPokemon(pokemonName: string): string {
+  return pokemonName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function cryUrlForPokemon(pokemonName: string): string | null {
+  const id = cryIdForPokemon(pokemonName);
+  return id ? `${BASE_PATH}/api/cries/${id}.mp3` : null;
+}
+
+function playDecodedUrl(url: string, volume = 0.4, playbackRate = 1.0): boolean {
+  if (sfxMuted) return true;
+  const ac = getCtx();
+  if (!ac) return playFreshAudio(url, volume, playbackRate);
+  if (ac.state !== 'running') {
+    void ac.resume().catch(() => {});
+  }
+  loadBuffer(url).then((buf) => {
+    if (!buf || ac.state !== 'running') {
+      playFreshAudio(url, volume, playbackRate);
+      return;
+    }
+    try {
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = playbackRate;
+      const gain = ac.createGain();
+      gain.gain.value = Math.max(0, Math.min(1, volume));
+      src.connect(gain).connect(ac.destination);
+      src.start();
+    } catch {
+      playFreshAudio(url, volume, playbackRate);
+    }
+  });
+  return true;
+}
+
 export function playCry(pokemonName: string, volume = 0.3, playbackRate = 1.0): void {
   if (sfxMuted) return;
   if (!pokemonName) return;
-  const id = pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
-  const url = `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
-  const entry = getOrCreate(url);
-  if (entry.failed) return;
-  try {
-    const node = entry.el.cloneNode(true) as HTMLAudioElement;
-    node.volume = Math.max(0, Math.min(1, volume));
-    node.playbackRate = playbackRate;
-    const p = node.play();
-    if (p && typeof p.then === 'function') p.catch(() => { entry.failed = true; });
-  } catch { entry.failed = true; }
+  const url = cryUrlForPokemon(pokemonName);
+  if (!url) return;
+  playDecodedUrl(url, volume, playbackRate);
 }
 
 export function preloadCries(pokemonNames: string[]): void {
-  const urls = pokemonNames.map((n) => {
-    const id = n.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    return `${SHOWDOWN_CDN}/audio/cries/${id}.mp3`;
-  });
-  preloadAudio(urls);
+  const urls = pokemonNames
+    .map(cryUrlForPokemon)
+    .filter((url): url is string => Boolean(url));
+  for (const url of urls) void loadAudioData(url);
 }

@@ -848,6 +848,74 @@ app.get(`${BASE_PATH}/metrics`, async (_req, res) => {
   res.end(await metricsRegistry.metrics());
 });
 
+const CRY_ID_RE = /^[a-z0-9]+$/;
+const CRY_CACHE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const cryCache = new Map<string, Promise<{ body: Buffer; contentType: string }>>();
+
+function parseByteRange(rangeHeader: string | undefined, size: number): { start: number; end: number } | null {
+  if (!rangeHeader) return null;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
+  if (!match) return null;
+  const [, rawStart, rawEnd] = match;
+  if (!rawStart && !rawEnd) return null;
+  const suffixLength = rawStart ? null : Number(rawEnd);
+  const start = suffixLength === null ? Number(rawStart) : Math.max(0, size - suffixLength);
+  const end = rawEnd && suffixLength === null ? Number(rawEnd) : size - 1;
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start || start >= size) return null;
+  return { start, end: Math.min(end, size - 1) };
+}
+
+async function fetchCry(id: string): Promise<{ body: Buffer; contentType: string }> {
+  let cached = cryCache.get(id);
+  if (!cached) {
+    cached = fetch(`https://play.pokemonshowdown.com/audio/cries/${id}.mp3`).then(async (response) => {
+      if (!response.ok) throw new Error(`Cry ${id} returned ${response.status}`);
+      const arrayBuffer = await response.arrayBuffer();
+      return {
+        body: Buffer.from(arrayBuffer),
+        contentType: response.headers.get('content-type') || 'audio/mpeg',
+      };
+    }).catch((error) => {
+      cryCache.delete(id);
+      throw error;
+    });
+    cryCache.set(id, cached);
+  }
+  return cached;
+}
+
+app.get(`${BASE_PATH}/api/cries/:id.mp3`, async (req, res) => {
+  const id = req.params.id;
+  if (!CRY_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Invalid cry id' });
+  }
+
+  try {
+    const { body, contentType } = await fetchCry(id);
+    res.set({
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': `public, max-age=${CRY_CACHE_MAX_AGE_SECONDS}, immutable`,
+      'Content-Type': contentType,
+    });
+
+    const range = parseByteRange(req.headers.range, body.length);
+    if (!range) {
+      res.set('Content-Length', String(body.length));
+      return res.end(body);
+    }
+
+    res.status(206);
+    res.set({
+      'Content-Length': String(range.end - range.start + 1),
+      'Content-Range': `bytes ${range.start}-${range.end}/${body.length}`,
+    });
+    return res.end(body.subarray(range.start, range.end + 1));
+  } catch (error) {
+    console.warn(`Failed to proxy Pokemon cry "${id}":`, error);
+    return res.sendStatus(404);
+  }
+});
+
 // Analytics endpoint — battle stats breakdown
 app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
   const byMode = db.prepare(`
