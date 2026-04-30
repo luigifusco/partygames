@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { PokemonInstance, Pokemon, BoxTier, OwnedItem } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
@@ -13,6 +13,9 @@ import { useStoryChapters } from '../hooks/useStoryChapters';
 import './CollectionScreen.css';
 
 const TIERS: (BoxTier | 'all')[] = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary'];
+const COLLECTION_STATE_KEY = 'pp:collectionState';
+
+type CollectionStoredState = Partial<{ filter: BoxTier | 'all'; nameQuery: string; scrollTop: number }>;
 
 interface CollectionScreenProps {
   collection: PokemonInstance[];
@@ -30,10 +33,23 @@ function getEvoTargets(pokemon: Pokemon): Pokemon[] {
     .filter(Boolean);
 }
 
+function readCollectionState(): CollectionStoredState {
+  const raw = sessionStorage.getItem(COLLECTION_STATE_KEY);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as CollectionStoredState;
+  } catch (error) {
+    console.warn('Could not restore collection state', error);
+    return {};
+  }
+}
+
 export default function CollectionScreen({ collection, items, onShard, playerId, onRefresh }: CollectionScreenProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const bondUnlocked = chapters.has(BOND_UNLOCK_CHAPTER);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const restoredScrollRef = useRef(false);
 
   // Ensure the collection reflects any bond-XP / evolution changes that
   // happened during the preceding battle. If a socket event was missed
@@ -45,8 +61,14 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [filter, setFilter] = useState<BoxTier | 'all'>('all');
-  const [nameQuery, setNameQuery] = useState('');
+  const [filter, setFilter] = useState<BoxTier | 'all'>(() => {
+    const saved = readCollectionState();
+    return saved.filter && TIERS.includes(saved.filter) ? saved.filter : 'all';
+  });
+  const [nameQuery, setNameQuery] = useState(() => {
+    const saved = readCollectionState();
+    return typeof saved.nameQuery === 'string' ? saved.nameQuery : '';
+  });
   const [shardMode, setShardMode] = useState(false);
   const [shardSelected, setShardSelected] = useState<Set<string>>(new Set());
   const [shardPreview, setShardPreview] = useState<PokemonInstance[] | null>(null);
@@ -70,6 +92,30 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
       if (aFav !== bFav) return aFav - bFav;
       return a.pokemon.id - b.pokemon.id;
     });
+
+  const saveCollectionState = (next?: CollectionStoredState) => {
+    const state = {
+      filter,
+      nameQuery,
+      scrollTop: gridRef.current?.scrollTop ?? 0,
+      ...next,
+    };
+    sessionStorage.setItem(COLLECTION_STATE_KEY, JSON.stringify(state));
+  };
+
+  useEffect(() => {
+    saveCollectionState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, nameQuery]);
+
+  useLayoutEffect(() => {
+    if (restoredScrollRef.current || !gridRef.current) return;
+    restoredScrollRef.current = true;
+    const saved = readCollectionState();
+    if (typeof saved.scrollTop === 'number') {
+      gridRef.current.scrollTop = saved.scrollTop;
+    }
+  }, [filtered.length]);
 
   // Evolution is triggered from the Pokemon detail screen — clicking a
   // ready-to-evolve card just navigates there via the normal onClick.
@@ -130,14 +176,23 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
           className="collection-search-input"
           placeholder="Search name, move, ability, nature…"
           value={nameQuery}
-          onChange={(e) => setNameQuery(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setNameQuery(next);
+            saveCollectionState({ nameQuery: next, scrollTop: 0 });
+            if (gridRef.current) gridRef.current.scrollTop = 0;
+          }}
           aria-label="Search Pokémon by name"
         />
         {nameQuery && (
           <button
             type="button"
             className="collection-search-clear"
-            onClick={() => setNameQuery('')}
+            onClick={() => {
+              setNameQuery('');
+              saveCollectionState({ nameQuery: '', scrollTop: 0 });
+              if (gridRef.current) gridRef.current.scrollTop = 0;
+            }}
             aria-label="Clear search"
           >
             ×
@@ -149,16 +204,26 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
           <button
             key={tier}
             className={`collection-filter-btn ${filter === tier ? 'active' : ''}`}
-            onClick={() => setFilter(tier)}
+            onClick={() => {
+              setFilter(tier);
+              saveCollectionState({ filter: tier, scrollTop: 0 });
+              if (gridRef.current) gridRef.current.scrollTop = 0;
+            }}
           >
             {tier === 'all' ? 'All' : tier.charAt(0).toUpperCase() + tier.slice(1)}
           </button>
         ))}
       </div>
       {filtered.length === 0 ? (
-        <div className="collection-empty">No Pokémon yet — visit the shop!</div>
+        <div className="collection-empty">
+          {collection.length === 0 ? 'No Pokémon yet — visit the shop!' : 'No Pokémon match your search or filters.'}
+        </div>
       ) : (
-        <div className="collection-grid">
+        <div
+          className="collection-grid"
+          ref={gridRef}
+          onScroll={() => saveCollectionState()}
+        >
           {filtered.map((inst) => {
             const targets = getEvoTargets(inst.pokemon);
             const firstTarget = targets[0];
@@ -176,7 +241,10 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
                 instance={inst}
                 onClick={() => {
                   if (shardMode) toggleShardSelect(inst);
-                  else navigate(`/pokemon/${getCollectionIndex(inst)}`);
+                  else {
+                    saveCollectionState();
+                    navigate(`/pokemon/${getCollectionIndex(inst)}`);
+                  }
                 }}
                 className={`${shardMode && isShardSelected ? 'shard-selected' : ''} ${inst.favorite ? 'favorite' : ''} ${!shardMode && canEvolve ? 'ready-to-evolve' : ''}`}
               >

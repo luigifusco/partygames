@@ -73,6 +73,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
   const [reawakenPrompt, setReawakenPrompt] = useState<Pokemon | null>(null);
   const [reawakenError, setReawakenError] = useState<string | null>(null);
   const [reawakening, setReawakening] = useState<{ species: Pokemon } | null>(null);
+  const [pokemonPickerQuery, setPokemonPickerQuery] = useState('');
 
   const showSuccess = (icon: string, text: string, pokemonSprite: string) => {
     setSuccessAnim({ icon, text, pokemonSprite });
@@ -139,14 +140,17 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
   const hasItems = tmGroups.length > 0 || tokenGroups.length > 0 || boostGroups.length > 0 || heldItemGroups.length > 0 || pokemonWithItems.length > 0;
 
   const handleUseTM = (moveName: string) => {
+    setPokemonPickerQuery('');
     setTeachPhase({ step: 'pickPokemon', moveName });
   };
 
   const handleUseBoost = (stat: StatKey) => {
+    setPokemonPickerQuery('');
     setBoostPhase({ step: 'pickPokemon', stat });
   };
 
   const handleGiveHeldItem = (itemId: string) => {
+    setPokemonPickerQuery('');
     setHeldItemPhase({ step: 'pickPokemon', itemId });
   };
 
@@ -179,6 +183,39 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
 
   // Sorted collection for pokemon picker
   const sortedCollection = [...collection].sort((a, b) => a.pokemon.id - b.pokemon.id);
+  const normalizedPickerQuery = pokemonPickerQuery.trim().toLowerCase();
+  const matchesPokemonPickerQuery = (inst: PokemonInstance) => {
+    if (!normalizedPickerQuery) return true;
+    if (inst.pokemon.name.toLowerCase().includes(normalizedPickerQuery)) return true;
+    if ((inst.ability ?? '').toLowerCase().includes(normalizedPickerQuery)) return true;
+    if ((inst.nature ?? '').toLowerCase().includes(normalizedPickerQuery)) return true;
+    return getEffectiveMoves(inst).some((move) => move.toLowerCase().includes(normalizedPickerQuery));
+  };
+
+  const renderPokemonPickerSearch = (placeholder = 'Search name, move, ability, nature…') => (
+    <div className="teach-search-row">
+      <span className="teach-search-icon" aria-hidden>🔍</span>
+      <input
+        type="search"
+        className="teach-search-input"
+        placeholder={placeholder}
+        value={pokemonPickerQuery}
+        onChange={(e) => setPokemonPickerQuery(e.target.value)}
+        aria-label="Search Pokémon"
+        autoFocus
+      />
+      {pokemonPickerQuery && (
+        <button
+          type="button"
+          className="teach-search-clear"
+          onClick={() => setPokemonPickerQuery('')}
+          aria-label="Clear search"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="items-screen">
@@ -373,7 +410,9 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
 
       {/* Step 1: Pick a pokemon to teach the TM to */}
       {teachPhase?.step === 'pickPokemon' && (() => {
-        const eligible = sortedCollection.filter((inst) => canLearnMove(inst.pokemon.name, teachPhase.moveName));
+        const eligible = sortedCollection
+          .filter((inst) => canLearnMove(inst.pokemon.name, teachPhase.moveName))
+          .filter(matchesPokemonPickerQuery);
         return (
         <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setTeachPhase(null)}>
           <div className="teach-content">
@@ -381,8 +420,9 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
               <span>Teach <strong>{teachPhase.moveName}</strong> to...</span>
               <button className="teach-close" onClick={() => setTeachPhase(null)}>✕</button>
             </div>
+            {renderPokemonPickerSearch()}
             {eligible.length === 0 ? (
-              <div className="teach-empty">No Pokémon in your collection can learn this move</div>
+              <div className="teach-empty">{pokemonPickerQuery ? 'No matching Pokémon can learn this move' : 'No Pokémon in your collection can learn this move'}</div>
             ) : (
               <div className="teach-pokemon-grid">
                 {eligible.map((inst) => (
@@ -443,12 +483,13 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
               <span>Use <strong>{getBoostName(boostPhase.stat)}</strong> on...</span>
               <button className="teach-close" onClick={() => setBoostPhase(null)}>✕</button>
             </div>
+            {renderPokemonPickerSearch()}
             <div className="boost-hint">Max {STAT_LABELS[boostPhase.stat]} IV → {MAX_IV}</div>
-            {sortedCollection.length === 0 ? (
-              <div className="teach-empty">No Pokémon in your collection</div>
+            {sortedCollection.filter(matchesPokemonPickerQuery).length === 0 ? (
+              <div className="teach-empty">{pokemonPickerQuery ? 'No matching Pokémon' : 'No Pokémon in your collection'}</div>
             ) : (
               <div className="teach-pokemon-grid">
-                {sortedCollection.map((inst) => {
+                {sortedCollection.filter(matchesPokemonPickerQuery).map((inst) => {
                   const isMaxed = inst.ivs[boostPhase.stat] >= MAX_IV;
                   return (
                     <div
@@ -472,7 +513,9 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
 
       {/* Held Item: Pick a pokemon to give the item to */}
       {heldItemPhase?.step === 'pickPokemon' && (() => {
-        const eligible = sortedCollection.filter((inst) => !inst.heldItem);
+        const eligible = sortedCollection
+          .filter((inst) => !inst.heldItem)
+          .filter(matchesPokemonPickerQuery);
         return (
         <div className="teach-overlay" onClick={(e) => e.target === e.currentTarget && setHeldItemPhase(null)}>
           <div className="teach-content">
@@ -480,11 +523,12 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
               <span>Give <strong>{getHeldItemName(heldItemPhase.itemId)}</strong> to...</span>
               <button className="teach-close" onClick={() => setHeldItemPhase(null)}>✕</button>
             </div>
+            {renderPokemonPickerSearch()}
             <div className="held-item-desc" style={{ fontSize: '11px', color: '#aaa', padding: '0 12px 8px', textAlign: 'center' }}>
               {HELD_ITEMS_BY_ID[heldItemPhase.itemId]?.description}
             </div>
             {eligible.length === 0 ? (
-              <div className="teach-empty">All Pokémon are already holding items</div>
+              <div className="teach-empty">{pokemonPickerQuery ? 'No matching Pokémon can receive this item' : 'All Pokémon are already holding items'}</div>
             ) : (
               <div className="teach-pokemon-grid">
                 {eligible.map((inst) => (
