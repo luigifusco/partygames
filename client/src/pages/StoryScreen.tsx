@@ -11,6 +11,7 @@ import TeamSelectGrid from '../components/TeamSelectGrid';
 import type { BattleSnapshot } from '@shared/battle-types';
 import type { PokemonInstance } from '@shared/types';
 import { BASE_PATH } from '../config';
+import { getStoryDialogueLines, getStoryLocale } from '../locales/storyDialogue';
 import './StoryScreen.css';
 
 const API = BASE_PATH;
@@ -70,6 +71,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   const [selectedCharacters, setSelectedCharacters] = useState<(string | null)[]>([]);
   const [battleFinished, setBattleFinished] = useState(false);
   const [dialogueLineIdx, setDialogueLineIdx] = useState(0);
+  const storyLocale = useMemo(() => getStoryLocale(), []);
 
   useEffect(() => {
     fetch(API + '/api/player/' + playerId + '/story')
@@ -449,7 +451,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
 
   // ─── Dialogue View ───
   if (phase === 'dialogue' && activeStoryline && step?.type === 'dialogue') {
-    const lines = step.lines ?? [];
+    const lines = getStoryDialogueLines(activeStoryline.id, activeStepIdx, step.lines ?? [], storyLocale);
     return (
       <div className="story-screen">
         <div className="story-dialogue story-dialogue--scene">
