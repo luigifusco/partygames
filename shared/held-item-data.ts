@@ -10,6 +10,7 @@ export interface HeldItemDef {
 }
 
 const ITEMS_PATH = '/pokemonparty/assets/items';
+const SHOP_PRICE_MULTIPLIER = 10;
 
 export const HELD_ITEMS: HeldItemDef[] = [
   // Recovery
@@ -61,5 +62,5 @@ export function getHeldItemName(itemId: string): string {
 }
 
 export function getHeldItemPrice(itemId: string): number {
-  return HELD_ITEMS_BY_ID[itemId]?.price ?? 100;
+  return (HELD_ITEMS_BY_ID[itemId]?.price ?? 100) * SHOP_PRICE_MULTIPLIER;
 }

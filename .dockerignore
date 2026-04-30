@@ -1,6 +1,8 @@
 node_modules/
 client/dist/
+client/src/**/*.js
 server/dist/
+shared/**/*.js
 data/
 *.db
 *.db-shm

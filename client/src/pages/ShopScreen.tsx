@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ALL_SHOP_TMS, getTMPrice } from '@shared/shop-data';
 import { getMoveType, getTMSprite, STAT_MOVES, getMoveAccuracy } from '@shared/move-data';
 import { getMoveInfo } from '@shared/move-info';
-import { HELD_ITEMS } from '@shared/held-item-data';
+import { HELD_ITEMS, getHeldItemPrice } from '@shared/held-item-data';
 import type { HeldItemDef } from '@shared/held-item-data';
+import { SHOP_UNLOCK_CHAPTER } from '@shared/story-data';
 import type { PokemonType } from '@shared/types';
+import { useStoryChaptersStatus } from '../hooks/useStoryChapters';
 import './ShopScreen.css';
 
 const TYPE_COLORS: Partial<Record<PokemonType, string>> = {
@@ -18,6 +20,7 @@ const TYPE_COLORS: Partial<Record<PokemonType, string>> = {
 
 interface ShopScreenProps {
   essence: number;
+  playerId: string;
   onSpendEssence: (amount: number) => void;
   onAddItems: (items: { itemType: string; itemData: string }[]) => void;
 }
@@ -25,7 +28,7 @@ interface ShopScreenProps {
 type SortMode = 'name' | 'price-asc' | 'price-desc' | 'type';
 type FilterType = 'all' | PokemonType | 'stat';
 
-export default function ShopScreen({ essence, onSpendEssence, onAddItems }: ShopScreenProps) {
+export default function ShopScreen({ essence, playerId, onSpendEssence, onAddItems }: ShopScreenProps) {
   const navigate = useNavigate();
   const [bought, setBought] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -33,6 +36,8 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
   const [tab, setTab] = useState<'tms' | 'held'>('tms');
   const [sort, setSort] = useState<SortMode>('type');
   const [filter, setFilter] = useState<FilterType>('all');
+  const { chapters, loaded: chaptersLoaded } = useStoryChaptersStatus(playerId);
+  const shopUnlocked = chapters.has(SHOP_UNLOCK_CHAPTER);
 
   const allTypes = useMemo(() => {
     const types = new Set<PokemonType>();
@@ -68,8 +73,9 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
   };
 
   const handleBuyHeldItem = (item: HeldItemDef) => {
-    if (essence < item.price) return;
-    onSpendEssence(item.price);
+    const price = getHeldItemPrice(item.id);
+    if (essence < price) return;
+    onSpendEssence(price);
     onAddItems([{ itemType: 'held_item', itemData: item.id }]);
     setSelectedHeldItem(null);
     setBought(item.name);
@@ -83,6 +89,23 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
         <div className="ds-topbar-title">Shop</div>
         <div className="ds-stat ds-stat-essence"><span className="ds-stat-icon">✦</span>{essence}</div>
       </div>
+
+      {!chaptersLoaded && (
+        <div className="ds-card shop-lock-card">
+          <p>Loading shop...</p>
+        </div>
+      )}
+
+      {chaptersLoaded && !shopUnlocked && (
+        <div className="ds-card shop-lock-card">
+          <h3>Shop locked</h3>
+          <p>Complete N's final battle in Story Mode to unlock the shop.</p>
+          <button className="ds-btn ds-btn-primary" onClick={() => navigate('/story')}>Go to Story Mode</button>
+        </div>
+      )}
+
+      {chaptersLoaded && shopUnlocked && (
+        <>
 
       <div className="shop-tabs-wrap">
         <div className="ds-tabs" role="tablist">
@@ -208,7 +231,8 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
       {tab === 'held' && (
         <div className="shop-grid">
           {HELD_ITEMS.map((item) => {
-            const canAfford = essence >= item.price;
+            const price = getHeldItemPrice(item.id);
+            const canAfford = essence >= price;
             return (
               <div
                 key={item.id}
@@ -222,7 +246,7 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
                     <span className="shop-tm-badge held">HELD</span>
                   </div>
                 </div>
-                <div className="shop-tm-price">✦ {item.price}</div>
+                <div className="shop-tm-price">✦ {price}</div>
               </div>
             );
           })}
@@ -231,7 +255,8 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
 
       {selectedHeldItem && (() => {
         const item = selectedHeldItem;
-        const canAfford = essence >= item.price;
+        const price = getHeldItemPrice(item.id);
+        const canAfford = essence >= price;
         return (
           <div className="ds-overlay" onClick={(e) => e.target === e.currentTarget && setSelectedHeldItem(null)}>
             <div className="ds-modal shop-detail-card">
@@ -241,7 +266,7 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
                 <span className="shop-tm-badge held">HELD ITEM</span>
               </div>
               <p className="shop-detail-desc">{item.description}</p>
-              <div className="shop-detail-price">✦ {item.price}</div>
+              <div className="shop-detail-price">✦ {price}</div>
               <div className="shop-detail-actions">
                 <button className="ds-btn ds-btn-ghost ds-btn-block" onClick={() => setSelectedHeldItem(null)}>Back</button>
                 <button
@@ -256,6 +281,8 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
           </div>
         );
       })()}
+        </>
+      )}
 
       {bought && (
         <div className="shop-toast">Purchased: {bought}!</div>

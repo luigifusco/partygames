@@ -33,7 +33,6 @@ export default function AdminPanel() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [editingEssence, setEditingEssence] = useState<Record<string, string>>({});
   const [editingElo, setEditingElo] = useState<Record<string, string>>({});
-  const [tmShopEnabled, setTmShopEnabled] = useState(false);
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
   const [loginDisabled, setLoginDisabled] = useState(false);
 
@@ -46,7 +45,6 @@ export default function AdminPanel() {
     setPlayers((await pRes.json()).players);
     setStats(await sRes.json());
     const settings = await wRes.json();
-    setTmShopEnabled(settings.tm_shop_enabled ?? false);
     setAiBattleEnabled(settings.ai_battle_enabled ?? false);
     setLoginDisabled(settings.login_disabled ?? false);
   }, []);
@@ -621,24 +619,6 @@ export default function AdminPanel() {
         {/* Feature toggles */}
         <div className="ds-section-title">Features</div>
         <div className="ds-card">
-          <div className="admin-field-row">
-            <div className="admin-field-label">
-              TM Shop
-              <span className="admin-field-desc">Allow players to buy TMs</span>
-            </div>
-            <label className="ds-toggle admin-field-control">
-              <input
-                type="checkbox"
-                checked={tmShopEnabled}
-                onChange={async (e) => {
-                  const next = e.target.checked;
-                  await saveSetting('tm_shop_enabled', next);
-                  setTmShopEnabled(next);
-                }}
-              />
-              <span className="ds-toggle-slider" />
-            </label>
-          </div>
           <div className="admin-field-row">
             <div className="admin-field-label">
               AI Battle

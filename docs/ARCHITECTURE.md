@@ -43,7 +43,7 @@
 | `/pokemon/:idx` | PokemonDetailScreen | ✓ | Individual Pokémon stats |
 | `/pokedex` | PokedexScreen | ✓ | Browse all species |
 | `/store` | StoreScreen | ✓ | Buy expansion boxes |
-| `/shop` | ShopScreen | ✓ | Buy items (TMs, boosts) |
+| `/shop` | ShopScreen | ✓ | Buy shop items (TMs, held items) |
 | `/items` | ItemsScreen | ✓ | Use TMs and boost items |
 | `/trade` | TradeScreen | ✓ | 1-for-1 Pokémon trades via Socket.IO |
 | `/battle` | BattleMultiplayer | ✓ | PvP battle (Socket.IO) |

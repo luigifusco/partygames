@@ -1,5 +1,6 @@
-// TM Shop pricing — cost in essence to purchase a TM
+// Shop pricing — cost in essence to purchase a TM
 // Prices based on move power, accuracy, and competitive utility
+export const SHOP_PRICE_MULTIPLIER = 10;
 
 export const TM_PRICES: Record<string, number> = {
   // === Premium moves (high power / top competitive) ===
@@ -571,7 +572,7 @@ export const TM_PRICES: Record<string, number> = {
 };
 
 export function getTMPrice(moveName: string): number {
-  return TM_PRICES[moveName] ?? 100;
+  return (TM_PRICES[moveName] ?? 100) * SHOP_PRICE_MULTIPLIER;
 }
 
 export const ALL_SHOP_TMS = Object.keys(TM_PRICES).sort();

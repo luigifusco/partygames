@@ -101,6 +101,47 @@ const battlesTotal = new promClient.Counter({ name: 'pokemonparty_battles_total'
 const tradesTotal = new promClient.Counter({ name: 'pokemonparty_trades_total', help: 'Total trades completed', registers: [metricsRegistry] });
 const battleRounds = new promClient.Histogram({ name: 'pokemonparty_battle_rounds', help: 'Rounds per battle', labelNames: ['field_size', 'total_pokemon'], buckets: [5, 10, 15, 20, 30, 40, 50], registers: [metricsRegistry] });
 const playersRegistered = new promClient.Gauge({ name: 'pokemonparty_players_registered', help: 'Total registered players', registers: [metricsRegistry] });
+const realtimeState = new promClient.Gauge({ name: 'pokemonparty_realtime_state', help: 'Current realtime in-memory state counts', labelNames: ['state'], registers: [metricsRegistry] });
+const httpRequestsTotal = new promClient.Counter({ name: 'pokemonparty_http_requests_total', help: 'HTTP requests handled by status and route', labelNames: ['method', 'route', 'status_code'], registers: [metricsRegistry] });
+const httpRequestDuration = new promClient.Histogram({ name: 'pokemonparty_http_request_duration_seconds', help: 'HTTP request duration by route', labelNames: ['method', 'route', 'status_code'], buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5], registers: [metricsRegistry] });
+const battleSimulationDuration = new promClient.Histogram({ name: 'pokemonparty_battle_simulation_duration_seconds', help: 'Server-side battle simulation duration', labelNames: ['opponent_type'], buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10], registers: [metricsRegistry] });
+const gameplayEventsTotal = new promClient.Counter({ name: 'pokemonparty_gameplay_events_total', help: 'Gameplay events processed by the server', labelNames: ['event'], registers: [metricsRegistry] });
+const bondXpAwardedTotal = new promClient.Counter({ name: 'pokemonparty_bond_xp_awarded_total', help: 'Bond XP awarded by mode', labelNames: ['mode'], registers: [metricsRegistry] });
+const bondAwardsTotal = new promClient.Counter({ name: 'pokemonparty_bond_awards_total', help: 'Bond XP award count by mode', labelNames: ['mode'], registers: [metricsRegistry] });
+const tournamentsGauge = new promClient.Gauge({ name: 'pokemonparty_tournaments', help: 'Tournaments by status', labelNames: ['status'], registers: [metricsRegistry] });
+const dbRowsGauge = new promClient.Gauge({ name: 'pokemonparty_db_rows', help: 'Rows by SQLite table', labelNames: ['table'], registers: [metricsRegistry] });
+const dbSizeGauge = new promClient.Gauge({ name: 'pokemonparty_db_size_bytes', help: 'SQLite database size in bytes', registers: [metricsRegistry] });
+
+const REALTIME_STATES = ['active_battles', 'pending_challenges', 'active_trades', 'pending_trades', 'active_drafts'] as const;
+const TOURNAMENT_STATUSES = ['registration', 'active', 'completed', 'cancelled'] as const;
+const DB_ROW_TABLES = ['players', 'owned_pokemon', 'owned_items', 'battles', 'trades', 'battle_pokemon_usage', 'battle_team_entries', 'story_progress', 'pokedex', 'tournaments'] as const;
+const GAMEPLAY_EVENTS = ['player_created', 'battle_completed', 'trade_completed', 'tournament_created', 'tournament_started', 'tournament_cancelled', 'tournament_joined', 'tournament_team_locked', 'minigame_reward', 'story_completed'] as const;
+const BOND_METRIC_MODES = ['ai', 'demo', 'friendly', 'pvp', 'story', 'tournament', 'minigame'] as const;
+
+function initializeMetricSeries() {
+  for (const state of REALTIME_STATES) realtimeState.labels(state).set(0);
+  for (const status of TOURNAMENT_STATUSES) tournamentsGauge.labels(status).set(0);
+  for (const table of DB_ROW_TABLES) dbRowsGauge.labels(table).set(0);
+  for (const event of GAMEPLAY_EVENTS) gameplayEventsTotal.labels(event).inc(0);
+  for (const mode of BOND_METRIC_MODES) {
+    bondXpAwardedTotal.labels(mode).inc(0);
+    bondAwardsTotal.labels(mode).inc(0);
+  }
+  battleSimulationDuration.labels('ai');
+  battleSimulationDuration.labels('pvp');
+  battleSimulationDuration.labels('tournament');
+  battleSimulationDuration.labels('ai').observe(0);
+  battleSimulationDuration.labels('pvp').observe(0);
+  battleSimulationDuration.labels('tournament').observe(0);
+  httpRequestsTotal.labels('GET', '/metrics', '200').inc(0);
+  httpRequestDuration.labels('GET', '/metrics', '200');
+  battlesTotal.labels('3', '3', 'blind', 'ai').inc(0);
+  battlesTotal.labels('3', '3', 'blind', 'pvp').inc(0);
+  battlesTotal.labels('1', '3', 'blind', 'tournament').inc(0);
+  tradesTotal.inc(0);
+}
+
+initializeMetricSeries();
 
 // Seed metrics from DB on startup
 const playerCount = (db.prepare('SELECT COUNT(*) as c FROM players').get() as any).c;
@@ -112,6 +153,82 @@ for (const row of battleRows) {
 }
 const tradeCount = (db.prepare('SELECT COUNT(*) as c FROM trades').get() as any).c;
 tradesTotal.inc(tradeCount);
+
+function metricRoute(req: express.Request): string {
+  const routePath = req.route?.path;
+  if (typeof routePath === 'string') return routePath.replace(BASE_PATH, '') || '/';
+  const pathOnly = req.originalUrl.split('?')[0] ?? req.path;
+  return pathOnly.replace(BASE_PATH, '') || '/';
+}
+
+function updateScrapeMetrics() {
+  playersRegistered.set((db.prepare('SELECT COUNT(*) as c FROM players').get() as any).c);
+  playersOnline.set(connectedPlayers.size);
+
+  realtimeState.labels('active_battles').set(activeBattles.size);
+  realtimeState.labels('pending_challenges').set(pendingChallenges.size);
+  realtimeState.labels('active_trades').set(activeTrades.size);
+  realtimeState.labels('pending_trades').set(pendingTrades.size);
+  realtimeState.labels('active_drafts').set(activeDrafts.size);
+
+  for (const status of TOURNAMENT_STATUSES) tournamentsGauge.labels(status).set(0);
+  const tournamentRows = db.prepare('SELECT status, COUNT(*) as count FROM tournaments GROUP BY status').all() as any[];
+  for (const row of tournamentRows) tournamentsGauge.labels(String(row.status)).set(row.count ?? 0);
+
+  for (const table of DB_ROW_TABLES) {
+    try {
+      const row = db.prepare(`SELECT COUNT(*) as c FROM ${table}`).get() as any;
+      dbRowsGauge.labels(table).set(row.c ?? 0);
+    } catch (e) {
+      console.error(`Failed to collect row count for ${table}:`, e);
+      dbRowsGauge.labels(table).set(0);
+    }
+  }
+
+  const dataDir = path.join(__dirname, '../../data');
+  let dbSize = 0;
+  for (const suffix of ['', '-wal', '-shm']) {
+    const file = path.join(dataDir, 'game.db' + suffix);
+    try {
+      if (fs.existsSync(file)) dbSize += fs.statSync(file).size;
+    } catch (e) {
+      console.error(`Failed to stat ${file}:`, e);
+    }
+  }
+  dbSizeGauge.set(dbSize);
+}
+
+function observeBattleSimulation<T>(opponentType: 'ai' | 'pvp' | 'tournament', simulate: () => T): T {
+  const start = process.hrtime.bigint();
+  try {
+    return simulate();
+  } finally {
+    const elapsedSeconds = Number(process.hrtime.bigint() - start) / 1e9;
+    battleSimulationDuration.labels(opponentType).observe(elapsedSeconds);
+  }
+}
+
+function recordBondAwards(mode: string, awards: BondAward[]) {
+  if (awards.length === 0) return;
+  const totalXp = awards.reduce((sum, award) => sum + award.delta, 0);
+  bondAwardsTotal.labels(mode).inc(awards.length);
+  bondXpAwardedTotal.labels(mode).inc(totalXp);
+}
+
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const labels = {
+      method: req.method,
+      route: metricRoute(req),
+      status_code: String(res.statusCode),
+    };
+    const elapsedSeconds = Number(process.hrtime.bigint() - start) / 1e9;
+    httpRequestsTotal.inc(labels);
+    httpRequestDuration.observe(labels, elapsedSeconds);
+  });
+  next();
+});
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -252,10 +369,11 @@ function awardBondXp(
     }
     awards.push({ instanceId, slot: i, delta, total, threshold, previous });
   }
+  recordBondAwards(mode, awards);
   return awards;
 }
 
-function awardBondXpDirect(playerId: string, instanceId: string, delta: number): BondAward | null {
+function awardBondXpDirect(playerId: string, instanceId: string, delta: number, mode = 'minigame'): BondAward | null {
   if (!instanceId || delta <= 0) return null;
   if (!hasBondUnlocked(playerId)) return null;
   const row = db.prepare('SELECT bond_xp, pokemon_id FROM owned_pokemon WHERE id = ? AND player_id = ?').get(instanceId, playerId) as any;
@@ -271,7 +389,9 @@ function awardBondXpDirect(playerId: string, instanceId: string, delta: number):
     const targetSpecies = firstTargetId != null ? POKEMON_BY_ID[firstTargetId] : undefined;
     if (targetSpecies) threshold = bondThresholdForStep(targetSpecies.tier, step);
   }
-  return { instanceId, slot: 0, delta, total, threshold, previous };
+  const award = { instanceId, slot: 0, delta, total, threshold, previous };
+  recordBondAwards(mode, [award]);
+  return award;
 }
 
 // --- REST API ---
@@ -313,6 +433,7 @@ app.post(`${BASE_PATH}/api/register`, (req, res) => {
   const id = uuidv4();
   db.prepare('INSERT INTO players (id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?)').run(id, trimmed, STARTING_ESSENCE, STARTING_ELO, picture);
   playersRegistered.inc();
+  gameplayEventsTotal.labels('player_created').inc();
 
   const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE id = ?').get(id);
   return res.json({ player });
@@ -844,6 +965,7 @@ app.get(`${BASE_PATH}/api/players/online`, (_req, res) => {
 
 // Prometheus metrics endpoint
 app.get(`${BASE_PATH}/metrics`, async (_req, res) => {
+  updateScrapeMetrics();
   res.set('Content-Type', metricsRegistry.contentType);
   res.end(await metricsRegistry.metrics());
 });
@@ -1298,11 +1420,10 @@ app.post(`${BASE_PATH}/api/admin/broadcast`, (req, res) => {
 
 // Public endpoint for feature flags
 app.get(`${BASE_PATH}/api/settings/features`, (_req, res) => {
-  const rows = db.prepare("SELECT key, value FROM game_settings WHERE key IN ('tm_shop_enabled', 'ai_battle_enabled', 'login_disabled')").all() as any[];
-  const flags: Record<string, boolean> = { tmShopEnabled: false, aiBattleEnabled: false, loginDisabled: false };
+  const rows = db.prepare("SELECT key, value FROM game_settings WHERE key IN ('ai_battle_enabled', 'login_disabled')").all() as any[];
+  const flags: Record<string, boolean> = { aiBattleEnabled: false, loginDisabled: false };
   for (const row of rows) {
     try {
-      if (row.key === 'tm_shop_enabled') flags.tmShopEnabled = JSON.parse(row.value);
       if (row.key === 'ai_battle_enabled') flags.aiBattleEnabled = JSON.parse(row.value);
       if (row.key === 'login_disabled') flags.loginDisabled = JSON.parse(row.value);
     } catch {}
@@ -1325,6 +1446,7 @@ app.post(`${BASE_PATH}/api/player/:id/story/complete`, (req, res) => {
   const firstClear = !existing;
   if (firstClear) {
     db.prepare('INSERT INTO story_progress (player_id, chapter_id) VALUES (?, ?)').run(req.params.id, key);
+    gameplayEventsTotal.labels('story_completed').inc();
   }
   return res.json({ ok: true, firstClear });
 });
@@ -1354,11 +1476,12 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
   }
   const fs = fieldSize ?? leftTeam.length;
   const mode = selectionMode ?? 'blind';
-  const snapshot = simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters);
+  const snapshot = observeBattleSimulation('ai', () => simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters));
 
   const labels = { field_size: String(fs), total_pokemon: String(leftTeam.length), selection_mode: mode, opponent_type: 'ai' };
   battlesTotal.inc(labels);
   battleRounds.observe({ field_size: String(fs), total_pokemon: String(leftTeam.length) }, snapshot.round);
+  gameplayEventsTotal.labels('battle_completed').inc();
 
   // Record in DB (no player IDs for AI battles)
   db.prepare(
@@ -1410,7 +1533,8 @@ app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   }
   delta = Math.min(delta, 60);
 
-  const award = awardBondXpDirect(player.id, instanceId, delta);
+  const award = awardBondXpDirect(player.id, instanceId, delta, 'minigame');
+  if (award) gameplayEventsTotal.labels('minigame_reward').inc();
   const sock = connectedPlayers.get(playerName);
   if (sock && award) io.to(sock).emit('battle:bondUpdate', { awards: [award] });
   return res.json({ ok: true, award, delta });
@@ -1560,15 +1684,17 @@ function handleTournamentTeamSubmission(
     if (notifySocket) notifySocket.emit('tournament:waitingOpponent');
     return;
   }
+  const player1Team = battle.player1Team;
+  const player2Team = battle.player2Team;
 
   // Both ready — simulate.
-  const snapshot = simulateBattleFromIds(
-    battle.player1Team, battle.player2Team, t.fieldSize,
+  const snapshot = observeBattleSimulation('tournament', () => simulateBattleFromIds(
+    player1Team, player2Team, t.fieldSize,
     battle.player1HeldItems, battle.player2HeldItems,
     battle.player1Moves, battle.player2Moves,
     battle.player1Abilities, battle.player2Abilities,
     (battle as any).player1Characters, (battle as any).player2Characters,
-  );
+  ));
 
   const winnerName = snapshot.winner === 'left' ? battle.player1 : battle.player2;
   match.winner = winnerName;
@@ -1611,6 +1737,10 @@ function handleTournamentTeamSubmission(
   }
 
   activeBattles.delete(matchId);
+  const labels = { field_size: String(t.fieldSize), total_pokemon: String(player1Team.length), selection_mode: t.pickMode ?? 'blind', opponent_type: 'tournament' };
+  battlesTotal.inc(labels);
+  battleRounds.observe({ field_size: String(t.fieldSize), total_pokemon: String(player1Team.length) }, snapshot.round);
+  gameplayEventsTotal.labels('battle_completed').inc();
   advanceTournament(t);
 }
 
@@ -1937,6 +2067,7 @@ app.post(`${BASE_PATH}/api/admin/tournament/create`, (req, res) => {
   // Broadcast to all connected players
   io.emit('tournament:created', { id: t.id, name: t.name, registrationEnd: t.registrationEnd, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon });
   broadcastTournamentUpdate(t);
+  gameplayEventsTotal.labels('tournament_created').inc();
   return res.json({ ok: true, tournament: t });
 });
 
@@ -1950,6 +2081,7 @@ app.post(`${BASE_PATH}/api/admin/tournament/:id/start`, (req, res) => {
   t.status = 'active';
   saveTournament(t);
   broadcastTournamentUpdate(t);
+  gameplayEventsTotal.labels('tournament_started').inc();
   for (const match of bracket.filter(m => m.round === 1 && m.status === 'active')) {
     if (match.player1) { const s = connectedPlayers.get(match.player1); if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player2 }); }
     if (match.player2) { const s = connectedPlayers.get(match.player2); if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player1 }); }
@@ -1964,6 +2096,7 @@ app.post(`${BASE_PATH}/api/admin/tournament/:id/cancel`, (req, res) => {
   t.status = 'cancelled';
   saveTournament(t);
   broadcastTournamentUpdate(t);
+  gameplayEventsTotal.labels('tournament_cancelled').inc();
   return res.json({ ok: true });
 });
 
@@ -2060,26 +2193,28 @@ io.on('connection', (socket) => {
 
     // Check if both teams are selected
     if (battle.player1Team && battle.player2Team) {
+      const player1Team = battle.player1Team;
+      const player2Team = battle.player2Team;
       const socket1 = connectedPlayers.get(battle.player1);
       const socket2 = connectedPlayers.get(battle.player2);
 
       // Simulate battle on server so both players see the same result
-      const snapshot = simulateBattleFromIds(battle.player1Team, battle.player2Team, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters);
+      const snapshot = observeBattleSimulation('pvp', () => simulateBattleFromIds(player1Team, player2Team, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters));
 
       const battleDataP1 = {
         battleId,
         player1: battle.player1,
         player2: battle.player2,
-        player1Team: battle.player1Team,
-        player2Team: battle.player2Team,
+        player1Team,
+        player2Team,
         snapshot,
       };
       const battleDataP2 = {
         battleId,
         player1: battle.player1,
         player2: battle.player2,
-        player1Team: battle.player1Team,
-        player2Team: battle.player2Team,
+        player1Team,
+        player2Team,
         snapshot: flipSnapshot(snapshot),
       };
 
@@ -2107,8 +2242,8 @@ io.on('connection', (socket) => {
         const recordUsage = db.prepare(
           'INSERT INTO battle_pokemon_usage (player_id, pokemon_id, times_used) VALUES (?, ?, 1) ON CONFLICT(player_id, pokemon_id) DO UPDATE SET times_used = times_used + 1'
         );
-        for (const pid of battle.player1Team) recordUsage.run(p1Row.id, pid);
-        for (const pid of battle.player2Team) recordUsage.run(p2Row.id, pid);
+        for (const pid of player1Team) recordUsage.run(p1Row.id, pid);
+        for (const pid of player2Team) recordUsage.run(p2Row.id, pid);
 
         console.log(`Elo update: ${winnerName} ${winnerRow.elo}→${winnerNewElo} (+${winnerDelta}), ${loserName} ${loserRow.elo}→${loserNewElo} (${loserDelta})`);
 
@@ -2122,8 +2257,8 @@ io.on('connection', (socket) => {
         const recordTeamEntry = db.prepare(
           'INSERT INTO battle_team_entries (battle_id, player_id, pokemon_id) VALUES (?, ?, ?)'
         );
-        for (const pid of battle.player1Team) recordTeamEntry.run(battleId, p1Row.id, pid);
-        for (const pid of battle.player2Team) recordTeamEntry.run(battleId, p2Row.id, pid);
+        for (const pid of player1Team) recordTeamEntry.run(battleId, p1Row.id, pid);
+        for (const pid of player2Team) recordTeamEntry.run(battleId, p2Row.id, pid);
 
         // Award Bond XP per participant instance (Evolution 2.0)
         const p1Instances = snapshot.winner === 'left' ? battle.player1InstanceIds : battle.player1InstanceIds;
@@ -2139,6 +2274,7 @@ io.on('connection', (socket) => {
       const labels = { field_size: String(battle.fieldSize), total_pokemon: String(battle.totalPokemon), selection_mode: 'blind', opponent_type: 'pvp' };
       battlesTotal.inc(labels);
       battleRounds.observe({ field_size: String(battle.fieldSize), total_pokemon: String(battle.totalPokemon) }, snapshot.round);
+      gameplayEventsTotal.labels('battle_completed').inc();
     } else {
       socket.emit('battle:waitingForOpponent');
     }
@@ -2237,6 +2373,7 @@ io.on('connection', (socket) => {
       if (socket2) io.to(socket2).emit('trade:execute', data);
       activeTrades.delete(tradeId);
       tradesTotal.inc();
+      gameplayEventsTotal.labels('trade_completed').inc();
       console.log(`Trade executed: ${trade.player1} <-> ${trade.player2}`);
     } else {
       socket.emit('trade:waitingConfirm');
@@ -2253,6 +2390,7 @@ io.on('connection', (socket) => {
     t.participants.push(playerName);
     saveTournament(t);
     broadcastTournamentUpdate(t);
+    gameplayEventsTotal.labels('tournament_joined').inc();
     console.log(`${playerName} joined tournament ${t.name}`);
   });
 
@@ -2280,6 +2418,7 @@ io.on('connection', (socket) => {
     t.frozenTeams[playerName] = team;
     saveTournament(t);
     socket.emit('tournament:teamLocked', { tournamentId });
+    gameplayEventsTotal.labels('tournament_team_locked').inc();
     // Also broadcast an update so every viewer (including the submitter)
     // refreshes frozenTeams — otherwise the submitter keeps seeing the
     // "Lock Team" button until they navigate away.

@@ -61,7 +61,8 @@ export const BOND_UNLOCK_CHAPTER = 'n-bond-awakening:complete';
 export const CHARACTER_UNLOCK_CHAPTER = 'n-styles-revealed:complete';
 export const MENU_UNLOCK_CHAPTER = 'cynthia-intro:complete';
 export const REAWAKEN_UNLOCK_CHAPTER = 'n-reawakening:complete';
-export const MINIGAMES_UNLOCK_CHAPTER = 'n-finale:complete';
+export const SHOP_UNLOCK_CHAPTER = 'n-finale:complete';
+export const MINIGAMES_UNLOCK_CHAPTER = SHOP_UNLOCK_CHAPTER;
 
 function sp(name: string) { return TRAINERS_PATH + '/' + name + '.png'; }
 

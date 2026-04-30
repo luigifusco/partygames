@@ -198,8 +198,9 @@ export function initDb() {
     )
   `);
 
-  // Clean up removed setting (pack tiers are now hardcoded)
+  // Clean up removed settings
   db.prepare("DELETE FROM game_settings WHERE key = 'rarity_weights'").run();
+  db.prepare("DELETE FROM game_settings WHERE key = 'tm_shop_enabled'").run();
 
   // Pokedex: track which Pokemon a player has ever owned
   db.exec(`
