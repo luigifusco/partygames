@@ -1936,18 +1936,24 @@ function generateBracket(participants: string[], matchTimeLimit: number): { brac
   const totalRounds = Math.log2(size);
   const bracket: TournamentMatch[] = [];
 
-  // Shuffle participants
+  const matchCount = size / 2;
+  const byeCount = size - n;
+
+  // Shuffle participants and spread byes across first-round matches. Clustering
+  // byes at the end can create BYE-vs-BYE matches that later produce pending
+  // null-vs-null matches in larger non-power-of-two brackets.
   const shuffled = [...participants].sort(() => Math.random() - 0.5);
-  // Pad with nulls for byes
-  while (shuffled.length < size) shuffled.push('__BYE__');
+  const byePositions = new Set(
+    Array.from({ length: matchCount }, (_, i) => i)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, byeCount)
+  );
 
   // Round 1 matches
-  for (let i = 0; i < size / 2; i++) {
-    const p1 = shuffled[i * 2];
-    const p2 = shuffled[i * 2 + 1];
-    const isBye = p1 === '__BYE__' || p2 === '__BYE__';
-    const realP1 = p1 === '__BYE__' ? null : p1;
-    const realP2 = p2 === '__BYE__' ? null : p2;
+  for (let i = 0; i < matchCount; i++) {
+    const realP1 = shuffled.shift() ?? null;
+    const realP2 = byePositions.has(i) ? null : (shuffled.shift() ?? null);
+    const isBye = !realP1 || !realP2;
     bracket.push({
       id: uuidv4(), round: 1, position: i,
       player1: realP1, player2: realP2,
@@ -1971,10 +1977,35 @@ function generateBracket(participants: string[], matchTimeLimit: number): { brac
   return { bracket, totalRounds };
 }
 
+function normalizeAutomaticByes(t: Tournament): boolean {
+  let changed = false;
+  for (const match of t.bracket.filter(m => m.round === t.currentRound)) {
+    if (match.status !== 'pending' && match.status !== 'active') continue;
+
+    const automaticWinner = match.player1 ?? match.player2 ?? null;
+    if (match.player1 && match.player2) continue;
+
+    match.winner = automaticWinner;
+    match.status = 'completed';
+    match.deadline = undefined;
+    activeBattles.delete(match.id);
+    activeDrafts.delete(match.id);
+    changed = true;
+  }
+  return changed;
+}
+
 function advanceTournament(t: Tournament) {
+  const normalized = normalizeAutomaticByes(t);
   const roundMatches = t.bracket.filter(m => m.round === t.currentRound);
   const allDone = roundMatches.every(m => m.status === 'completed' || m.status === 'forfeit');
-  if (!allDone) return;
+  if (!allDone) {
+    if (normalized) {
+      saveTournament(t);
+      broadcastTournamentUpdate(t);
+    }
+    return;
+  }
 
   // Advance winners to next round
   const nextRound = t.currentRound + 1;
@@ -2002,12 +2033,18 @@ function advanceTournament(t: Tournament) {
     nextMatches[i].player1 = src1?.winner ?? null;
     nextMatches[i].player2 = src2?.winner ?? null;
     // Check for byes
-    if (nextMatches[i].player1 && !nextMatches[i].player2) {
+    if (!nextMatches[i].player1 && !nextMatches[i].player2) {
+      nextMatches[i].winner = null;
+      nextMatches[i].status = 'completed';
+      nextMatches[i].deadline = undefined;
+    } else if (nextMatches[i].player1 && !nextMatches[i].player2) {
       nextMatches[i].winner = nextMatches[i].player1;
       nextMatches[i].status = 'completed';
+      nextMatches[i].deadline = undefined;
     } else if (!nextMatches[i].player1 && nextMatches[i].player2) {
       nextMatches[i].winner = nextMatches[i].player2;
       nextMatches[i].status = 'completed';
+      nextMatches[i].deadline = undefined;
     } else if (nextMatches[i].player1 && nextMatches[i].player2) {
       nextMatches[i].status = 'active';
       nextMatches[i].deadline = Date.now() + t.matchTimeLimit * 1000;
@@ -2115,10 +2152,8 @@ function checkForfeitTimers() {
         changed = true;
       }
     }
-    if (changed) {
-      saveTournament(t);
-      advanceTournament(t);
-    }
+    if (changed) saveTournament(t);
+    advanceTournament(t);
   }
 }
 
