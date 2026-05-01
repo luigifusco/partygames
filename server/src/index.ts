@@ -1532,7 +1532,7 @@ function minigameBondXp(minigame: string, score: number): number | null {
     const delta = clamped <= 60
       ? Math.round(clamped * 0.75)
       : Math.round(60 * 0.75 + (clamped - 60) * 0.2);
-    return Math.min(delta, 60);
+    return Math.min(delta, 60) * 3;
   }
 
   if (minigame === 'petting-care') {
