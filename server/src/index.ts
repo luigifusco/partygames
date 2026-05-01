@@ -1506,6 +1506,9 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
 
 // --- Minigame reward ---
 const MINIGAMES_UNLOCK_CHAPTER_ID = 'n-finale:complete';
+const MINIGAME_REWARD_MULTIPLIERS: Record<string, number> = {
+  'apple-catch': 3,
+};
 app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   const { playerName, instanceId, minigame, score } = req.body as {
     playerName?: string; instanceId?: string; minigame?: string; score?: number;
@@ -1521,17 +1524,20 @@ app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   const own = db.prepare('SELECT id FROM owned_pokemon WHERE id = ? AND player_id = ?').get(instanceId, player.id) as any;
   if (!own) return res.status(404).json({ error: 'Pokemon not found' });
 
-  // Scale score → bond XP. Tuned so a solid Apple Catch run (~40-60 points)
-  // is comparable to winning an AI battle, with diminishing returns past that.
+  if (!(minigame in MINIGAME_REWARD_MULTIPLIERS)) {
+    return res.status(400).json({ error: 'Unsupported minigame' });
+  }
+
+  // Scale score → bond XP, with diminishing returns past a solid Apple Catch run.
   const clamped = Math.max(0, Math.min(200, Math.floor(score)));
-  let delta = 0;
+  let baseDelta = 0;
   if (clamped <= 60) {
-    delta = Math.round(clamped * 0.75);
+    baseDelta = Math.round(clamped * 0.75);
   } else {
     // Beyond 60, each point is worth much less to avoid infinite grinding.
-    delta = Math.round(60 * 0.75 + (clamped - 60) * 0.2);
+    baseDelta = Math.round(60 * 0.75 + (clamped - 60) * 0.2);
   }
-  delta = Math.min(delta, 60);
+  const delta = Math.min(baseDelta, 60) * MINIGAME_REWARD_MULTIPLIERS[minigame];
 
   const award = awardBondXpDirect(player.id, instanceId, delta, 'minigame');
   if (award) gameplayEventsTotal.labels('minigame_reward').inc();
