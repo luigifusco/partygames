@@ -19,6 +19,7 @@ interface TournamentScreenProps {
   collection: PokemonInstance[];
   playerId?: string;
   onEloUpdate: (newElo: number) => void;
+  onBattleViewingChange: (viewing: boolean) => void;
 }
 
 type Phase = 'list' | 'detail' | 'lockTeam' | 'teamSelect' | 'blindOrder' | 'draft' | 'waitingOpponent' | 'battle';
@@ -30,7 +31,7 @@ interface ForfeitNotice {
   player2: string | null;
 }
 
-export default function TournamentScreen({ playerName, collection, playerId, onEloUpdate }: TournamentScreenProps) {
+export default function TournamentScreen({ playerName, collection, playerId, onEloUpdate, onBattleViewingChange }: TournamentScreenProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const characterPickUnlocked = chapters.has(CHARACTER_UNLOCK_CHAPTER);
@@ -56,6 +57,10 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    return () => onBattleViewingChange(false);
+  }, [onBattleViewingChange]);
 
   useEffect(() => {
     // Pull name→picture for every registered player (leaderboard is the only
@@ -110,6 +115,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
     const onBattleStart = ({ tournamentId, matchId, snapshot: snap }: any) => {
       setSnapshot(snap);
       setBattleFinished(false);
+      onBattleViewingChange(true);
       setPhase('battle');
     };
 
@@ -147,7 +153,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
       socket.off('battle:eloUpdate', handleEloUpdate);
       socket.off('tournament:matchForfeit', onMatchForfeit);
     };
-  }, [activeTournament, phase, fetchDetail, onEloUpdate, playerName]);
+  }, [activeTournament, phase, fetchDetail, onBattleViewingChange, onEloUpdate, playerName]);
 
   const joinTournament = (id: string) => {
     socket.emit('tournament:join', id);
@@ -285,6 +291,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
           onFinished={() => setBattleFinished(true)}
           onContinue={battleFinished ? () => {
             setSnapshot(null);
+            onBattleViewingChange(false);
             setPhase('detail');
             if (activeTournament) fetchDetail(activeTournament.id);
           } : undefined}

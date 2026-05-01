@@ -56,6 +56,7 @@ export default function App() {
   const [discovered, setDiscovered] = useState<Set<number>>(new Set());
   const [recentPokemonIds, setRecentPokemonIds] = useState<number[]>([]);
   const [prizeQueue, setPrizeQueue] = useState<TournamentPrizeAward[]>([]);
+  const [isTournamentBattleViewing, setIsTournamentBattleViewing] = useState(false);
 
   const spendEssence = (amount: number) => {
     const newEssence = essence - amount;
@@ -484,7 +485,7 @@ export default function App() {
         <Route path="/battle" element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
         <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
         <Route path="/story" element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
-        <Route path="/tournaments" element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} onEloUpdate={(newElo) => setElo(newElo)} />} />
+        <Route path="/tournaments" element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} onEloUpdate={(newElo) => setElo(newElo)} onBattleViewingChange={setIsTournamentBattleViewing} />} />
         <Route path="/minigames" element={<MinigamesScreen playerName={player.name} collection={collection} />} />
         <Route path="/tv" element={<TVView />} />
         <Route path="/replay" element={<ReplayListScreen />} />
@@ -493,7 +494,7 @@ export default function App() {
         <Route path="/bg-demo" element={<BackgroundsDemo />} />
         <Route path="*" element={<Navigate to="/play" replace />} />
       </Routes>
-      {prizeQueue.length > 0 && (
+      {prizeQueue.length > 0 && !isTournamentBattleViewing && (
         <TournamentPrizeModal
           award={prizeQueue[0]}
           onClose={() => {
