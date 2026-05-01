@@ -931,7 +931,16 @@ app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
     SELECT p.id, p.name, p.elo, p.essence, p.picture,
            (SELECT COUNT(DISTINCT pokemon_id) FROM pokedex px WHERE px.player_id = p.id) as pokedex_count,
            (SELECT COUNT(*) FROM trades t WHERE t.player1_id = p.id OR t.player2_id = p.id) as trade_count,
-           (SELECT COUNT(*) FROM battles b WHERE b.winner_id = p.id OR b.loser_id = p.id) as battle_count
+           (SELECT COUNT(*) FROM battles b WHERE b.winner_id = p.id OR b.loser_id = p.id) as battle_count,
+           (SELECT MAX(ms.score) FROM minigame_scores ms WHERE ms.player_id = p.id AND ms.minigame = 'apple-catch') as apple_catch_best,
+           (
+             SELECT op.pokemon_id
+             FROM minigame_scores ms
+             LEFT JOIN owned_pokemon op ON op.id = ms.instance_id
+             WHERE ms.player_id = p.id AND ms.minigame = 'apple-catch'
+             ORDER BY ms.score DESC, ms.created_at ASC
+             LIMIT 1
+           ) as apple_catch_pokemon_id
     FROM players p
     ORDER BY p.elo DESC
   `).all() as any[];
@@ -946,6 +955,8 @@ app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
     pokedexCount: p.pokedex_count ?? 0,
     tradeCount: p.trade_count ?? 0,
     battleCount: p.battle_count ?? 0,
+    appleCatchBest: p.apple_catch_best ?? 0,
+    appleCatchPokemon: p.apple_catch_pokemon_id ?? null,
     topPokemon: (topPokemonStmt.all(p.id) as any[]).map((r: any) => r.pokemon_id),
   }));
   return res.json({ players: result });
@@ -1562,7 +1573,7 @@ app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   const { playerName, instanceId, minigame, score } = req.body as {
     playerName?: string; instanceId?: string; minigame?: string; score?: number;
   };
-  if (!playerName || !instanceId || !minigame || typeof score !== 'number') {
+  if (!playerName || !instanceId || !minigame || typeof score !== 'number' || !Number.isFinite(score)) {
     return res.status(400).json({ error: 'playerName, instanceId, minigame and numeric score are required' });
   }
   const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
@@ -1578,7 +1589,12 @@ app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   }
 
   // Scale score → bond XP, with diminishing returns past a solid Apple Catch run.
-  const clamped = Math.max(0, Math.min(200, Math.floor(score)));
+  const normalizedScore = Math.max(0, Math.floor(score));
+  db.prepare(
+    'INSERT INTO minigame_scores (id, player_id, instance_id, minigame, score) VALUES (?, ?, ?, ?, ?)'
+  ).run(uuidv4(), player.id, instanceId, minigame, normalizedScore);
+
+  const clamped = Math.min(200, normalizedScore);
   let baseDelta = 0;
   if (clamped <= 60) {
     baseDelta = Math.round(clamped * 0.75);

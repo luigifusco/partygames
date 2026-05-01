@@ -13,10 +13,12 @@ interface LeaderboardEntry {
   pokedexCount?: number;
   tradeCount?: number;
   battleCount?: number;
+  appleCatchBest?: number;
+  appleCatchPokemon?: number | null;
   topPokemon: number[];
 }
 
-type RankMode = 'elo' | 'pokedex' | 'battles' | 'trades';
+type RankMode = 'elo' | 'pokedex' | 'battles' | 'trades' | 'apple-catch';
 type TvTab = RankMode | 'tournament';
 
 const RANK_MODES: { key: RankMode; label: string; icon: string; unit: string; get: (e: LeaderboardEntry) => number }[] = [
@@ -24,6 +26,7 @@ const RANK_MODES: { key: RankMode; label: string; icon: string; unit: string; ge
   { key: 'pokedex', label: 'Pokédex Progress', icon: '📕', unit: 'seen',    get: e => e.pokedexCount ?? 0 },
   { key: 'battles', label: 'Battle Count',     icon: '⚔️', unit: 'battles', get: e => e.battleCount ?? 0 },
   { key: 'trades',  label: 'Trade Count',      icon: '🔄', unit: 'trades',  get: e => e.tradeCount ?? 0 },
+  { key: 'apple-catch', label: 'Apple Catch',   icon: '🍎', unit: 'score',   get: e => e.appleCatchBest ?? 0 },
 ];
 
 const TV_TABS: { key: TvTab; label: string; icon: string }[] = [
@@ -57,6 +60,13 @@ function PokemonRow({ ids, size }: { ids: number[]; size: 'xl' | 'md' | 'sm' }) 
   );
 }
 
+function pokemonIdsForMode(entry: LeaderboardEntry, mode: typeof RANK_MODES[number]): number[] {
+  if (mode.key === 'apple-catch') {
+    return entry.appleCatchPokemon ? [entry.appleCatchPokemon] : [];
+  }
+  return entry.topPokemon;
+}
+
 function PodiumCard({
   entry,
   rank,
@@ -76,7 +86,7 @@ function PodiumCard({
       </div>
       <Avatar name={entry.name} picture={entry.picture} className="tv-podium-avatar" />
       <div className="tv-podium-name">{entry.name}</div>
-      <PokemonRow ids={entry.topPokemon} size="xl" />
+      <PokemonRow ids={pokemonIdsForMode(entry, mode)} size="xl" />
       <div className="tv-podium-stats">
         <div className="tv-stat">
           <span className="tv-stat-label">{mode.unit.toUpperCase()}</span>
@@ -106,7 +116,7 @@ function RankCard({
       <Avatar name={entry.name} picture={entry.picture} className="tv-card-avatar" />
       <div className="tv-card-body">
         <div className="tv-card-name">{entry.name}</div>
-        <PokemonRow ids={entry.topPokemon} size="sm" />
+        <PokemonRow ids={pokemonIdsForMode(entry, mode)} size="sm" />
       </div>
       <div className="tv-card-elo">{mode.get(entry)}</div>
     </div>
@@ -310,7 +320,10 @@ export default function TVView() {
   const showingTournament = activeTab.key === 'tournament';
 
   const sorted = useMemo(() => {
-    return [...leaderboard].sort((a, b) => mode.get(b) - mode.get(a));
+    const entries = mode.key === 'apple-catch'
+      ? leaderboard.filter((entry) => (entry.appleCatchBest ?? 0) > 0)
+      : leaderboard;
+    return [...entries].sort((a, b) => mode.get(b) - mode.get(a));
   }, [leaderboard, mode]);
 
   const podium = sorted.slice(0, 3);
@@ -334,7 +347,13 @@ export default function TVView() {
         <h1 className="tv-title">Pokémon Party Leaderboard</h1>
         <div className="tv-header-right">
           <span className="tv-clock">{timeStr}</span>
-          <span className="tv-player-count">{showingTournament ? (latestTournament?.status ?? 'no tournament') : `${leaderboard.length} trainers`}</span>
+          <span className="tv-player-count">
+            {showingTournament
+              ? (latestTournament?.status ?? 'no tournament')
+              : mode.key === 'apple-catch'
+                ? `${sorted.length} scores`
+                : `${leaderboard.length} trainers`}
+          </span>
         </div>
       </header>
 
@@ -355,8 +374,8 @@ export default function TVView() {
 
       {showingTournament ? (
         <TournamentTab tournament={latestTournament} />
-      ) : leaderboard.length === 0 ? (
-        <div className="tv-empty">Waiting for trainers…</div>
+      ) : sorted.length === 0 ? (
+        <div className="tv-empty">{mode.key === 'apple-catch' ? 'Waiting for Apple Catch scores…' : 'Waiting for trainers…'}</div>
       ) : (
         <>
           {orderedPodium.length > 0 && (

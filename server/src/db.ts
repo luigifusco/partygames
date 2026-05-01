@@ -85,6 +85,20 @@ export function initDb() {
       item_data TEXT NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS minigame_scores (
+      id TEXT PRIMARY KEY,
+      player_id TEXT NOT NULL REFERENCES players(id),
+      instance_id TEXT REFERENCES owned_pokemon(id),
+      minigame TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_minigame_scores_minigame_score
+      ON minigame_scores(minigame, score DESC);
+    CREATE INDEX IF NOT EXISTS idx_minigame_scores_player_minigame
+      ON minigame_scores(player_id, minigame);
   `);
 
   // Add elo column if it doesn't exist (migration for existing DBs)
