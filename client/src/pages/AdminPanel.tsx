@@ -28,13 +28,38 @@ interface Stats {
   itemCount: number;
 }
 
+interface AdminStatsRankRow {
+  name: string;
+  picture?: string | null;
+  value: number;
+}
+
+interface AdminStatsStoryRow {
+  name: string;
+  picture?: string | null;
+  completedAt: string;
+}
+
+interface AdminStatsDetail {
+  storyCompletion: AdminStatsStoryRow[];
+  trades: AdminStatsRankRow[];
+  pvpBattles: AdminStatsRankRow[];
+  elo: AdminStatsRankRow[];
+  tournamentsWon: AdminStatsRankRow[];
+  pokedex: AdminStatsRankRow[];
+}
+
 export default function AdminPanel() {
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [adminStats, setAdminStats] = useState<AdminStatsDetail | null>(null);
+  const [adminStatsLoading, setAdminStatsLoading] = useState(false);
+  const [adminStatsError, setAdminStatsError] = useState<string | null>(null);
   const [editingEssence, setEditingEssence] = useState<Record<string, string>>({});
   const [editingElo, setEditingElo] = useState<Record<string, string>>({});
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
   const [loginDisabled, setLoginDisabled] = useState(false);
+  const [showStatsMenu, setShowStatsMenu] = useState(false);
 
   const refresh = useCallback(async () => {
     const [pRes, sRes, wRes] = await Promise.all([
@@ -50,6 +75,29 @@ export default function AdminPanel() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  const fetchAdminStats = useCallback(async () => {
+    setAdminStatsLoading(true);
+    setAdminStatsError(null);
+    try {
+      const res = await fetch(`${API}/api/admin/stats/detail`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAdminStatsError(data.error ?? 'Failed to load stats');
+        return;
+      }
+      setAdminStats(data);
+    } catch (e) {
+      setAdminStatsError('Stats request failed: ' + e);
+    } finally {
+      setAdminStatsLoading(false);
+    }
+  }, []);
+
+  const openStatsMenu = () => {
+    setShowStatsMenu(true);
+    fetchAdminStats();
+  };
 
   // Auto-refresh the admin panel so stats, player list and active
   // tournament state stay current without manual reloads. Pauses
@@ -274,7 +322,98 @@ export default function AdminPanel() {
     });
   };
 
+  const formatCompletedAt = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+  };
+
+  const renderRanking = (title: string, rows: AdminStatsRankRow[], suffix = '') => (
+    <div className="ds-card admin-rank-card">
+      <h3 className="admin-card-title">{title}</h3>
+      {rows.length === 0 ? (
+        <div className="admin-rank-empty">No players yet</div>
+      ) : (
+        <div className="admin-rank-list">
+          {rows.map((row, index) => (
+            <div key={`${title}-${row.name}`} className="admin-rank-row">
+              <span className="admin-rank-pos">{index + 1}</span>
+              <Avatar name={row.name} picture={row.picture ?? null} size="sm" />
+              <span className="admin-rank-name">{row.name}</span>
+              <span className="admin-rank-value">{row.value.toLocaleString()}{suffix}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   // ===================== Create Tournament view =====================
+  if (showStatsMenu) {
+    return (
+      <div className="admin-panel">
+        <div className="ds-topbar">
+          <button
+            className="ds-btn ds-btn-ghost ds-btn-sm ds-btn-icon"
+            onClick={() => setShowStatsMenu(false)}
+            aria-label="Back"
+          >
+            ←
+          </button>
+          <div className="admin-topbar-titles">
+            <div className="ds-topbar-subtitle">Administrator</div>
+            <div className="ds-topbar-title">Stats</div>
+          </div>
+          <button
+            className="ds-btn ds-btn-ghost ds-btn-sm"
+            onClick={fetchAdminStats}
+            disabled={adminStatsLoading}
+          >
+            ↻ Refresh
+          </button>
+        </div>
+
+        <div className="admin-scroll admin-stats-menu">
+          {adminStatsLoading && !adminStats && (
+            <div className="ds-card ds-empty">
+              <div className="ds-empty-text">Loading stats…</div>
+            </div>
+          )}
+          {adminStatsError && (
+            <div className="ds-card admin-stats-error">{adminStatsError}</div>
+          )}
+          {adminStats && (
+            <>
+              <div className="ds-card admin-rank-card">
+                <h3 className="admin-card-title">Story completion — Last battle with N</h3>
+                <p className="admin-card-hint">Earliest completion first.</p>
+                {adminStats.storyCompletion.length === 0 ? (
+                  <div className="admin-rank-empty">No one has completed the N finale yet</div>
+                ) : (
+                  <div className="admin-rank-list">
+                    {adminStats.storyCompletion.map((row, index) => (
+                      <div key={`story-${row.name}`} className="admin-rank-row">
+                        <span className="admin-rank-pos">{index + 1}</span>
+                        <Avatar name={row.name} picture={row.picture ?? null} size="sm" />
+                        <span className="admin-rank-name">{row.name}</span>
+                        <span className="admin-rank-value admin-rank-date">{formatCompletedAt(row.completedAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {renderRanking('Trades', adminStats.trades)}
+              {renderRanking('Battles vs human players', adminStats.pvpBattles)}
+              {renderRanking('ELO', adminStats.elo)}
+              {renderRanking('Tournaments won', adminStats.tournamentsWon)}
+              {renderRanking('Pokédex discovered', adminStats.pokedex)}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (showCreateTournament) {
     return (
       <div className="admin-panel">
@@ -602,6 +741,9 @@ export default function AdminPanel() {
 
         {/* Quick actions */}
         <div className="admin-actions-row">
+          <button className="ds-btn ds-btn-primary" onClick={openStatsMenu}>
+            Stats
+          </button>
           <button className="ds-btn ds-btn-primary" onClick={() => setShowCreateTournament(true)}>
             Tournament
           </button>

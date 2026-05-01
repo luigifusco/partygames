@@ -12,7 +12,7 @@ import { STARTING_ELO, calculateEloChanges } from '../../shared/elo.js';
 import { POKEMON, POKEMON_BY_ID } from '../../shared/pokemon-data.js';
 import { HELD_ITEMS } from '../../shared/held-item-data.js';
 import { ALL_MOVE_NAMES } from '../../shared/move-data.js';
-import { STORYLINES } from '../../shared/story-data.js';
+import { REAWAKEN_UNLOCK_CHAPTER, SHOP_UNLOCK_CHAPTER, STORYLINES } from '../../shared/story-data.js';
 import { randomNature, randomIVs } from '../../shared/natures.js';
 import { STAT_MOVES, STATUS_MOVES, MOVE_SECONDARY_EFFECTS, getMoveAccuracy } from '../../shared/move-data.js';
 import type { StatusCondition } from '../../shared/move-data.js';
@@ -22,7 +22,6 @@ import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../s
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
 import { computeBondXp, bondThresholdForStep, reawakenCost, type BondBattleMode } from '../../shared/evolution.js';
 import { evolutionStepFor } from '../../shared/evolution-helpers.js';
-import { REAWAKEN_UNLOCK_CHAPTER } from '../../shared/story-data.js';
 import { runShowdownBattle, randomAbilityForSpecies, replayParseSnapshot } from './showdown-battle.js';
 import { clientDistPath, dataDirPath, showdownSimPath } from './paths.js';
 
@@ -1400,6 +1399,56 @@ app.get(`${BASE_PATH}/api/admin/stats`, (_req, res) => {
   return res.json({ playerCount, pokemonCount, battleCount, itemCount });
 });
 
+app.get(`${BASE_PATH}/api/admin/stats/detail`, (_req, res) => {
+  const storyCompletion = db.prepare(`
+    SELECT p.name, p.picture, sp.completed_at as completedAt
+    FROM story_progress sp
+    JOIN players p ON p.id = sp.player_id
+    WHERE sp.chapter_id = ?
+    ORDER BY sp.completed_at ASC, p.name COLLATE NOCASE ASC
+  `).all(SHOP_UNLOCK_CHAPTER) as any[];
+
+  const trades = db.prepare(`
+    SELECT p.name, p.picture,
+           (SELECT COUNT(*) FROM trades t WHERE t.player1_id = p.id OR t.player2_id = p.id) as value
+    FROM players p
+    ORDER BY value DESC, p.name COLLATE NOCASE ASC
+  `).all() as any[];
+
+  const pvpBattles = db.prepare(`
+    SELECT p.name, p.picture,
+           (SELECT COUNT(*) FROM battles b
+            WHERE (b.winner_id = p.id OR b.loser_id = p.id)
+              AND b.opponent_type = 'pvp') as value
+    FROM players p
+    ORDER BY value DESC, p.name COLLATE NOCASE ASC
+  `).all() as any[];
+
+  const elo = db.prepare(`
+    SELECT p.name, p.picture, p.elo as value
+    FROM players p
+    ORDER BY p.elo DESC, p.name COLLATE NOCASE ASC
+  `).all() as any[];
+
+  const tournamentsWon = db.prepare(`
+    SELECT p.name, p.picture,
+           (SELECT COUNT(*) FROM tournaments t
+            WHERE t.status = 'completed'
+              AND t.winner = p.name) as value
+    FROM players p
+    ORDER BY value DESC, p.name COLLATE NOCASE ASC
+  `).all() as any[];
+
+  const pokedex = db.prepare(`
+    SELECT p.name, p.picture,
+           (SELECT COUNT(DISTINCT px.pokemon_id) FROM pokedex px WHERE px.player_id = p.id) as value
+    FROM players p
+    ORDER BY value DESC, p.name COLLATE NOCASE ASC
+  `).all() as any[];
+
+  return res.json({ storyCompletion, trades, pvpBattles, elo, tournamentsWon, pokedex });
+});
+
 // ─── Game settings endpoints ────────────────────────────────────────
 
 app.get(`${BASE_PATH}/api/admin/settings`, (_req, res) => {
@@ -2419,6 +2468,11 @@ io.on('connection', (socket) => {
       };
       if (socket1) io.to(socket1).emit('trade:execute', data);
       if (socket2) io.to(socket2).emit('trade:execute', data);
+      const p1 = db.prepare('SELECT id FROM players WHERE name = ?').get(trade.player1) as any;
+      const p2 = db.prepare('SELECT id FROM players WHERE name = ?').get(trade.player2) as any;
+      if (p1 && p2) {
+        db.prepare('INSERT INTO trades (id, player1_id, player2_id) VALUES (?, ?, ?)').run(trade.id, p1.id, p2.id);
+      }
       activeTrades.delete(tradeId);
       tradesTotal.inc();
       gameplayEventsTotal.inc({ event: 'trade_completed' });
