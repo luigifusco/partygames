@@ -7,7 +7,7 @@ import Avatar from '../components/Avatar';
 import type { PokemonInstance } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
 import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
-import { randomNature, randomIVs } from '@shared/natures';
+import { buildInstance } from '../api';
 import './TradeScreen.css';
 import '../pages/BattleDemo.css';
 
@@ -17,6 +17,18 @@ interface TradeScreenProps {
   playerName: string;
   collection: PokemonInstance[];
   onTrade: (give: PokemonInstance, receive: PokemonInstance) => void;
+}
+
+interface TradeExecutePayload {
+  tradeId: string;
+  player1: string;
+  player2: string;
+  player1Pokemon: number;
+  player2Pokemon: number;
+  player1PokemonInstanceId?: string;
+  player2PokemonInstanceId?: string;
+  player1Received?: any;
+  player2Received?: any;
 }
 
 export default function TradeScreen({ playerName, collection, onTrade }: TradeScreenProps) {
@@ -73,25 +85,22 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
     const onWaitingForPartner = () => setPhase('waitingPartner');
     const onWaitingConfirm = () => setPhase('waitingConfirm');
 
-    const onExecute = ({ player1, player1Pokemon, player2Pokemon }: { tradeId: string; player1: string; player2: string; player1Pokemon: number; player2Pokemon: number }) => {
+    const onExecute = ({ player1, player1Pokemon, player2Pokemon, player1PokemonInstanceId, player2PokemonInstanceId, player1Received, player2Received }: TradeExecutePayload) => {
       const isPlayer1 = player1 === playerName;
       const givePokemonId = isPlayer1 ? player1Pokemon : player2Pokemon;
       const receivePokemonId = isPlayer1 ? player2Pokemon : player1Pokemon;
+      const giveInstanceId = isPlayer1 ? player1PokemonInstanceId : player2PokemonInstanceId;
+      const receiveRow = isPlayer1 ? player1Received : player2Received;
       setMyPokemonId(givePokemonId);
       setTheirPokemonId(receivePokemonId);
       setPhase('animation');
 
       setTimeout(() => {
-        const giveInst = collection.find((inst) => inst.pokemon.id === givePokemonId);
-        const receivePokemon = POKEMON_BY_ID[receivePokemonId];
-        if (giveInst && receivePokemon) {
-          const receiveInst: PokemonInstance = {
-            instanceId: crypto.randomUUID(),
-            pokemon: receivePokemon,
-            ivs: randomIVs(),
-            nature: randomNature(),
-            ability: '',
-          };
+        const giveInst =
+          (giveInstanceId ? collection.find((inst) => inst.instanceId === giveInstanceId) : null) ??
+          collection.find((inst) => inst.pokemon.id === givePokemonId);
+        const receiveInst = receiveRow ? buildInstance(receiveRow) : null;
+        if (giveInst && receiveInst) {
           onTrade(giveInst, receiveInst);
         }
       }, 2800);
@@ -145,7 +154,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
     if (selectedIdx === null) return;
     const inst = collection[selectedIdx];
     setMyPokemonId(inst.pokemon.id);
-    socket.emit('trade:selectPokemon', { tradeId, pokemonId: inst.pokemon.id });
+    socket.emit('trade:selectPokemon', { tradeId, pokemonId: inst.pokemon.id, instanceId: inst.instanceId });
   };
 
   const handleConfirm = () => {
