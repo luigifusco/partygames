@@ -454,6 +454,34 @@
 
 .tournament-deadline { color: var(--color-gold); font-weight: 600; }
 
+.tournament-forfeit-notice {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 179, 71, 0.12);
+  border: 1px solid rgba(255, 179, 71, 0.42);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.tournament-forfeit-notice.is-win {
+  background: rgba(110, 211, 140, 0.12);
+  border-color: rgba(110, 211, 140, 0.42);
+}
+
+.tournament-forfeit-title {
+  font-size: var(--text-md);
+  font-weight: 800;
+}
+
+.tournament-forfeit-body {
+  font-size: var(--text-sm);
+  color: var(--color-text-dim);
+}
+
 /* Winner banner */
 .tournament-winner-banner {
   text-align: center;
