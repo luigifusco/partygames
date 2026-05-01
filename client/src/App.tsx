@@ -324,6 +324,9 @@ export default function App() {
     const onTournamentMatchReady = ({ opponent }: { opponent: string }) => {
       addNotification('tournament', 'Match vs ' + opponent);
     };
+    const onTournamentMatchForfeit = ({ winner }: { winner?: string | null }) => {
+      addNotification('tournament', winner ? `${winner} advanced by forfeit` : 'Match decided by forfeit');
+    };
 
     const onAdminAnnouncement = ({ id, message, from }: { id?: string; message: string; from?: string }) => {
       if (!message) return;
@@ -386,6 +389,7 @@ export default function App() {
     socket.on('trade:incoming', onTradeIncoming);
     socket.on('tournament:created', onTournamentCreated);
     socket.on('tournament:matchReady', onTournamentMatchReady);
+    socket.on('tournament:matchForfeit', onTournamentMatchForfeit);
     socket.on('tournament:prizeAwarded', onPrizeAwarded);
     socket.on('battle:bondUpdate', onBondUpdate);
     socket.on('player:reset', onPlayerReset);
@@ -397,6 +401,7 @@ export default function App() {
       socket.off('trade:incoming', onTradeIncoming);
       socket.off('tournament:created', onTournamentCreated);
       socket.off('tournament:matchReady', onTournamentMatchReady);
+      socket.off('tournament:matchForfeit', onTournamentMatchForfeit);
       socket.off('tournament:prizeAwarded', onPrizeAwarded);
       socket.off('battle:bondUpdate', onBondUpdate);
       socket.off('player:reset', onPlayerReset);

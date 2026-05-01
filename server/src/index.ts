@@ -1647,12 +1647,25 @@ interface DraftInfo {
   player1: string;
   player2: string;
   totalPokemon: number;
+  p1Joined: boolean;
+  p2Joined: boolean;
   /** Indices into each player's frozen team, in the order the player is revealing them. */
   p1Order: number[];
   p2Order: number[];
   currentPicker: 'p1' | 'p2' | null;
 }
 const activeDrafts = new Map<string, DraftInfo>();
+
+function createDraftInfo(tournamentId: string, matchId: string, match: TournamentMatch, totalPokemon: number): DraftInfo {
+  return {
+    tournamentId, matchId,
+    player1: match.player1!, player2: match.player2!,
+    totalPokemon,
+    p1Joined: false, p2Joined: false,
+    p1Order: [], p2Order: [],
+    currentPicker: 'p1',
+  };
+}
 
 /** Build the per-player battle inputs from their frozen team, in the provided slot order. */
 function frozenToBattle(frozen: FrozenPokemon[], order: number[]) {
@@ -1687,6 +1700,36 @@ function broadcastDraftState(t: Tournament, d: DraftInfo) {
   const s2 = connectedPlayers.get(d.player2);
   if (s1) io.to(s1).emit('tournament:draftState', state);
   if (s2) io.to(s2).emit('tournament:draftState', state);
+}
+
+function chooseForfeitWinner(match: TournamentMatch, battle?: ActiveBattle, draft?: DraftInfo): string | null {
+  if (battle?.player1Team && !battle.player2Team) return match.player1;
+  if (!battle?.player1Team && battle?.player2Team) return match.player2;
+
+  if (draft) {
+    if (draft.p1Order.length > draft.p2Order.length) return match.player1;
+    if (draft.p2Order.length > draft.p1Order.length) return match.player2;
+    if (draft.p1Joined && !draft.p2Joined) return match.player1;
+    if (!draft.p1Joined && draft.p2Joined) return match.player2;
+  }
+
+  return Math.random() < 0.5 ? match.player1 : match.player2;
+}
+
+function notifyTournamentForfeit(t: Tournament, match: TournamentMatch) {
+  const payload = {
+    tournamentId: t.id,
+    tournamentName: t.name,
+    matchId: match.id,
+    winner: match.winner,
+    player1: match.player1,
+    player2: match.player2,
+  };
+  for (const playerName of [match.player1, match.player2]) {
+    if (!playerName) continue;
+    const socketId = connectedPlayers.get(playerName);
+    if (socketId) io.to(socketId).emit('tournament:matchForfeit', payload);
+  }
 }
 
 /** Record one side's finalized ordered team for an active tournament match, then run
@@ -2008,22 +2051,13 @@ function checkForfeitTimers() {
     let changed = false;
     for (const match of t.bracket) {
       if (match.status === 'active' && match.deadline && Date.now() > match.deadline) {
-        // Check who submitted — for simplicity, if neither played, pick randomly; otherwise winner is whoever showed up
         const battle = activeBattles.get(match.id);
-        if (battle) {
-          if (battle.player1Team && !battle.player2Team) {
-            match.winner = match.player1;
-          } else if (!battle.player1Team && battle.player2Team) {
-            match.winner = match.player2;
-          } else {
-            // Neither showed — random
-            match.winner = Math.random() < 0.5 ? match.player1 : match.player2;
-          }
-          activeBattles.delete(match.id);
-        } else {
-          match.winner = Math.random() < 0.5 ? match.player1 : match.player2;
-        }
+        const draft = activeDrafts.get(match.id);
+        match.winner = chooseForfeitWinner(match, battle, draft);
         match.status = 'forfeit';
+        activeBattles.delete(match.id);
+        activeDrafts.delete(match.id);
+        notifyTournamentForfeit(t, match);
         changed = true;
       }
     }
@@ -2550,17 +2584,13 @@ io.on('connection', (socket) => {
 
     let d = activeDrafts.get(matchId);
     if (!d) {
-      d = {
-        tournamentId, matchId,
-        player1: match.player1!, player2: match.player2!,
-        totalPokemon: t.totalPokemon,
-        p1Order: [], p2Order: [],
-        currentPicker: 'p1',
-      };
+      d = createDraftInfo(tournamentId, matchId, match, t.totalPokemon);
       activeDrafts.set(matchId, d);
     }
 
     const isP1 = playerName === d.player1;
+    if (isP1) d.p1Joined = true;
+    else d.p2Joined = true;
     if ((isP1 && d.currentPicker !== 'p1') || (!isP1 && d.currentPicker !== 'p2')) {
       return; // not your turn
     }
@@ -2602,15 +2632,11 @@ io.on('connection', (socket) => {
     if (match.player1 !== playerName && match.player2 !== playerName) return;
     let d = activeDrafts.get(matchId);
     if (!d) {
-      d = {
-        tournamentId, matchId,
-        player1: match.player1!, player2: match.player2!,
-        totalPokemon: t.totalPokemon,
-        p1Order: [], p2Order: [],
-        currentPicker: 'p1',
-      };
+      d = createDraftInfo(tournamentId, matchId, match, t.totalPokemon);
       activeDrafts.set(matchId, d);
     }
+    if (playerName === d.player1) d.p1Joined = true;
+    else d.p2Joined = true;
     socket.emit('tournament:draftState', makeDraftState(t, d));
   });
 

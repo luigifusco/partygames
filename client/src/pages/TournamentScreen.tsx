@@ -22,6 +22,13 @@ interface TournamentScreenProps {
 
 type Phase = 'list' | 'detail' | 'lockTeam' | 'teamSelect' | 'blindOrder' | 'draft' | 'waitingOpponent' | 'battle';
 
+interface ForfeitNotice {
+  matchId: string;
+  winner: string | null;
+  player1: string | null;
+  player2: string | null;
+}
+
 export default function TournamentScreen({ playerName, collection, playerId }: TournamentScreenProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
@@ -37,6 +44,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
   const [battleFinished, setBattleFinished] = useState(false);
   const [viewingTeamOf, setViewingTeamOf] = useState<string | null>(null);
   const [playerPictures, setPlayerPictures] = useState<Record<string, string | null>>({});
+  const [forfeitNotice, setForfeitNotice] = useState<ForfeitNotice | null>(null);
   // Per-match ordering state (blind pick): indices into the frozen team in chosen order.
   const [pickOrder, setPickOrder] = useState<number[]>([]);
   // Draft state (updated by server).
@@ -107,6 +115,13 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
     const onWaiting = () => setPhase('waitingOpponent');
     const onTeamLocked = () => setTeamLocked(true);
     const onDraftState = (state: any) => setDraftState(state);
+    const onMatchForfeit = ({ tournamentId, matchId, winner, player1, player2 }: any) => {
+      if (activeTournament?.id === tournamentId) fetchDetail(tournamentId);
+      setForfeitNotice({ matchId, winner: winner ?? null, player1: player1 ?? null, player2: player2 ?? null });
+      if (phase === 'waitingOpponent' || phase === 'blindOrder' || phase === 'draft' || phase === 'teamSelect') {
+        setPhase('detail');
+      }
+    };
 
     socket.on('tournament:updated', onUpdated);
     socket.on('tournament:matchReady', onMatchReady);
@@ -114,6 +129,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
     socket.on('tournament:waitingOpponent', onWaiting);
     socket.on('tournament:teamLocked', onTeamLocked);
     socket.on('tournament:draftState', onDraftState);
+    socket.on('tournament:matchForfeit', onMatchForfeit);
 
     return () => {
       socket.off('tournament:updated', onUpdated);
@@ -122,6 +138,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
       socket.off('tournament:waitingOpponent', onWaiting);
       socket.off('tournament:teamLocked', onTeamLocked);
       socket.off('tournament:draftState', onDraftState);
+      socket.off('tournament:matchForfeit', onMatchForfeit);
     };
   }, [activeTournament, phase, fetchDetail]);
 
@@ -135,6 +152,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
 
   const openDetail = (id: string) => {
     fetchDetail(id);
+    setForfeitNotice(null);
     setPhase('detail');
   };
 
@@ -536,6 +554,20 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
             {t.publicTeams && <span className="ds-badge ds-badge-accent">Public Teams</span>}
             {t.allowLegendaries === false && <span className="ds-badge ds-badge-gold">No Legendaries</span>}
           </div>
+
+          {forfeitNotice && (
+            <div className={'tournament-forfeit-notice ' + (forfeitNotice.winner === playerName ? 'is-win' : 'is-loss')}>
+              <div className="tournament-forfeit-title">Match decided by forfeit</div>
+              <div className="tournament-forfeit-body">
+                {forfeitNotice.winner === playerName
+                  ? 'You advance because your opponent missed the deadline.'
+                  : forfeitNotice.winner
+                    ? `${forfeitNotice.winner} advances by forfeit.`
+                    : 'The match deadline expired.'}
+              </div>
+              <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => setForfeitNotice(null)}>Dismiss</button>
+            </div>
+          )}
 
           {t.prizes && Array.isArray(t.prizes) && t.prizes.length > 0 && (
             <div className="tournament-prizes-bar">
