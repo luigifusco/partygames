@@ -482,7 +482,7 @@ export default function App() {
         <Route path="/battle" element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
         <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
         <Route path="/story" element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
-        <Route path="/tournaments" element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} />} />
+        <Route path="/tournaments" element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} onEloUpdate={(newElo) => setElo(newElo)} />} />
         <Route path="/minigames" element={<MinigamesScreen playerName={player.name} collection={collection} />} />
         <Route path="/tv" element={<TVView />} />
         <Route path="/replay" element={<ReplayListScreen />} />

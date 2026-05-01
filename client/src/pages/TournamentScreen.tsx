@@ -5,7 +5,7 @@ import { BASE_PATH } from '../config';
 import BattleScene from '../components/BattleScene';
 import TeamSelectGrid from '../components/TeamSelectGrid';
 import Avatar from '../components/Avatar';
-import type { BattleSnapshot } from '@shared/battle-types';
+import type { BattleSnapshot, EloUpdate } from '@shared/battle-types';
 import type { PokemonInstance } from '@shared/types';
 import type { Tournament, TournamentSummary, TournamentMatch, FrozenPokemon } from '@shared/tournament-types';
 import { CHARACTER_UNLOCK_CHAPTER } from '@shared/story-data';
@@ -18,6 +18,7 @@ interface TournamentScreenProps {
   playerName: string;
   collection: PokemonInstance[];
   playerId?: string;
+  onEloUpdate: (newElo: number) => void;
 }
 
 type Phase = 'list' | 'detail' | 'lockTeam' | 'teamSelect' | 'blindOrder' | 'draft' | 'waitingOpponent' | 'battle';
@@ -29,7 +30,7 @@ interface ForfeitNotice {
   player2: string | null;
 }
 
-export default function TournamentScreen({ playerName, collection, playerId }: TournamentScreenProps) {
+export default function TournamentScreen({ playerName, collection, playerId, onEloUpdate }: TournamentScreenProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const characterPickUnlocked = chapters.has(CHARACTER_UNLOCK_CHAPTER);
@@ -115,6 +116,10 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
     const onWaiting = () => setPhase('waitingOpponent');
     const onTeamLocked = () => setTeamLocked(true);
     const onDraftState = (state: any) => setDraftState(state);
+    const handleEloUpdate = (update: EloUpdate) => {
+      const myNewElo = update.winnerName === playerName ? update.winnerNewElo : update.loserNewElo;
+      onEloUpdate(myNewElo);
+    };
     const onMatchForfeit = ({ tournamentId, matchId, winner, player1, player2 }: any) => {
       if (activeTournament?.id === tournamentId) fetchDetail(tournamentId);
       setForfeitNotice({ matchId, winner: winner ?? null, player1: player1 ?? null, player2: player2 ?? null });
@@ -129,6 +134,7 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
     socket.on('tournament:waitingOpponent', onWaiting);
     socket.on('tournament:teamLocked', onTeamLocked);
     socket.on('tournament:draftState', onDraftState);
+    socket.on('battle:eloUpdate', handleEloUpdate);
     socket.on('tournament:matchForfeit', onMatchForfeit);
 
     return () => {
@@ -138,9 +144,10 @@ export default function TournamentScreen({ playerName, collection, playerId }: T
       socket.off('tournament:waitingOpponent', onWaiting);
       socket.off('tournament:teamLocked', onTeamLocked);
       socket.off('tournament:draftState', onDraftState);
+      socket.off('battle:eloUpdate', handleEloUpdate);
       socket.off('tournament:matchForfeit', onMatchForfeit);
     };
-  }, [activeTournament, phase, fetchDetail]);
+  }, [activeTournament, phase, fetchDetail, onEloUpdate, playerName]);
 
   const joinTournament = (id: string) => {
     socket.emit('tournament:join', id);

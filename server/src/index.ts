@@ -1826,17 +1826,29 @@ function handleTournamentTeamSubmission(
     io.to(s2).emit('tournament:battleStart', { tournamentId, matchId, snapshot: flipped });
   }
 
-  const p1Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player1) as any;
-  const p2Row = db.prepare('SELECT id FROM players WHERE name = ?').get(battle.player2) as any;
+  const p1Row = db.prepare('SELECT id, elo FROM players WHERE name = ?').get(battle.player1) as any;
+  const p2Row = db.prepare('SELECT id, elo FROM players WHERE name = ?').get(battle.player2) as any;
   const p1Won = snapshot.winner === 'left';
 
   // Persist the match as a battle row (source-of-truth Showdown log).
   if (p1Row && p2Row) {
-    const winnerId = p1Won ? p1Row.id : p2Row.id;
-    const loserId = p1Won ? p2Row.id : p1Row.id;
+    const winnerName = p1Won ? battle.player1 : battle.player2;
+    const loserName = p1Won ? battle.player2 : battle.player1;
+    const winnerRow = p1Won ? p1Row : p2Row;
+    const loserRow = p1Won ? p2Row : p1Row;
+    const { winnerNewElo, loserNewElo, winnerDelta, loserDelta } = calculateEloChanges(winnerRow.elo, loserRow.elo);
+    db.prepare('UPDATE players SET elo = ? WHERE id = ?').run(winnerNewElo, winnerRow.id);
+    db.prepare('UPDATE players SET elo = ? WHERE id = ?').run(loserNewElo, loserRow.id);
+
+    const eloUpdate = { winnerName, loserName, winnerNewElo, loserNewElo, winnerDelta, loserDelta };
+    if (s1) io.to(s1).emit('battle:eloUpdate', eloUpdate);
+    if (s2) io.to(s2).emit('battle:eloUpdate', eloUpdate);
+
     db.prepare(
-      'INSERT INTO battles (id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log, tournament_id, tournament_match_id) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(uuidv4(), winnerId, loserId, t.fieldSize, (battle.player1Team ?? []).length, t.pickMode ?? 'blind', 'tournament', snapshot.round, (snapshot.rawLog ?? []).join('\n'), tournamentId, matchId);
+      'INSERT INTO battles (id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log, tournament_id, tournament_match_id) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(uuidv4(), winnerRow.id, loserRow.id, winnerDelta, loserDelta, t.fieldSize, (battle.player1Team ?? []).length, t.pickMode ?? 'blind', 'tournament', snapshot.round, (snapshot.rawLog ?? []).join('\n'), tournamentId, matchId);
+
+    console.log(`Tournament Elo update: ${winnerName} ${winnerRow.elo}->${winnerNewElo} (+${winnerDelta}), ${loserName} ${loserRow.elo}->${loserNewElo} (${loserDelta})`);
   }
 
   if (p1Row) {
