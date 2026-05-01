@@ -267,10 +267,11 @@ export default function App() {
       newCol.push(receive);
       return newCol;
     });
-    if (player) {
-      removePokemonFromServer(player.id, give.pokemon.id, 1);
-      addPokemonToServer(player.id, [receive.pokemon.id]);
-    }
+    setDiscovered((prev) => {
+      const next = new Set(prev);
+      next.add(receive.pokemon.id);
+      return next;
+    });
   };
 
   // Pull fresh collection/essence/items from the server. Useful for screens

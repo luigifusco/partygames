@@ -1629,12 +1629,26 @@ interface ActiveTrade {
   id: string;
   player1: string;
   player2: string;
+  player1PokemonInstanceId: string | null;
+  player2PokemonInstanceId: string | null;
   player1Pokemon: number | null;
   player2Pokemon: number | null;
   player1Confirmed: boolean;
   player2Confirmed: boolean;
 }
 const activeTrades = new Map<string, ActiveTrade>();
+
+const OWNED_POKEMON_FIELDS = 'id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character';
+
+function getTradePokemon(playerId: string, instanceId?: string | null, pokemonId?: number | null) {
+  if (instanceId) {
+    return db.prepare(`SELECT ${OWNED_POKEMON_FIELDS} FROM owned_pokemon WHERE id = ? AND player_id = ?`).get(instanceId, playerId) as any;
+  }
+  if (typeof pokemonId === 'number') {
+    return db.prepare(`SELECT ${OWNED_POKEMON_FIELDS} FROM owned_pokemon WHERE player_id = ? AND pokemon_id = ? LIMIT 1`).get(playerId, pokemonId) as any;
+  }
+  return null;
+}
 
 // --- Tournament system ---
 import type { Tournament, TournamentMatch, TournamentSummary, TournamentPrizes, FrozenPokemon, TournamentDraftState } from '../../shared/tournament-types.js';
@@ -2386,6 +2400,8 @@ io.on('connection', (socket) => {
         id: tradeId,
         player1: playerName,
         player2: targetName,
+        player1PokemonInstanceId: null,
+        player2PokemonInstanceId: null,
         player1Pokemon: null,
         player2Pokemon: null,
         player1Confirmed: false,
@@ -2411,16 +2427,29 @@ io.on('connection', (socket) => {
     socket.emit('trade:cancelled');
   });
 
-  socket.on('trade:selectPokemon', ({ tradeId, pokemonId }: { tradeId: string; pokemonId: number }) => {
+  socket.on('trade:selectPokemon', ({ tradeId, pokemonId, instanceId }: { tradeId: string; pokemonId: number; instanceId?: string }) => {
     if (!playerName) return;
     const trade = activeTrades.get(tradeId);
     if (!trade) return;
 
+    const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
+    if (!player) {
+      socket.emit('trade:error', { error: 'Player not found' });
+      return;
+    }
+    const selected = getTradePokemon(player.id, instanceId, pokemonId);
+    if (!selected) {
+      socket.emit('trade:error', { error: 'Selected Pokemon not found' });
+      return;
+    }
+
     if (trade.player1 === playerName) {
-      trade.player1Pokemon = pokemonId;
+      trade.player1PokemonInstanceId = selected.id;
+      trade.player1Pokemon = selected.pokemon_id;
       trade.player1Confirmed = false;
     } else if (trade.player2 === playerName) {
-      trade.player2Pokemon = pokemonId;
+      trade.player2PokemonInstanceId = selected.id;
+      trade.player2Pokemon = selected.pokemon_id;
       trade.player2Confirmed = false;
     }
 
@@ -2432,6 +2461,8 @@ io.on('connection', (socket) => {
         tradeId,
         player1Pokemon: trade.player1Pokemon,
         player2Pokemon: trade.player2Pokemon,
+        player1PokemonInstanceId: trade.player1PokemonInstanceId,
+        player2PokemonInstanceId: trade.player2PokemonInstanceId,
       };
       if (socket1) io.to(socket1).emit('trade:bothSelected', data);
       if (socket2) io.to(socket2).emit('trade:bothSelected', data);
@@ -2451,20 +2482,53 @@ io.on('connection', (socket) => {
     if (trade.player1Confirmed && trade.player2Confirmed) {
       const socket1 = connectedPlayers.get(trade.player1);
       const socket2 = connectedPlayers.get(trade.player2);
+      const p1 = db.prepare('SELECT id FROM players WHERE name = ?').get(trade.player1) as any;
+      const p2 = db.prepare('SELECT id FROM players WHERE name = ?').get(trade.player2) as any;
+      if (!p1 || !p2) {
+        socket.emit('trade:error', { error: 'Trade player not found' });
+        return;
+      }
+
+      const p1Pokemon = getTradePokemon(p1.id, trade.player1PokemonInstanceId, trade.player1Pokemon);
+      const p2Pokemon = getTradePokemon(p2.id, trade.player2PokemonInstanceId, trade.player2Pokemon);
+      if (!p1Pokemon || !p2Pokemon) {
+        const error = { error: 'Selected Pokemon is no longer available' };
+        if (socket1) io.to(socket1).emit('trade:error', error);
+        if (socket2) io.to(socket2).emit('trade:error', error);
+        activeTrades.delete(tradeId);
+        return;
+      }
+
+      try {
+        db.exec('BEGIN');
+        db.prepare('UPDATE owned_pokemon SET player_id = ? WHERE id = ? AND player_id = ?').run(p2.id, p1Pokemon.id, p1.id);
+        db.prepare('UPDATE owned_pokemon SET player_id = ? WHERE id = ? AND player_id = ?').run(p1.id, p2Pokemon.id, p2.id);
+        db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)').run(p1.id, p2Pokemon.pokemon_id);
+        db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)').run(p2.id, p1Pokemon.pokemon_id);
+        db.prepare('INSERT INTO trades (id, player1_id, player2_id, pokemon1_id, pokemon2_id) VALUES (?, ?, ?, ?, ?)').run(trade.id, p1.id, p2.id, p1Pokemon.id, p2Pokemon.id);
+        db.exec('COMMIT');
+      } catch (error) {
+        db.exec('ROLLBACK');
+        console.error('Trade execution failed:', error);
+        const payload = { error: 'Trade failed' };
+        if (socket1) io.to(socket1).emit('trade:error', payload);
+        if (socket2) io.to(socket2).emit('trade:error', payload);
+        return;
+      }
+
       const data = {
         tradeId,
         player1: trade.player1,
         player2: trade.player2,
-        player1Pokemon: trade.player1Pokemon,
-        player2Pokemon: trade.player2Pokemon,
+        player1Pokemon: p1Pokemon.pokemon_id,
+        player2Pokemon: p2Pokemon.pokemon_id,
+        player1PokemonInstanceId: p1Pokemon.id,
+        player2PokemonInstanceId: p2Pokemon.id,
+        player1Received: p2Pokemon,
+        player2Received: p1Pokemon,
       };
       if (socket1) io.to(socket1).emit('trade:execute', data);
       if (socket2) io.to(socket2).emit('trade:execute', data);
-      const p1 = db.prepare('SELECT id FROM players WHERE name = ?').get(trade.player1) as any;
-      const p2 = db.prepare('SELECT id FROM players WHERE name = ?').get(trade.player2) as any;
-      if (p1 && p2) {
-        db.prepare('INSERT INTO trades (id, player1_id, player2_id) VALUES (?, ?, ?)').run(trade.id, p1.id, p2.id);
-      }
       activeTrades.delete(tradeId);
       tradesTotal.inc();
       gameplayEventsTotal.labels('trade_completed').inc();
