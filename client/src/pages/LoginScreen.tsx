@@ -65,6 +65,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginDisabled, setLoginDisabled] = useState(false);
+  const [partyStopped, setPartyStopped] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [step, setStep] = useState<'form' | 'picture'>('form');
   const [picture, setPicture] = useState<string | null>(null);
@@ -79,7 +80,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setName(localStorage.getItem(`${LAST_PLAYER_KEY}:${partySlug}`) ?? '');
     fetch(apiUrl('/api/settings/features', partySlug))
       .then(r => r.json())
-      .then(data => { setLoginDisabled(data.loginDisabled ?? false); setCheckingStatus(false); })
+      .then(data => {
+        setLoginDisabled(data.loginDisabled ?? false);
+        setPartyStopped(data.partyStopped ?? false);
+        setCheckingStatus(false);
+      })
       .catch(() => setCheckingStatus(false));
   }, [partySlug]);
 
@@ -209,20 +214,20 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     return <div className="login-screen"><div className="ds-spinner" aria-label="Loading" /></div>;
   }
 
-  if (loginDisabled) {
+  if (loginDisabled || partyStopped) {
     return (
       <div className="login-screen splash-screen">
         <div className="splash-glow" />
         <div className="splash-content">
           <div className="splash-icon">⚡</div>
           <h1 className="splash-title">Pokémon Party</h1>
-          <div className="splash-subtitle">The party is about to begin</div>
+          <div className="splash-subtitle">{partyStopped ? 'This party is stopped' : 'The party is about to begin'}</div>
           <div className="splash-dots">
             <span className="splash-dot" />
             <span className="splash-dot" />
             <span className="splash-dot" />
           </div>
-          <div className="splash-hint">Get ready, trainers!</div>
+          <div className="splash-hint">{partyStopped ? 'Ask an admin to start it again.' : 'Get ready, trainers!'}</div>
         </div>
       </div>
     );

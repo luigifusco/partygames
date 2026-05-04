@@ -8,6 +8,7 @@ interface PartyRow {
   slug: string;
   name: string;
   createdAt?: string;
+  stoppedAt?: string | null;
   playerCount: number;
   onlineCount: number;
   tournamentCount: number;
@@ -19,6 +20,7 @@ export default function PartiesAdmin() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [updatingSlug, setUpdatingSlug] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = async () => {
@@ -64,6 +66,26 @@ export default function PartiesAdmin() {
       setError('Could not create party: ' + err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const setPartyStopped = async (party: PartyRow, stopped: boolean) => {
+    setUpdatingSlug(party.slug);
+    setError(null);
+    try {
+      const res = await fetch(apiUrl(`/api/admin/parties/${party.slug}/${stopped ? 'stop' : 'start'}`), {
+        method: 'POST',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? `Could not ${stopped ? 'stop' : 'start'} party`);
+        return;
+      }
+      await refresh();
+    } catch (err) {
+      setError(`Could not ${stopped ? 'stop' : 'start'} party: ` + err);
+    } finally {
+      setUpdatingSlug(null);
     }
   };
 
@@ -123,21 +145,39 @@ export default function PartiesAdmin() {
             <div className="ds-empty"><div className="ds-empty-text">No parties yet</div></div>
           ) : (
             <div className="parties-list">
-              {parties.map((party) => (
-                <div key={party.id} className="parties-row">
+              {parties.map((party) => {
+                const stopped = !!party.stoppedAt;
+                return (
+                <div key={party.id} className={`parties-row ${stopped ? 'is-stopped' : ''}`}>
                   <div className="parties-main">
-                    <div className="parties-name">{party.name}</div>
+                    <div className="parties-name">
+                      {party.name}
+                      {stopped && <span className="parties-status">Stopped</span>}
+                    </div>
                     <div className="parties-slug">/{party.slug}</div>
                     {party.createdAt && <div className="parties-created">Created {formatCreatedAt(party.createdAt)}</div>}
+                    {party.stoppedAt && <div className="parties-created">Stopped {formatCreatedAt(party.stoppedAt)}</div>}
                   </div>
                   <div className="parties-stats">
                     <span>{party.playerCount} players</span>
                     <span>{party.onlineCount} online</span>
                     <span>{party.tournamentCount} tournaments</span>
                   </div>
-                  <Link className="ds-btn ds-btn-sm" to={partyPath('/', party.slug)}>Open</Link>
+                  <div className="parties-actions">
+                    <Link className="ds-btn ds-btn-sm" to={partyPath('/', party.slug)}>Open</Link>
+                    {party.slug !== 'main' && (
+                      <button
+                        className={`ds-btn ds-btn-sm ${stopped ? 'ds-btn-primary' : 'ds-btn-danger'}`}
+                        onClick={() => setPartyStopped(party, !stopped)}
+                        disabled={updatingSlug === party.slug}
+                      >
+                        {stopped ? 'Start' : 'Stop'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>

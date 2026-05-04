@@ -102,6 +102,7 @@ interface PartyContext {
   id: string;
   slug: string;
   name: string;
+  stoppedAt: string | null;
 }
 
 function normalizePartySlug(value: unknown): string {
@@ -117,11 +118,11 @@ function partyNameFromSlug(slug: string): string {
 
 function partyContextFromRow(row: any): PartyContext | null {
   if (!row || typeof row.id !== 'string' || typeof row.slug !== 'string' || typeof row.name !== 'string') return null;
-  return { id: row.id, slug: row.slug, name: row.name };
+  return { id: row.id, slug: row.slug, name: row.name, stoppedAt: row.stopped_at ?? null };
 }
 
 function getPartyBySlug(slug: string): PartyContext | null {
-  return partyContextFromRow(db.prepare('SELECT id, slug, name FROM parties WHERE slug = ?').get(slug));
+  return partyContextFromRow(db.prepare('SELECT id, slug, name, stopped_at FROM parties WHERE slug = ?').get(slug));
 }
 
 function ensurePartyBySlug(rawSlug: unknown): PartyContext {
@@ -131,7 +132,7 @@ function ensurePartyBySlug(rawSlug: unknown): PartyContext {
   const id = slug === DEFAULT_PARTY_SLUG ? DEFAULT_PARTY_ID : uuidv4();
   const name = partyNameFromSlug(slug);
   db.prepare('INSERT INTO parties (id, slug, name) VALUES (?, ?, ?)').run(id, slug, name);
-  return { id, slug, name };
+  return { id, slug, name, stoppedAt: null };
 }
 
 function partySlugFromRequest(req: any): string {
@@ -147,10 +148,18 @@ function publicPlayer(row: any, party: PartyContext) {
   return row ? { ...row, partyId: party.id, partySlug: party.slug, partyName: party.name } : row;
 }
 
+function partyStoppedResponse(res: any) {
+  return res.status(403).json({ error: 'Party is stopped', partyStopped: true });
+}
+
 function playerContextFromRequest(req: any, res: any): { party: PartyContext; player: { id: string; essence: number } } | null {
   const party = partyFromRequest(req);
   if (!party) {
     res.status(404).json({ error: 'Party not found' });
+    return null;
+  }
+  if (party.stoppedAt) {
+    partyStoppedResponse(res);
     return null;
   }
   const player = db.prepare('SELECT id, essence FROM players WHERE id = ? AND party_id = ?').get(req.params.id, party.id) as any;
@@ -481,6 +490,7 @@ app.post(`${BASE_PATH}/api/register`, (req, res) => {
   const { name, picture } = req.body;
   const party = partyFromRequest(req);
   if (!party) return res.status(404).json({ error: 'Party not found' });
+  if (party.stoppedAt) return partyStoppedResponse(res);
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Name is required' });
   }
@@ -511,6 +521,7 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
   const { name } = req.body;
   const party = partyFromRequest(req);
   if (!party) return res.status(404).json({ error: 'Party not found' });
+  if (party.stoppedAt) return partyStoppedResponse(res);
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Name is required' });
   }
@@ -1294,7 +1305,7 @@ app.get(`${BASE_PATH}/api/replay/:id`, (req, res) => {
 
 app.get(`${BASE_PATH}/api/admin/parties`, (_req, res) => {
   const rows = db.prepare(`
-    SELECT p.id, p.slug, p.name, p.created_at,
+    SELECT p.id, p.slug, p.name, p.stopped_at, p.created_at,
            (SELECT COUNT(*) FROM players pl WHERE pl.party_id = p.id) as player_count,
            (SELECT COUNT(*) FROM tournaments t WHERE t.party_id = p.id) as tournament_count
     FROM parties p
@@ -1304,6 +1315,7 @@ app.get(`${BASE_PATH}/api/admin/parties`, (_req, res) => {
     id: row.id,
     slug: row.slug,
     name: row.name,
+    stoppedAt: row.stopped_at ?? null,
     createdAt: row.created_at,
     playerCount: row.player_count ?? 0,
     tournamentCount: row.tournament_count ?? 0,
@@ -1328,7 +1340,25 @@ app.post(`${BASE_PATH}/api/admin/parties`, (req, res) => {
   const name = (rawName || partyNameFromSlug(slug)).slice(0, 80);
   const id = uuidv4();
   db.prepare('INSERT INTO parties (id, slug, name) VALUES (?, ?, ?)').run(id, slug, name);
-  return res.status(201).json({ party: { id, slug, name, playerCount: 0, tournamentCount: 0, onlineCount: 0 } });
+  return res.status(201).json({ party: { id, slug, name, stoppedAt: null, playerCount: 0, tournamentCount: 0, onlineCount: 0 } });
+});
+
+app.post(`${BASE_PATH}/api/admin/parties/:slug/stop`, (req, res) => {
+  const party = getPartyBySlug(normalizePartySlug(req.params.slug));
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  if (party.slug === DEFAULT_PARTY_SLUG) return res.status(400).json({ error: 'Main party cannot be stopped' });
+  const stoppedAt = new Date().toISOString();
+  db.prepare('UPDATE parties SET stopped_at = ? WHERE id = ?').run(stoppedAt, party.id);
+  io.to(partyRoom(party.id)).emit('player:reset');
+  void disconnectPartySockets(party.id);
+  return res.json({ ok: true, party: { ...party, stoppedAt } });
+});
+
+app.post(`${BASE_PATH}/api/admin/parties/:slug/start`, (req, res) => {
+  const party = getPartyBySlug(normalizePartySlug(req.params.slug));
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  db.prepare('UPDATE parties SET stopped_at = NULL WHERE id = ?').run(party.id);
+  return res.json({ ok: true, party: { ...party, stoppedAt: null } });
 });
 
 app.get(`${BASE_PATH}/api/admin/players`, (req, res) => {
@@ -1669,7 +1699,12 @@ app.get(`${BASE_PATH}/api/settings/features`, (req, res) => {
   const party = partyFromRequest(req);
   if (!party) return res.status(404).json({ error: 'Party not found' });
   const rows = db.prepare("SELECT key, value FROM game_settings WHERE party_id = ? AND key IN ('ai_battle_enabled', 'login_disabled')").all(party.id) as any[];
-  const flags: Record<string, boolean> = { aiBattleEnabled: false, loginDisabled: false };
+  const flags: Record<string, boolean | string> = {
+    aiBattleEnabled: false,
+    loginDisabled: false,
+    partyStopped: !!party.stoppedAt,
+    partyName: party.name,
+  };
   for (const row of rows) {
     try {
       if (row.key === 'ai_battle_enabled') flags.aiBattleEnabled = JSON.parse(row.value);
@@ -1728,6 +1763,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokedex/backfill`, (req, res) => {
 app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
   const party = partyFromRequest(req);
   if (!party) return res.status(404).json({ error: 'Party not found' });
+  if (party.stoppedAt) return partyStoppedResponse(res);
   const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters, playerName, leftInstanceIds, bondMode } = req.body;
   if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
     return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
@@ -1790,6 +1826,7 @@ function minigameBondXp(minigame: string, score: number): number | null {
 app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
   const party = partyFromRequest(req);
   if (!party) return res.status(404).json({ error: 'Party not found' });
+  if (party.stoppedAt) return partyStoppedResponse(res);
   const { playerName, instanceId, minigame, score } = req.body as {
     playerName?: string; instanceId?: string; minigame?: string; score?: number;
   };
@@ -1826,6 +1863,24 @@ function playerPresenceKey(partyId: string, playerName: string): string {
 
 function getConnectedPlayer(partyId: string, playerName: string | null | undefined): string | undefined {
   return playerName ? connectedPlayers.get(playerPresenceKey(partyId, playerName)) : undefined;
+}
+
+async function disconnectPartySockets(partyId: string) {
+  const sockets = await io.in(partyRoom(partyId)).fetchSockets();
+  for (const sock of sockets) sock.disconnect(true);
+  for (const key of Array.from(connectedPlayers.keys())) {
+    if (key.startsWith(`${partyId}:`)) connectedPlayers.delete(key);
+  }
+  for (const key of Array.from(pendingChallenges.keys())) {
+    if (key.startsWith(`${partyId}:`)) {
+      pendingChallenges.delete(key);
+      pendingChallengeConfigs.delete(key);
+    }
+  }
+  for (const key of Array.from(pendingTrades.keys())) {
+    if (key.startsWith(`${partyId}:`)) pendingTrades.delete(key);
+  }
+  playersOnline.set(connectedPlayers.size);
 }
 
 // Track challenges: Map<partyId:challengerName, targetName>
@@ -2535,9 +2590,14 @@ io.on('connection', (socket) => {
     const party = typeof payload === 'string'
       ? ensurePartyBySlug(DEFAULT_PARTY_SLUG)
       : (payload.partyId
-          ? partyContextFromRow(db.prepare('SELECT id, slug, name FROM parties WHERE id = ?').get(payload.partyId))
+          ? partyContextFromRow(db.prepare('SELECT id, slug, name, stopped_at FROM parties WHERE id = ?').get(payload.partyId))
           : getPartyBySlug(normalizePartySlug(payload.partySlug)));
     if (!party || !name) return;
+    if (party.stoppedAt) {
+      socket.emit('party:stopped', { partySlug: party.slug });
+      socket.disconnect(true);
+      return;
+    }
     playerName = name;
     socketPartyId = party.id;
     socketPartySlug = party.slug;

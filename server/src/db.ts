@@ -22,6 +22,7 @@ export function initDb() {
       id TEXT PRIMARY KEY,
       slug TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
+      stopped_at TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -103,6 +104,11 @@ export function initDb() {
 
   db.prepare('INSERT OR IGNORE INTO parties (id, slug, name) VALUES (?, ?, ?)')
     .run(DEFAULT_PARTY_ID, DEFAULT_PARTY_SLUG, DEFAULT_PARTY_NAME);
+
+  const partyCols = db.prepare("PRAGMA table_info(parties)").all() as any[];
+  if (!partyCols.find((c: any) => c.name === 'stopped_at')) {
+    db.exec('ALTER TABLE parties ADD COLUMN stopped_at TEXT');
+  }
 
   // Add elo column if it doesn't exist (migration for existing DBs)
   const cols = db.prepare("PRAGMA table_info(players)").all() as any[];
