@@ -38,6 +38,7 @@ export const DEFAULT_PRIZES: TournamentPrizes = [
 
 export interface Tournament {
   id: string;
+  partyId?: string;
   name: string;
   fieldSize: 1 | 2 | 3;
   totalPokemon: number;

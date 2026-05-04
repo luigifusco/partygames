@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 import BattleScene from '../components/BattleScene';
 import type { BattleSnapshot } from '../../../shared/battle-types';
 import './ReplayListScreen.css';
@@ -25,7 +25,7 @@ export default function ReplayWatchScreen() {
   useEffect(() => {
     if (!id) return;
     let alive = true;
-    fetch(`${BASE_PATH}/api/replay/${id}`)
+    fetch(apiUrl(`/api/replay/${id}`))
       .then((r) => r.ok ? r.json() : r.json().then((j) => Promise.reject(new Error(j.error || `HTTP ${r.status}`))))
       .then((data) => { if (alive) { setSnapshot(data.snapshot); setMeta(data.meta); } })
       .catch((e) => { if (alive) setError(e.message || 'failed'); });

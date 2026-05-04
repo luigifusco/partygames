@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import type { Tournament, TournamentMatch } from '@shared/tournament-types';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 import Avatar from '../components/Avatar';
 import './TVView.css';
 
@@ -32,8 +32,6 @@ const TV_TABS: { key: TvTab; label: string; icon: string }[] = [
 ];
 
 const MODE_ROTATE_MS = 15_000;
-
-const API_BASE = BASE_PATH;
 
 function PokemonRow({ ids, size }: { ids: number[]; size: 'xl' | 'md' | 'sm' }) {
   if (ids.length === 0) {
@@ -258,7 +256,7 @@ export default function TVView() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/leaderboard`);
+        const res = await fetch(apiUrl('/api/leaderboard'));
         const data = await res.json();
         setLeaderboard(data.players);
       } catch {
@@ -267,7 +265,7 @@ export default function TVView() {
     };
     const fetchLatestTournament = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/tournaments/latest`);
+        const res = await fetch(apiUrl('/api/tournaments/latest'));
         const data = await res.json();
         setLatestTournament(data.tournament ?? null);
       } catch {

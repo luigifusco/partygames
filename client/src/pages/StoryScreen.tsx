@@ -10,11 +10,9 @@ import BattleScene from '../components/BattleScene';
 import TeamSelectGrid from '../components/TeamSelectGrid';
 import type { BattleSnapshot } from '@shared/battle-types';
 import type { PokemonInstance } from '@shared/types';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 import { getLocalizedStoryStepText } from '../storyLocalization';
 import './StoryScreen.css';
-
-const API = BASE_PATH;
 
 function renderDialogueText(text: string): ReactNode {
   // Supports **bold**, *italic*, _italic_ — order matters: bold first.
@@ -73,7 +71,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   const [dialogueLineIdx, setDialogueLineIdx] = useState(0);
 
   useEffect(() => {
-    fetch(API + '/api/player/' + playerId + '/story')
+    fetch(apiUrl('/api/player/' + playerId + '/story'))
       .then(r => r.json())
       .then(data => setCompletedSteps(new Set((data.completed ?? []).map(String))))
       .catch(() => {});
@@ -137,7 +135,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
 
   const markStepComplete = useCallback(async (sl: Storyline, stepIdx: number) => {
     const key = stepKey(sl.id, stepIdx);
-    const res = await fetch(API + '/api/player/' + playerId + '/story/complete', {
+    const res = await fetch(apiUrl('/api/player/' + playerId + '/story/complete'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chapterId: key }),
@@ -153,7 +151,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     const key = sl.id + ':complete';
     if (completedSteps.has(key)) return;
     try {
-      await fetch(API + '/api/player/' + playerId + '/story/complete', {
+      await fetch(apiUrl('/api/player/' + playerId + '/story/complete'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chapterId: key }),
@@ -184,7 +182,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       const playerInstanceIds = selected.map(idx => collection[idx].instanceId);
       void teamSize;
 
-      const res = await fetch(API + '/api/battle/simulate', {
+      const res = await fetch(apiUrl('/api/battle/simulate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -339,7 +337,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     if (choice.region) {
       const key = starterRegionChapter(choice.region);
       try {
-        await fetch(API + '/api/player/' + playerId + '/story/complete', {
+        await fetch(apiUrl('/api/player/' + playerId + '/story/complete'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chapterId: key }),

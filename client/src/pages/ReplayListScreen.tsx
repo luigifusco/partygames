@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 import './ReplayListScreen.css';
 
 interface BattleRow {
@@ -49,7 +49,7 @@ export default function ReplayListScreen() {
 
   useEffect(() => {
     let alive = true;
-    fetch(`${BASE_PATH}/api/replay/list?limit=100`)
+    fetch(apiUrl('/api/replay/list?limit=100'))
       .then((r) => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((data) => { if (alive) { setBattles(data.battles || []); setLoading(false); } })
       .catch((e) => { if (alive) { setError(e.message || 'failed'); setLoading(false); } });

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 import BattleScene from '../components/BattleScene';
 import TeamSelectGrid from '../components/TeamSelectGrid';
 import Avatar from '../components/Avatar';
@@ -11,8 +11,6 @@ import type { Tournament, TournamentSummary, TournamentMatch, FrozenPokemon } fr
 import { CHARACTER_UNLOCK_CHAPTER } from '@shared/story-data';
 import { useStoryChapters } from '../hooks/useStoryChapters';
 import './TournamentScreen.css';
-
-const API = BASE_PATH;
 
 interface TournamentScreenProps {
   playerName: string;
@@ -65,7 +63,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
   useEffect(() => {
     // Pull name→picture for every registered player (leaderboard is the only
     // endpoint that returns the full roster, not just online users).
-    fetch(API + '/api/leaderboard')
+    fetch(apiUrl('/api/leaderboard'))
       .then(r => r.json())
       .then((data: any) => {
         const rows: any[] = data?.players ?? [];
@@ -78,7 +76,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
 
   const fetchList = useCallback(async () => {
     try {
-      const res = await fetch(API + '/api/tournaments');
+      const res = await fetch(apiUrl('/api/tournaments'));
       const data = await res.json();
       setTournaments(data.tournaments ?? []);
     } catch {}
@@ -86,7 +84,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
 
   const fetchDetail = useCallback(async (id: string) => {
     try {
-      const res = await fetch(API + '/api/tournament/' + id);
+      const res = await fetch(apiUrl('/api/tournament/' + id));
       const data = await res.json();
       setActiveTournament(data);
     } catch {}

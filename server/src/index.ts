@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import * as promClient from 'prom-client';
-import { initDb } from './db.js';
+import { DEFAULT_PARTY_ID, DEFAULT_PARTY_NAME, DEFAULT_PARTY_SLUG, initDb } from './db.js';
 import { STARTING_ESSENCE, BOX_COSTS } from '../../shared/essence.js';
 import { STARTING_ELO, calculateEloChanges } from '../../shared/elo.js';
 import { POKEMON, POKEMON_BY_ID } from '../../shared/pokemon-data.js';
@@ -97,6 +97,69 @@ const io = new Server(httpServer, {
 app.use(express.json({ limit: '5mb' }));
 
 const db = initDb();
+
+interface PartyContext {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+function normalizePartySlug(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_PARTY_SLUG;
+  const slug = value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return slug || DEFAULT_PARTY_SLUG;
+}
+
+function partyNameFromSlug(slug: string): string {
+  if (slug === DEFAULT_PARTY_SLUG) return DEFAULT_PARTY_NAME;
+  return slug.split('-').filter(Boolean).map(capitalize).join(' ') || slug;
+}
+
+function partyContextFromRow(row: any): PartyContext | null {
+  if (!row || typeof row.id !== 'string' || typeof row.slug !== 'string' || typeof row.name !== 'string') return null;
+  return { id: row.id, slug: row.slug, name: row.name };
+}
+
+function getPartyBySlug(slug: string): PartyContext | null {
+  return partyContextFromRow(db.prepare('SELECT id, slug, name FROM parties WHERE slug = ?').get(slug));
+}
+
+function ensurePartyBySlug(rawSlug: unknown): PartyContext {
+  const slug = normalizePartySlug(rawSlug);
+  const existing = getPartyBySlug(slug);
+  if (existing) return existing;
+  const id = slug === DEFAULT_PARTY_SLUG ? DEFAULT_PARTY_ID : uuidv4();
+  const name = partyNameFromSlug(slug);
+  db.prepare('INSERT INTO parties (id, slug, name) VALUES (?, ?, ?)').run(id, slug, name);
+  return { id, slug, name };
+}
+
+function partySlugFromRequest(req: any): string {
+  return normalizePartySlug(req.body?.partySlug ?? req.query?.partySlug ?? req.get?.('x-party-slug'));
+}
+
+function partyFromRequest(req: any, create = false): PartyContext | null {
+  const slug = partySlugFromRequest(req);
+  return create ? ensurePartyBySlug(slug) : getPartyBySlug(slug);
+}
+
+function publicPlayer(row: any, party: PartyContext) {
+  return row ? { ...row, partyId: party.id, partySlug: party.slug, partyName: party.name } : row;
+}
+
+function playerContextFromRequest(req: any, res: any): { party: PartyContext; player: { id: string; essence: number } } | null {
+  const party = partyFromRequest(req);
+  if (!party) {
+    res.status(404).json({ error: 'Party not found' });
+    return null;
+  }
+  const player = db.prepare('SELECT id, essence FROM players WHERE id = ? AND party_id = ?').get(req.params.id, party.id) as any;
+  if (!player) {
+    res.status(404).json({ error: 'Player not found' });
+    return null;
+  }
+  return { party, player };
+}
 
 // --- Prometheus metrics ---
 const metricsRegistry = new promClient.Registry();
@@ -416,6 +479,7 @@ function getRecentPokemonIds(playerId: string): number[] {
 // Register a new player (requires picture)
 app.post(`${BASE_PATH}/api/register`, (req, res) => {
   const { name, picture } = req.body;
+  const party = partyFromRequest(req, true)!;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Name is required' });
   }
@@ -427,28 +491,30 @@ app.post(`${BASE_PATH}/api/register`, (req, res) => {
   }
 
   const trimmed = name.trim();
-  const existing = db.prepare('SELECT id FROM players WHERE name = ?').get(trimmed);
+  const existing = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, trimmed);
   if (existing) {
-    return res.status(409).json({ error: 'Name already taken' });
+    return res.status(409).json({ error: 'Name already taken in this party' });
   }
 
   const id = uuidv4();
-  db.prepare('INSERT INTO players (id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?)').run(id, trimmed, STARTING_ESSENCE, STARTING_ELO, picture);
+  db.prepare('INSERT INTO players (id, party_id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?, ?)').run(id, party.id, trimmed, STARTING_ESSENCE, STARTING_ELO, picture);
   playersRegistered.inc();
   gameplayEventsTotal.inc({ event: 'player_registered' });
 
   const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE id = ?').get(id);
-  return res.json({ player });
+  return res.json({ player: publicPlayer(player, party), party });
 });
 
 // Login (just look up by name)
 app.post(`${BASE_PATH}/api/login`, (req, res) => {
   const { name } = req.body;
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
-  const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE name = ?').get(name.trim()) as any;
+  const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE party_id = ? AND name = ?').get(party.id, name.trim()) as any;
   if (!player) {
     return res.status(404).json({ error: 'Player not found' });
   }
@@ -457,12 +523,14 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
   const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
-  return res.json({ player, pokemon, items, recentPokemonIds });
+  return res.json({ player: publicPlayer(player, party), party, pokemon, items, recentPokemonIds });
 });
 
 // Get player data
 app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
-  const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE id = ?').get(req.params.id) as any;
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const player = db.prepare('SELECT id, name, essence, elo, picture FROM players WHERE id = ? AND party_id = ?').get(req.params.id, party.id) as any;
   if (!player) {
     return res.status(404).json({ error: 'Player not found' });
   }
@@ -470,7 +538,7 @@ app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
   const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
-  return res.json({ player, pokemon, items, recentPokemonIds });
+  return res.json({ player: publicPlayer(player, party), party, pokemon, items, recentPokemonIds });
 });
 
 // Update a player's picture (for legacy users without one, or changing it)
@@ -482,8 +550,9 @@ app.put(`${BASE_PATH}/api/player/:id/picture`, (req, res) => {
   if (picture.length > 4_000_000) {
     return res.status(413).json({ error: 'Picture is too large' });
   }
-  const result = db.prepare('UPDATE players SET picture = ? WHERE id = ?').run(picture, req.params.id);
-  if (result.changes === 0) return res.status(404).json({ error: 'Player not found' });
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
+  db.prepare('UPDATE players SET picture = ? WHERE id = ?').run(picture, ctx.player.id);
   return res.json({ ok: true });
 });
 
@@ -491,7 +560,9 @@ app.put(`${BASE_PATH}/api/player/:id/picture`, (req, res) => {
 app.post(`${BASE_PATH}/api/player/:id/essence`, (req, res) => {
   const { essence } = req.body;
   if (typeof essence !== 'number') return res.status(400).json({ error: 'Invalid essence' });
-  db.prepare('UPDATE players SET essence = ? WHERE id = ?').run(essence, req.params.id);
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
+  db.prepare('UPDATE players SET essence = ? WHERE id = ?').run(essence, ctx.player.id);
   return res.json({ ok: true });
 });
 
@@ -499,6 +570,8 @@ app.post(`${BASE_PATH}/api/player/:id/essence`, (req, res) => {
 app.post(`${BASE_PATH}/api/player/:id/pokemon`, (req, res) => {
   const { pokemonIds } = req.body;
   if (!Array.isArray(pokemonIds)) return res.status(400).json({ error: 'Invalid pokemonIds' });
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const insert = db.prepare(
     'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -516,8 +589,8 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon`, (req, res) => {
     const moves = species
       ? randomLevelUpMovesForSpecies(species.name, getMoveInfoFull, species.moves as [string, string], { atkBias: speciesAtkBias(species), types: species.types as string[] })
       : [null, null];
-    insert.run(id, req.params.id, pid, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
-    discover.run(req.params.id, pid);
+    insert.run(id, ctx.player.id, pid, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+    discover.run(ctx.player.id, pid);
     created.push({ id, pokemon_id: pid, nature, iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense, iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed, ability, move_1: moves[0], move_2: moves[1] });
   }
   if (created.length) gameplayEventsTotal.inc({ event: 'pokemon_added' }, created.length);
@@ -531,10 +604,12 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/remove`, (req, res) => {
   if (typeof pokemonId !== 'number' || typeof count !== 'number') {
     return res.status(400).json({ error: 'Invalid params' });
   }
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const rows = db.prepare(
     'SELECT id, held_item FROM owned_pokemon WHERE player_id = ? AND pokemon_id = ? LIMIT ?'
-  ).all(req.params.id, pokemonId, count) as any[];
+  ).all(ctx.player.id, pokemonId, count) as any[];
 
   const del = db.prepare('DELETE FROM owned_pokemon WHERE id = ?');
   const insertItem = db.prepare(
@@ -545,7 +620,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/remove`, (req, res) => {
     // Return held item to inventory if present
     if (row.held_item) {
       const itemDbId = randomUUID();
-      insertItem.run(itemDbId, req.params.id, 'held_item', row.held_item);
+      insertItem.run(itemDbId, ctx.player.id, 'held_item', row.held_item);
       returnedItems.push(row.held_item);
     }
     del.run(row.id);
@@ -559,6 +634,8 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/remove`, (req, res) => {
 app.post(`${BASE_PATH}/api/player/:id/items`, (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items)) return res.status(400).json({ error: 'Invalid items' });
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const insert = db.prepare(
     'INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)'
@@ -566,7 +643,7 @@ app.post(`${BASE_PATH}/api/player/:id/items`, (req, res) => {
   const created: any[] = [];
   for (const item of items) {
     const id = uuidv4();
-    insert.run(id, req.params.id, item.itemType, item.itemData);
+    insert.run(id, ctx.player.id, item.itemType, item.itemData);
     created.push({ id, item_type: item.itemType, item_data: item.itemData });
   }
   if (created.length) gameplayEventsTotal.inc({ event: 'item_added' }, created.length);
@@ -579,10 +656,12 @@ app.post(`${BASE_PATH}/api/player/:id/items/remove`, (req, res) => {
   if (typeof itemType !== 'string' || typeof itemData !== 'string' || typeof count !== 'number') {
     return res.status(400).json({ error: 'Invalid params' });
   }
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const rows = db.prepare(
     'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT ?'
-  ).all(req.params.id, itemType, itemData, count) as any[];
+  ).all(ctx.player.id, itemType, itemData, count) as any[];
 
   const del = db.prepare('DELETE FROM owned_items WHERE id = ?');
   for (const row of rows) {
@@ -598,10 +677,12 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/evolve`, (req, res) => {
   if (typeof instanceId !== 'string' || typeof newPokemonId !== 'number') {
     return res.status(400).json({ error: 'Invalid params' });
   }
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const row = db.prepare(
     'SELECT id, pokemon_id, bond_xp FROM owned_pokemon WHERE id = ? AND player_id = ?'
-  ).get(instanceId, req.params.id) as any;
+  ).get(instanceId, ctx.player.id) as any;
   if (!row) {
     return res.status(404).json({ error: 'Pokemon not found' });
   }
@@ -632,7 +713,9 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
   if (!Number.isFinite(pid) || pid <= 0) {
     return res.status(400).json({ error: 'Invalid params' });
   }
-  const playerId = req.params.id;
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
+  const playerId = ctx.player.id;
 
   // Gate on story progression
   const hasUnlock = db.prepare(
@@ -652,9 +735,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
   });
 
   // Verify essence
-  const player = db.prepare('SELECT essence FROM players WHERE id = ?').get(playerId) as any;
-  if (!player) return res.status(404).json({ error: 'Player not found' });
-  if ((player.essence ?? 0) < cost.essence) {
+  if ((ctx.player.essence ?? 0) < cost.essence) {
     return res.status(400).json({ error: 'Not enough essence', required: cost });
   }
 
@@ -709,10 +790,12 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/teach-tm`, (req, res) => {
   if (typeof instanceId !== 'string' || typeof moveName !== 'string' || (moveSlot !== 0 && moveSlot !== 1)) {
     return res.status(400).json({ error: 'Invalid params' });
   }
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const pokemon = db.prepare(
     'SELECT id, pokemon_id, move_1, move_2 FROM owned_pokemon WHERE id = ? AND player_id = ?'
-  ).get(instanceId, req.params.id) as any;
+  ).get(instanceId, ctx.player.id) as any;
   if (!pokemon) {
     return res.status(404).json({ error: 'Pokemon not found' });
   }
@@ -737,7 +820,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/teach-tm`, (req, res) => {
   // Remove one TM from inventory
   const tmRow = db.prepare(
     'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT 1'
-  ).get(req.params.id, 'tm', moveName) as any;
+  ).get(ctx.player.id, 'tm', moveName) as any;
   if (tmRow) {
     db.prepare('DELETE FROM owned_items WHERE id = ?').run(tmRow.id);
     gameplayEventsTotal.inc({ event: 'tm_consumed' });
@@ -754,10 +837,12 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/use-boost`, (req, res) => {
   if (typeof instanceId !== 'string' || typeof stat !== 'string' || !validStats.includes(stat)) {
     return res.status(400).json({ error: 'Invalid params' });
   }
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const pokemon = db.prepare(
     'SELECT id FROM owned_pokemon WHERE id = ? AND player_id = ?'
-  ).get(instanceId, req.params.id) as any;
+  ).get(instanceId, ctx.player.id) as any;
   if (!pokemon) {
     return res.status(404).json({ error: 'Pokemon not found' });
   }
@@ -772,7 +857,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/use-boost`, (req, res) => {
   // Remove one boost item from inventory
   const boostRow = db.prepare(
     'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT 1'
-  ).get(req.params.id, 'boost', stat) as any;
+  ).get(ctx.player.id, 'boost', stat) as any;
   if (boostRow) {
     db.prepare('DELETE FROM owned_items WHERE id = ?').run(boostRow.id);
     gameplayEventsTotal.inc({ event: 'boost_consumed' });
@@ -788,10 +873,12 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/give-item`, (req, res) => {
   if (typeof instanceId !== 'string' || typeof itemId !== 'string') {
     return res.status(400).json({ error: 'Invalid params' });
   }
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const pokemon = db.prepare(
     'SELECT id, held_item FROM owned_pokemon WHERE id = ? AND player_id = ?'
-  ).get(instanceId, req.params.id) as any;
+  ).get(instanceId, ctx.player.id) as any;
   if (!pokemon) {
     return res.status(404).json({ error: 'Pokemon not found' });
   }
@@ -801,7 +888,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/give-item`, (req, res) => {
     const returnId = randomUUID();
     db.prepare(
       'INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)'
-    ).run(returnId, req.params.id, 'held_item', pokemon.held_item);
+    ).run(returnId, ctx.player.id, 'held_item', pokemon.held_item);
   }
 
   // Assign new held item
@@ -810,7 +897,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/give-item`, (req, res) => {
   // Consume item from inventory
   const itemRow = db.prepare(
     'SELECT id FROM owned_items WHERE player_id = ? AND item_type = ? AND item_data = ? LIMIT 1'
-  ).get(req.params.id, 'held_item', itemId) as any;
+  ).get(ctx.player.id, 'held_item', itemId) as any;
   if (itemRow) {
     db.prepare('DELETE FROM owned_items WHERE id = ?').run(itemRow.id);
   }
@@ -825,10 +912,12 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/take-item`, (req, res) => {
   if (typeof instanceId !== 'string') {
     return res.status(400).json({ error: 'Invalid params' });
   }
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
 
   const pokemon = db.prepare(
     'SELECT id, held_item FROM owned_pokemon WHERE id = ? AND player_id = ?'
-  ).get(instanceId, req.params.id) as any;
+  ).get(instanceId, ctx.player.id) as any;
   if (!pokemon) {
     return res.status(404).json({ error: 'Pokemon not found' });
   }
@@ -840,7 +929,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/take-item`, (req, res) => {
   const newItemId = randomUUID();
   db.prepare(
     'INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)'
-  ).run(newItemId, req.params.id, 'held_item', pokemon.held_item);
+  ).run(newItemId, ctx.player.id, 'held_item', pokemon.held_item);
 
   const takenItem = pokemon.held_item;
   db.prepare('UPDATE owned_pokemon SET held_item = NULL WHERE id = ?').run(instanceId);
@@ -855,9 +944,11 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/favorite`, (req, res) => {
   if (typeof instanceId !== 'string' || typeof favorite !== 'boolean') {
     return res.status(400).json({ error: 'Invalid params' });
   }
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
   const pokemon = db.prepare(
     'SELECT id FROM owned_pokemon WHERE id = ? AND player_id = ?'
-  ).get(instanceId, req.params.id) as any;
+  ).get(instanceId, ctx.player.id) as any;
   if (!pokemon) {
     return res.status(404).json({ error: 'Pokemon not found' });
   }
@@ -942,15 +1033,18 @@ app.post(`${BASE_PATH}/api/dex/lookup`, (req, res) => {
 });
 
 // Get leaderboard (ranked by Elo)
-app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
+app.get(`${BASE_PATH}/api/leaderboard`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const players = db.prepare(`
     SELECT p.id, p.name, p.elo, p.essence, p.picture,
            (SELECT COUNT(DISTINCT pokemon_id) FROM pokedex px WHERE px.player_id = p.id) as pokedex_count,
            (SELECT COUNT(*) FROM trades t WHERE t.player1_id = p.id OR t.player2_id = p.id) as trade_count,
            (SELECT COUNT(*) FROM battles b WHERE b.winner_id = p.id OR b.loser_id = p.id) as battle_count
     FROM players p
+    WHERE p.party_id = ?
     ORDER BY p.elo DESC
-  `).all() as any[];
+  `).all(party.id) as any[];
   const topPokemonStmt = db.prepare(
     'SELECT pokemon_id FROM battle_pokemon_usage WHERE player_id = ? ORDER BY times_used DESC LIMIT 3'
   );
@@ -968,11 +1062,15 @@ app.get(`${BASE_PATH}/api/leaderboard`, (_req, res) => {
 });
 
 // Online players endpoint (returns name + picture for each connected player)
-app.get(`${BASE_PATH}/api/players/online`, (_req, res) => {
-  const names = Array.from(connectedPlayers.keys());
+app.get(`${BASE_PATH}/api/players/online`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const names = Array.from(connectedPlayers.keys())
+    .filter((key) => key.startsWith(`${party.id}:`))
+    .map((key) => key.slice(party.id.length + 1));
   if (names.length === 0) return res.json({ players: [] });
   const placeholders = names.map(() => '?').join(',');
-  const rows = db.prepare(`SELECT name, picture FROM players WHERE name IN (${placeholders})`).all(...names) as any[];
+  const rows = db.prepare(`SELECT name, picture FROM players WHERE party_id = ? AND name IN (${placeholders})`).all(party.id, ...names) as any[];
   const pictureByName = new Map(rows.map(r => [r.name, r.picture ?? null]));
   const result = names.map(n => ({ name: n, picture: pictureByName.get(n) ?? null }));
   return res.json({ players: result });
@@ -1053,22 +1151,26 @@ app.get(`${BASE_PATH}/api/cries/:id.mp3`, async (req, res) => {
 });
 
 // Analytics endpoint — battle stats breakdown
-app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
+app.get(`${BASE_PATH}/api/analytics/battles`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const byMode = db.prepare(`
     SELECT field_size, total_pokemon, selection_mode, opponent_type,
            COUNT(*) as count, AVG(rounds) as avg_rounds
     FROM battles
+    WHERE party_id = ?
     GROUP BY field_size, total_pokemon, selection_mode, opponent_type
     ORDER BY count DESC
-  `).all();
+  `).all(party.id);
 
   const byDay = db.prepare(`
     SELECT DATE(created_at) as day, COUNT(*) as count
     FROM battles
+    WHERE party_id = ?
     GROUP BY DATE(created_at)
     ORDER BY day DESC
     LIMIT 30
-  `).all();
+  `).all(party.id);
 
   const topPlayers = db.prepare(`
     SELECT p.name,
@@ -1076,11 +1178,11 @@ app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
            SUM(CASE WHEN b.winner_id = p.id THEN 1 ELSE 0 END) as wins
     FROM players p
     JOIN battles b ON b.winner_id = p.id OR b.loser_id = p.id
-    WHERE b.opponent_type = 'pvp'
+    WHERE p.party_id = ? AND b.party_id = ? AND b.opponent_type = 'pvp'
     GROUP BY p.id
     ORDER BY battles DESC
     LIMIT 20
-  `).all();
+  `).all(party.id, party.id);
 
   return res.json({ byMode, byDay, topPlayers });
 });
@@ -1088,6 +1190,8 @@ app.get(`${BASE_PATH}/api/analytics/battles`, (_req, res) => {
 // ─── Replay endpoints ──────────────────────────────────────────────
 
 app.get(`${BASE_PATH}/api/replay/list`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const limit = Math.max(1, Math.min(200, parseInt((req.query.limit as string) || '100', 10)));
   const rows = db.prepare(`
     SELECT b.id, b.created_at, b.field_size, b.total_pokemon, b.opponent_type,
@@ -1098,14 +1202,16 @@ app.get(`${BASE_PATH}/api/replay/list`, (req, res) => {
     FROM battles b
     LEFT JOIN players pw ON pw.id = b.winner_id
     LEFT JOIN players pl ON pl.id = b.loser_id
-    WHERE b.showdown_log IS NOT NULL AND length(b.showdown_log) > 0
+    WHERE b.party_id = ? AND b.showdown_log IS NOT NULL AND length(b.showdown_log) > 0
     ORDER BY b.created_at DESC
     LIMIT ?
-  `).all(limit);
+  `).all(party.id, limit);
   return res.json({ battles: rows });
 });
 
 app.get(`${BASE_PATH}/api/replay/:id`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const id = req.params.id;
   const row: any = db.prepare(`
     SELECT b.id, b.created_at, b.field_size, b.total_pokemon, b.opponent_type,
@@ -1114,8 +1220,8 @@ app.get(`${BASE_PATH}/api/replay/:id`, (req, res) => {
     FROM battles b
     LEFT JOIN players pw ON pw.id = b.winner_id
     LEFT JOIN players pl ON pl.id = b.loser_id
-    WHERE b.id = ?
-  `).get(id);
+    WHERE b.id = ? AND b.party_id = ?
+  `).get(id, party.id);
   if (!row) return res.status(404).json({ error: 'not_found' });
   if (!row.showdown_log) return res.status(404).json({ error: 'no_log' });
 
@@ -1185,7 +1291,9 @@ app.get(`${BASE_PATH}/api/replay/:id`, (req, res) => {
 
 // ─── Admin endpoints ────────────────────────────────────────────────
 
-app.get(`${BASE_PATH}/api/admin/players`, (_req, res) => {
+app.get(`${BASE_PATH}/api/admin/players`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const players = db.prepare(`
     SELECT p.id, p.name, p.essence, p.elo, p.picture, p.created_at,
            (SELECT COUNT(*) FROM owned_pokemon op WHERE op.player_id = p.id) as pokemon_count,
@@ -1193,37 +1301,50 @@ app.get(`${BASE_PATH}/api/admin/players`, (_req, res) => {
            (SELECT COUNT(*) FROM trades t WHERE t.player1_id = p.id OR t.player2_id = p.id) as trade_count,
            (SELECT COUNT(*) FROM battles b WHERE b.winner_id = p.id OR b.loser_id = p.id) as battle_count,
            (SELECT COUNT(*) FROM story_progress sp WHERE sp.player_id = p.id) as story_chapters
-    FROM players p ORDER BY p.created_at DESC
-  `).all();
+    FROM players p
+    WHERE p.party_id = ?
+    ORDER BY p.created_at DESC
+  `).all(party.id);
   return res.json({ players });
 });
 
 app.post(`${BASE_PATH}/api/admin/player/:id/set-essence`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const { essence } = req.body;
   if (typeof essence !== 'number') return res.status(400).json({ error: 'Invalid essence' });
-  db.prepare('UPDATE players SET essence = ? WHERE id = ?').run(essence, req.params.id);
+  db.prepare('UPDATE players SET essence = ? WHERE id = ? AND party_id = ?').run(essence, req.params.id, party.id);
   return res.json({ ok: true });
 });
 
 app.post(`${BASE_PATH}/api/admin/player/:id/set-elo`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const { elo } = req.body;
   if (typeof elo !== 'number') return res.status(400).json({ error: 'Invalid elo' });
-  db.prepare('UPDATE players SET elo = ? WHERE id = ?').run(elo, req.params.id);
+  db.prepare('UPDATE players SET elo = ? WHERE id = ? AND party_id = ?').run(elo, req.params.id, party.id);
   return res.json({ ok: true });
 });
 
 app.post(`${BASE_PATH}/api/admin/player/:id/wipe-pokemon`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const row = db.prepare('SELECT name FROM players WHERE id = ? AND party_id = ?').get(req.params.id, party.id) as any;
+  if (!row) return res.status(404).json({ error: 'Player not found' });
   db.prepare('DELETE FROM owned_pokemon WHERE player_id = ?').run(req.params.id);
-  const row = db.prepare('SELECT name FROM players WHERE id = ?').get(req.params.id) as any;
   if (row) {
-    const sock = connectedPlayers.get(row.name);
+    const sock = getConnectedPlayer(party.id, row.name);
     if (sock) io.to(sock).emit('player:reset');
   }
   return res.json({ ok: true });
 });
 
 app.post(`${BASE_PATH}/api/admin/player/:id/delete`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const pid = req.params.id;
+  const player = db.prepare('SELECT id FROM players WHERE id = ? AND party_id = ?').get(pid, party.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
   db.prepare('DELETE FROM owned_pokemon WHERE player_id = ?').run(pid);
   db.prepare('DELETE FROM owned_items WHERE player_id = ?').run(pid);
   db.prepare('DELETE FROM story_progress WHERE player_id = ?').run(pid);
@@ -1237,23 +1358,28 @@ app.post(`${BASE_PATH}/api/admin/player/:id/delete`, (req, res) => {
 });
 
 app.post(`${BASE_PATH}/api/admin/player/:id/reset`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const row = db.prepare('SELECT name FROM players WHERE id = ? AND party_id = ?').get(req.params.id, party.id) as any;
+  if (!row) return res.status(404).json({ error: 'Player not found' });
   db.prepare('DELETE FROM owned_pokemon WHERE player_id = ?').run(req.params.id);
   db.prepare('DELETE FROM owned_items WHERE player_id = ?').run(req.params.id);
   db.prepare('DELETE FROM story_progress WHERE player_id = ?').run(req.params.id);
   db.prepare('DELETE FROM battle_pokemon_usage WHERE player_id = ?').run(req.params.id);
   db.prepare('DELETE FROM pokedex WHERE player_id = ?').run(req.params.id);
   db.prepare('DELETE FROM battle_team_entries WHERE player_id = ?').run(req.params.id);
-  db.prepare(`UPDATE players SET essence = ${STARTING_ESSENCE}, elo = ${STARTING_ELO} WHERE id = ?`).run(req.params.id);
-  const row = db.prepare('SELECT name FROM players WHERE id = ?').get(req.params.id) as any;
+  db.prepare(`UPDATE players SET essence = ${STARTING_ESSENCE}, elo = ${STARTING_ELO} WHERE id = ? AND party_id = ?`).run(req.params.id, party.id);
   if (row) {
-    const sock = connectedPlayers.get(row.name);
+    const sock = getConnectedPlayer(party.id, row.name);
     if (sock) io.to(sock).emit('player:reset');
   }
   return res.json({ ok: true });
 });
 
-app.post(`${BASE_PATH}/api/admin/wipe-all-pokemon`, (_req, res) => {
-  db.exec('DELETE FROM owned_pokemon');
+app.post(`${BASE_PATH}/api/admin/wipe-all-pokemon`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  db.prepare('DELETE FROM owned_pokemon WHERE player_id IN (SELECT id FROM players WHERE party_id = ?)').run(party.id);
   return res.json({ ok: true });
 });
 
@@ -1261,11 +1387,12 @@ app.post(`${BASE_PATH}/api/admin/wipe-all-pokemon`, (_req, res) => {
 // essence, every pokemon, and every collectable item. Intended for local
 // testing; harmless if it shows up in ladders.
 app.post(`${BASE_PATH}/api/admin/create-test-user`, (req, res) => {
+  const party = partyFromRequest(req, true)!;
   const rawName = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const name = rawName || '_dev_test_';
   const TEST_ESSENCE = 1_000_000;
 
-  const existing = db.prepare('SELECT id FROM players WHERE name = ?').get(name) as any;
+  const existing = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, name) as any;
   if (existing) {
     const pid = existing.id;
     db.prepare('DELETE FROM owned_pokemon WHERE player_id = ?').run(pid);
@@ -1280,7 +1407,7 @@ app.post(`${BASE_PATH}/api/admin/create-test-user`, (req, res) => {
   }
 
   const id = uuidv4();
-  const insertPlayer = db.prepare('INSERT INTO players (id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?)');
+  const insertPlayer = db.prepare('INSERT INTO players (id, party_id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?, ?)');
   const insertMon = db.prepare(
     'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
@@ -1290,7 +1417,7 @@ app.post(`${BASE_PATH}/api/admin/create-test-user`, (req, res) => {
 
   db.exec('BEGIN');
   try {
-    insertPlayer.run(id, name, TEST_ESSENCE, STARTING_ELO, null);
+    insertPlayer.run(id, party.id, name, TEST_ESSENCE, STARTING_ELO, null);
 
     for (const species of POKEMON) {
       const monId = uuidv4();
@@ -1391,68 +1518,80 @@ app.get(`${BASE_PATH}/api/admin/archives`, (_req, res) => {
   }
 });
 
-app.get(`${BASE_PATH}/api/admin/stats`, (_req, res) => {
-  const playerCount = (db.prepare('SELECT COUNT(*) as c FROM players').get() as any).c;
-  const pokemonCount = (db.prepare('SELECT COUNT(*) as c FROM owned_pokemon').get() as any).c;
-  const battleCount = (db.prepare('SELECT COUNT(*) as c FROM battles').get() as any).c;
-  const itemCount = (db.prepare('SELECT COUNT(*) as c FROM owned_items').get() as any).c;
-  return res.json({ playerCount, pokemonCount, battleCount, itemCount });
+app.get(`${BASE_PATH}/api/admin/stats`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const playerCount = (db.prepare('SELECT COUNT(*) as c FROM players WHERE party_id = ?').get(party.id) as any).c;
+  const pokemonCount = (db.prepare('SELECT COUNT(*) as c FROM owned_pokemon WHERE player_id IN (SELECT id FROM players WHERE party_id = ?)').get(party.id) as any).c;
+  const battleCount = (db.prepare('SELECT COUNT(*) as c FROM battles WHERE party_id = ?').get(party.id) as any).c;
+  const itemCount = (db.prepare('SELECT COUNT(*) as c FROM owned_items WHERE player_id IN (SELECT id FROM players WHERE party_id = ?)').get(party.id) as any).c;
+  return res.json({ playerCount, pokemonCount, battleCount, itemCount, party });
 });
 
-app.get(`${BASE_PATH}/api/admin/stats/detail`, (_req, res) => {
+app.get(`${BASE_PATH}/api/admin/stats/detail`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const storyCompletion = db.prepare(`
     SELECT p.name, p.picture, sp.completed_at as completedAt
     FROM story_progress sp
     JOIN players p ON p.id = sp.player_id
-    WHERE sp.chapter_id = ?
+    WHERE p.party_id = ? AND sp.chapter_id = ?
     ORDER BY sp.completed_at ASC, p.name COLLATE NOCASE ASC
-  `).all(SHOP_UNLOCK_CHAPTER) as any[];
+  `).all(party.id, SHOP_UNLOCK_CHAPTER) as any[];
 
   const trades = db.prepare(`
     SELECT p.name, p.picture,
-           (SELECT COUNT(*) FROM trades t WHERE t.player1_id = p.id OR t.player2_id = p.id) as value
+            (SELECT COUNT(*) FROM trades t WHERE t.player1_id = p.id OR t.player2_id = p.id) as value
     FROM players p
+    WHERE p.party_id = ?
     ORDER BY value DESC, p.name COLLATE NOCASE ASC
-  `).all() as any[];
+  `).all(party.id) as any[];
 
   const pvpBattles = db.prepare(`
     SELECT p.name, p.picture,
            (SELECT COUNT(*) FROM battles b
-            WHERE (b.winner_id = p.id OR b.loser_id = p.id)
+             WHERE (b.winner_id = p.id OR b.loser_id = p.id)
               AND b.opponent_type = 'pvp') as value
     FROM players p
+    WHERE p.party_id = ?
     ORDER BY value DESC, p.name COLLATE NOCASE ASC
-  `).all() as any[];
+  `).all(party.id) as any[];
 
   const elo = db.prepare(`
     SELECT p.name, p.picture, p.elo as value
     FROM players p
+    WHERE p.party_id = ?
     ORDER BY p.elo DESC, p.name COLLATE NOCASE ASC
-  `).all() as any[];
+  `).all(party.id) as any[];
 
   const tournamentsWon = db.prepare(`
     SELECT p.name, p.picture,
            (SELECT COUNT(*) FROM tournaments t
-            WHERE t.status = 'completed'
-              AND t.winner = p.name) as value
+             WHERE t.party_id = p.party_id
+               AND t.status = 'completed'
+               AND t.winner = p.name) as value
     FROM players p
+    WHERE p.party_id = ?
     ORDER BY value DESC, p.name COLLATE NOCASE ASC
-  `).all() as any[];
+  `).all(party.id) as any[];
 
   const pokedex = db.prepare(`
     SELECT p.name, p.picture,
            (SELECT COUNT(DISTINCT px.pokemon_id) FROM pokedex px WHERE px.player_id = p.id) as value
     FROM players p
+    WHERE p.party_id = ?
     ORDER BY value DESC, p.name COLLATE NOCASE ASC
-  `).all() as any[];
+  `).all(party.id) as any[];
 
   return res.json({ storyCompletion, trades, pvpBattles, elo, tournamentsWon, pokedex });
 });
 
 // ─── Game settings endpoints ────────────────────────────────────────
 
-app.get(`${BASE_PATH}/api/admin/settings`, (_req, res) => {
-  const rows = db.prepare("SELECT key, value FROM game_settings WHERE key != 'tm_shop_enabled'").all() as any[];
+app.get(`${BASE_PATH}/api/admin/settings`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const rows = db.prepare("SELECT key, value FROM game_settings WHERE party_id = ? AND key != 'tm_shop_enabled'").all(party.id) as any[];
   const settings: Record<string, any> = {};
   for (const row of rows) {
     try { settings[row.key] = JSON.parse(row.value); } catch { settings[row.key] = row.value; }
@@ -1461,16 +1600,19 @@ app.get(`${BASE_PATH}/api/admin/settings`, (_req, res) => {
 });
 
 app.put(`${BASE_PATH}/api/admin/settings`, (req, res) => {
+  const party = partyFromRequest(req, true)!;
   const { key, value } = req.body;
   if (typeof key !== 'string') return res.status(400).json({ error: 'Invalid key' });
-  db.prepare('INSERT OR REPLACE INTO game_settings (key, value) VALUES (?, ?)').run(
-    key, JSON.stringify(value)
+  db.prepare('INSERT OR REPLACE INTO game_settings (party_id, key, value) VALUES (?, ?, ?)').run(
+    party.id, key, JSON.stringify(value)
   );
   return res.json({ ok: true });
 });
 
 // Broadcast a free-form announcement notification to every connected client.
 app.post(`${BASE_PATH}/api/admin/broadcast`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const rawMsg = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
   if (!rawMsg) return res.status(400).json({ error: 'Message is required' });
   if (rawMsg.length > 2000) return res.status(400).json({ error: 'Message too long (max 2000 chars)' });
@@ -1478,13 +1620,15 @@ app.post(`${BASE_PATH}/api/admin/broadcast`, (req, res) => {
     ? req.body.from.trim().slice(0, 120)
     : 'Announcement';
   const id = `ann-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  io.emit('admin:announcement', { id, from, message: rawMsg });
+  io.to(partyRoom(party.id)).emit('admin:announcement', { id, from, message: rawMsg });
   return res.json({ ok: true, id });
 });
 
 // Public endpoint for feature flags
-app.get(`${BASE_PATH}/api/settings/features`, (_req, res) => {
-  const rows = db.prepare("SELECT key, value FROM game_settings WHERE key IN ('ai_battle_enabled', 'login_disabled')").all() as any[];
+app.get(`${BASE_PATH}/api/settings/features`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const rows = db.prepare("SELECT key, value FROM game_settings WHERE party_id = ? AND key IN ('ai_battle_enabled', 'login_disabled')").all(party.id) as any[];
   const flags: Record<string, boolean> = { aiBattleEnabled: false, loginDisabled: false };
   for (const row of rows) {
     try {
@@ -1498,18 +1642,22 @@ app.get(`${BASE_PATH}/api/settings/features`, (_req, res) => {
 // ─── Story mode endpoints ────────────────────────────────────────────
 
 app.get(`${BASE_PATH}/api/player/:id/story`, (req, res) => {
-  const completed = db.prepare('SELECT chapter_id FROM story_progress WHERE player_id = ?').all(req.params.id) as any[];
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
+  const completed = db.prepare('SELECT chapter_id FROM story_progress WHERE player_id = ?').all(ctx.player.id) as any[];
   return res.json({ completed: completed.map((r: any) => String(r.chapter_id)) });
 });
 
 app.post(`${BASE_PATH}/api/player/:id/story/complete`, (req, res) => {
   const { chapterId } = req.body;
   if (!chapterId) return res.status(400).json({ error: 'Invalid chapterId' });
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
   const key = String(chapterId);
-  const existing = db.prepare('SELECT 1 FROM story_progress WHERE player_id = ? AND chapter_id = ?').get(req.params.id, key);
+  const existing = db.prepare('SELECT 1 FROM story_progress WHERE player_id = ? AND chapter_id = ?').get(ctx.player.id, key);
   const firstClear = !existing;
   if (firstClear) {
-    db.prepare('INSERT INTO story_progress (player_id, chapter_id) VALUES (?, ?)').run(req.params.id, key);
+    db.prepare('INSERT INTO story_progress (player_id, chapter_id) VALUES (?, ?)').run(ctx.player.id, key);
     gameplayEventsTotal.inc({ event: 'story_completed' });
   }
   return res.json({ ok: true, firstClear });
@@ -1518,22 +1666,28 @@ app.post(`${BASE_PATH}/api/player/:id/story/complete`, (req, res) => {
 // ─── Pokédex endpoints ────────────────────────────────────────────────
 
 app.get(`${BASE_PATH}/api/player/:id/pokedex`, (req, res) => {
-  const rows = db.prepare('SELECT pokemon_id FROM pokedex WHERE player_id = ?').all(req.params.id) as any[];
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
+  const rows = db.prepare('SELECT pokemon_id FROM pokedex WHERE player_id = ?').all(ctx.player.id) as any[];
   return res.json({ discovered: rows.map((r: any) => r.pokemon_id) });
 });
 
 // Backfill pokedex from currently owned pokemon (for existing players)
 app.post(`${BASE_PATH}/api/player/:id/pokedex/backfill`, (req, res) => {
-  const owned = db.prepare('SELECT DISTINCT pokemon_id FROM owned_pokemon WHERE player_id = ?').all(req.params.id) as any[];
+  const ctx = playerContextFromRequest(req, res);
+  if (!ctx) return;
+  const owned = db.prepare('SELECT DISTINCT pokemon_id FROM owned_pokemon WHERE player_id = ?').all(ctx.player.id) as any[];
   const discover = db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)');
   for (const row of owned) {
-    discover.run(req.params.id, row.pokemon_id);
+    discover.run(ctx.player.id, row.pokemon_id);
   }
   return res.json({ ok: true, discovered: owned.length });
 });
 
 // AI / demo battle endpoint
 app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters, playerName, leftInstanceIds, bondMode } = req.body;
   if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
     return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
@@ -1551,18 +1705,18 @@ app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
 
   // Record in DB (no player IDs for AI battles)
   db.prepare(
-    'INSERT INTO battles (id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?)'
-  ).run(uuidv4(), fs, leftTeam.length, mode, 'ai', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
+    'INSERT INTO battles (id, party_id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?)'
+  ).run(uuidv4(), party.id, fs, leftTeam.length, mode, 'ai', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
 
   // Award Bond XP if the caller identifies a real player + their instance IDs.
   let bondAwards: BondAward[] = [];
   if (playerName && Array.isArray(leftInstanceIds) && leftInstanceIds.length > 0) {
-    const playerRow = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
+    const playerRow = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, playerName) as any;
     if (playerRow) {
       const bm: BondBattleMode = (bondMode === 'story' || bondMode === 'friendly' || bondMode === 'demo') ? bondMode : 'ai';
       const playerWon = snapshot.winner === 'left';
       bondAwards = awardBondXp(playerRow.id, leftInstanceIds, snapshot.left, snapshot.round, playerWon, bm);
-      const sock = connectedPlayers.get(playerName);
+      const sock = getConnectedPlayer(party.id, playerName);
       if (sock && bondAwards.length) io.to(sock).emit('battle:bondUpdate', { awards: bondAwards });
     }
   }
@@ -1594,13 +1748,15 @@ function minigameBondXp(minigame: string, score: number): number | null {
 }
 
 app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const { playerName, instanceId, minigame, score } = req.body as {
     playerName?: string; instanceId?: string; minigame?: string; score?: number;
   };
   if (!playerName || !instanceId || !minigame || typeof score !== 'number') {
     return res.status(400).json({ error: 'playerName, instanceId, minigame and numeric score are required' });
   }
-  const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
+  const player = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, playerName) as any;
   if (!player) return res.status(404).json({ error: 'Player not found' });
   const unlocked = db.prepare('SELECT 1 FROM story_progress WHERE player_id = ? AND chapter_id = ?').get(player.id, MINIGAMES_UNLOCK_CHAPTER_ID);
   if (!unlocked) return res.status(403).json({ error: 'Minigames not yet unlocked' });
@@ -1613,21 +1769,34 @@ app.post(`${BASE_PATH}/api/minigame/reward`, (req, res) => {
 
   const award = awardBondXpDirect(player.id, instanceId, delta);
   if (award) gameplayEventsTotal.inc({ event: 'minigame_reward' });
-  const sock = connectedPlayers.get(playerName);
+  const sock = getConnectedPlayer(party.id, playerName);
   if (sock && award) io.to(sock).emit('battle:bondUpdate', { awards: [award] });
   return res.json({ ok: true, award, delta });
 });
 
 // --- Socket.IO: Battle matching ---
 
-// Track challenges: Map<challengerName, targetName>
+function partyRoom(partyId: string): string {
+  return `party:${partyId}`;
+}
+
+function playerPresenceKey(partyId: string, playerName: string): string {
+  return `${partyId}:${playerName}`;
+}
+
+function getConnectedPlayer(partyId: string, playerName: string | null | undefined): string | undefined {
+  return playerName ? connectedPlayers.get(playerPresenceKey(partyId, playerName)) : undefined;
+}
+
+// Track challenges: Map<partyId:challengerName, targetName>
 const pendingChallenges = new Map<string, string>();
 const pendingChallengeConfigs = new Map<string, { fieldSize: number; totalPokemon: number; allowLegendaries: boolean }>();
-// Track connected players: Map<playerName, socketId>
+// Track connected players: Map<partyId:playerName, socketId>
 const connectedPlayers = new Map<string, string>();
 // Track active battles: Map<battleId, battle state>
 interface ActiveBattle {
   id: string;
+  partyId: string;
   player1: string;
   player2: string;
   player1Team: number[] | null;
@@ -1650,6 +1819,7 @@ const activeBattles = new Map<string, ActiveBattle>();
 const pendingTrades = new Map<string, string>(); // initiator -> target
 interface ActiveTrade {
   id: string;
+  partyId: string;
   player1: string;
   player2: string;
   player1PokemonInstanceId: string | null;
@@ -1748,8 +1918,9 @@ function makeDraftState(t: Tournament, d: DraftInfo): TournamentDraftState {
 
 function broadcastDraftState(t: Tournament, d: DraftInfo) {
   const state = makeDraftState(t, d);
-  const s1 = connectedPlayers.get(d.player1);
-  const s2 = connectedPlayers.get(d.player2);
+  const partyId = t.partyId ?? DEFAULT_PARTY_ID;
+  const s1 = getConnectedPlayer(partyId, d.player1);
+  const s2 = getConnectedPlayer(partyId, d.player2);
   if (s1) io.to(s1).emit('tournament:draftState', state);
   if (s2) io.to(s2).emit('tournament:draftState', state);
 }
@@ -1779,7 +1950,7 @@ function notifyTournamentForfeit(t: Tournament, match: TournamentMatch) {
   };
   for (const playerName of [match.player1, match.player2]) {
     if (!playerName) continue;
-    const socketId = connectedPlayers.get(playerName);
+    const socketId = getConnectedPlayer(t.partyId ?? DEFAULT_PARTY_ID, playerName);
     if (socketId) io.to(socketId).emit('tournament:matchForfeit', payload);
   }
 }
@@ -1806,7 +1977,7 @@ function handleTournamentTeamSubmission(
   let battle = activeBattles.get(matchId);
   if (!battle) {
     battle = {
-      id: matchId, player1: match.player1!, player2: match.player2!,
+      id: matchId, partyId: t.partyId ?? DEFAULT_PARTY_ID, player1: match.player1!, player2: match.player2!,
       player1Team: null, player2Team: null,
       fieldSize: t.fieldSize, totalPokemon: t.totalPokemon,
       allowLegendaries: t.allowLegendaries,
@@ -1852,8 +2023,8 @@ function handleTournamentTeamSubmission(
   match.status = 'completed';
   saveTournament(t);
 
-  const s1 = connectedPlayers.get(battle.player1);
-  const s2 = connectedPlayers.get(battle.player2);
+  const s1 = getConnectedPlayer(battle.partyId, battle.player1);
+  const s2 = getConnectedPlayer(battle.partyId, battle.player2);
   if (s1) io.to(s1).emit('tournament:battleStart', { tournamentId, matchId, snapshot });
   if (s2) {
     const flipped = {
@@ -1865,8 +2036,8 @@ function handleTournamentTeamSubmission(
     io.to(s2).emit('tournament:battleStart', { tournamentId, matchId, snapshot: flipped });
   }
 
-  const p1Row = db.prepare('SELECT id, elo FROM players WHERE name = ?').get(battle.player1) as any;
-  const p2Row = db.prepare('SELECT id, elo FROM players WHERE name = ?').get(battle.player2) as any;
+  const p1Row = db.prepare('SELECT id, elo FROM players WHERE party_id = ? AND name = ?').get(battle.partyId, battle.player1) as any;
+  const p2Row = db.prepare('SELECT id, elo FROM players WHERE party_id = ? AND name = ?').get(battle.partyId, battle.player2) as any;
   const p1Won = snapshot.winner === 'left';
 
   // Persist the match as a battle row (source-of-truth Showdown log).
@@ -1884,8 +2055,8 @@ function handleTournamentTeamSubmission(
     if (s2) io.to(s2).emit('battle:eloUpdate', eloUpdate);
 
     db.prepare(
-      'INSERT INTO battles (id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log, tournament_id, tournament_match_id) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(uuidv4(), winnerRow.id, loserRow.id, winnerDelta, loserDelta, t.fieldSize, (battle.player1Team ?? []).length, t.pickMode ?? 'blind', 'tournament', snapshot.round, (snapshot.rawLog ?? []).join('\n'), tournamentId, matchId);
+      'INSERT INTO battles (id, party_id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log, tournament_id, tournament_match_id) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(uuidv4(), battle.partyId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, t.fieldSize, (battle.player1Team ?? []).length, t.pickMode ?? 'blind', 'tournament', snapshot.round, (snapshot.rawLog ?? []).join('\n'), tournamentId, matchId);
 
     console.log(`Tournament Elo update: ${winnerName} ${winnerRow.elo}->${winnerNewElo} (+${winnerDelta}), ${loserName} ${loserRow.elo}->${loserNewElo} (${loserDelta})`);
   }
@@ -1910,7 +2081,7 @@ function loadTournament(id: string): Tournament | null {
   const row = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id) as any;
   if (!row) return null;
   return {
-    id: row.id, name: row.name, fieldSize: row.field_size, totalPokemon: row.total_pokemon,
+    id: row.id, partyId: row.party_id ?? DEFAULT_PARTY_ID, name: row.name, fieldSize: row.field_size, totalPokemon: row.total_pokemon,
     status: row.status, registrationEnd: row.registration_end, matchTimeLimit: row.match_time_limit,
     bracket: JSON.parse(row.bracket), participants: JSON.parse(row.participants),
     currentRound: row.current_round, winner: row.winner ?? undefined, createdAt: new Date(row.created_at).getTime(),
@@ -1936,7 +2107,7 @@ function broadcastTournamentUpdate(t: Tournament) {
     pickMode: t.pickMode,
     prizes: t.prizes,
   };
-  io.emit('tournament:updated', summary);
+  io.to(partyRoom(t.partyId ?? DEFAULT_PARTY_ID)).emit('tournament:updated', summary);
 }
 
 function generateBracket(participants: string[], matchTimeLimit: number): { bracket: TournamentMatch[], totalRounds: number } {
@@ -2061,8 +2232,8 @@ function advanceTournament(t: Tournament) {
       nextMatches[i].status = 'active';
       nextMatches[i].deadline = Date.now() + t.matchTimeLimit * 1000;
       // Notify players
-      const s1 = connectedPlayers.get(nextMatches[i].player1!);
-      const s2 = connectedPlayers.get(nextMatches[i].player2!);
+      const s1 = getConnectedPlayer(t.partyId ?? DEFAULT_PARTY_ID, nextMatches[i].player1!);
+      const s2 = getConnectedPlayer(t.partyId ?? DEFAULT_PARTY_ID, nextMatches[i].player2!);
       if (s1) io.to(s1).emit('tournament:matchReady', { tournamentId: t.id, matchId: nextMatches[i].id, opponent: nextMatches[i].player2 });
       if (s2) io.to(s2).emit('tournament:matchReady', { tournamentId: t.id, matchId: nextMatches[i].id, opponent: nextMatches[i].player1 });
     }
@@ -2081,7 +2252,7 @@ function distributePrizes(t: Tournament) {
 
   const givePrize = (playerName: string | undefined, prize: { essence: number; pack?: string; pokemonIds?: number[] }, rank: number, totalPlayers: number) => {
     if (!playerName || !prize) return;
-    const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
+    const player = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(t.partyId ?? DEFAULT_PARTY_ID, playerName) as any;
     if (!player) return;
 
     if (prize.essence > 0) {
@@ -2105,7 +2276,7 @@ function distributePrizes(t: Tournament) {
       }
     }
 
-    const socketId = connectedPlayers.get(playerName);
+    const socketId = getConnectedPlayer(t.partyId ?? DEFAULT_PARTY_ID, playerName);
     if (socketId) {
       io.to(socketId).emit('tournament:prizeAwarded', {
         tournamentId: t.id, tournamentName: t.name, prize, rank, totalPlayers,
@@ -2198,11 +2369,11 @@ setInterval(() => {
       // Notify round 1 players
       for (const match of bracket.filter(m => m.round === 1 && m.status === 'active')) {
         if (match.player1) {
-          const s = connectedPlayers.get(match.player1);
+          const s = getConnectedPlayer(t.partyId ?? DEFAULT_PARTY_ID, match.player1);
           if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player2 });
         }
         if (match.player2) {
-          const s = connectedPlayers.get(match.player2);
+          const s = getConnectedPlayer(t.partyId ?? DEFAULT_PARTY_ID, match.player2);
           if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player1 });
         }
       }
@@ -2214,8 +2385,10 @@ setInterval(() => {
 }, 10_000);
 
 // Tournament REST endpoints
-app.get(`${BASE_PATH}/api/tournaments`, (_req, res) => {
-  const rows = db.prepare("SELECT * FROM tournaments WHERE status IN ('registration', 'active', 'completed') ORDER BY created_at DESC LIMIT 20").all() as any[];
+app.get(`${BASE_PATH}/api/tournaments`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const rows = db.prepare("SELECT * FROM tournaments WHERE party_id = ? AND status IN ('registration', 'active', 'completed') ORDER BY created_at DESC LIMIT 20").all(party.id) as any[];
   const list: TournamentSummary[] = rows.map((r: any) => {
     const participants = JSON.parse(r.participants) as string[];
     return {
@@ -2230,8 +2403,10 @@ app.get(`${BASE_PATH}/api/tournaments`, (_req, res) => {
   return res.json({ tournaments: list });
 });
 
-app.get(`${BASE_PATH}/api/tournaments/latest`, (_req, res) => {
-  const row = db.prepare("SELECT id FROM tournaments ORDER BY created_at DESC LIMIT 1").get() as any;
+app.get(`${BASE_PATH}/api/tournaments/latest`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
+  const row = db.prepare("SELECT id FROM tournaments WHERE party_id = ? ORDER BY created_at DESC LIMIT 1").get(party.id) as any;
   if (!row) return res.json({ tournament: null });
   const tournament = loadTournament(row.id);
   if (!tournament) return res.json({ tournament: null });
@@ -2239,12 +2414,15 @@ app.get(`${BASE_PATH}/api/tournaments/latest`, (_req, res) => {
 });
 
 app.get(`${BASE_PATH}/api/tournament/:id`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const t = loadTournament(req.params.id);
-  if (!t) return res.status(404).json({ error: 'Not found' });
+  if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== party.id) return res.status(404).json({ error: 'Not found' });
   return res.json(t);
 });
 
 app.post(`${BASE_PATH}/api/admin/tournament/create`, (req, res) => {
+  const party = partyFromRequest(req, true)!;
   const { name, fieldSize, totalPokemon, registrationMinutes, matchTimeLimit, publicTeams, allowLegendaries, pickMode, prizes } = req.body;
   const id = uuidv4();
   const regEnd = Date.now() + (registrationMinutes ?? 10) * 60 * 1000;
@@ -2253,19 +2431,21 @@ app.post(`${BASE_PATH}/api/admin/tournament/create`, (req, res) => {
   const pm = pickMode === 'draft' ? 'draft' : 'blind';
   // Tournaments are always fixed-team now (frozen teams), with per-match ordering.
   db.prepare(
-    'INSERT INTO tournaments (id, name, field_size, total_pokemon, registration_end, match_time_limit, fixed_team, public_teams, allow_legendaries, pick_mode, prizes) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)'
-  ).run(id, name ?? 'Tournament', fieldSize ?? 1, totalPokemon ?? 3, regEnd, matchTimeLimit ?? 300, publicTeams ? 1 : 0, allowLeg, pm, JSON.stringify(finalPrizes));
+    'INSERT INTO tournaments (id, party_id, name, field_size, total_pokemon, registration_end, match_time_limit, fixed_team, public_teams, allow_legendaries, pick_mode, prizes) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)'
+  ).run(id, party.id, name ?? 'Tournament', fieldSize ?? 1, totalPokemon ?? 3, regEnd, matchTimeLimit ?? 300, publicTeams ? 1 : 0, allowLeg, pm, JSON.stringify(finalPrizes));
   const t = loadTournament(id)!;
   // Broadcast to all connected players
-  io.emit('tournament:created', { id: t.id, name: t.name, registrationEnd: t.registrationEnd, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon });
+  io.to(partyRoom(party.id)).emit('tournament:created', { id: t.id, name: t.name, registrationEnd: t.registrationEnd, fieldSize: t.fieldSize, totalPokemon: t.totalPokemon });
   gameplayEventsTotal.inc({ event: 'tournament_created' });
   broadcastTournamentUpdate(t);
   return res.json({ ok: true, tournament: t });
 });
 
 app.post(`${BASE_PATH}/api/admin/tournament/:id/start`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const t = loadTournament(req.params.id);
-  if (!t || t.status !== 'registration') return res.status(400).json({ error: 'Cannot start' });
+  if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== party.id || t.status !== 'registration') return res.status(400).json({ error: 'Cannot start' });
   if (t.participants.length < 2) return res.status(400).json({ error: 'Need at least 2 participants' });
   const { bracket } = generateBracket(t.participants, t.matchTimeLimit);
   t.bracket = bracket;
@@ -2275,16 +2455,18 @@ app.post(`${BASE_PATH}/api/admin/tournament/:id/start`, (req, res) => {
   gameplayEventsTotal.inc({ event: 'tournament_started' });
   broadcastTournamentUpdate(t);
   for (const match of bracket.filter(m => m.round === 1 && m.status === 'active')) {
-    if (match.player1) { const s = connectedPlayers.get(match.player1); if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player2 }); }
-    if (match.player2) { const s = connectedPlayers.get(match.player2); if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player1 }); }
+    if (match.player1) { const s = getConnectedPlayer(party.id, match.player1); if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player2 }); }
+    if (match.player2) { const s = getConnectedPlayer(party.id, match.player2); if (s) io.to(s).emit('tournament:matchReady', { tournamentId: t.id, matchId: match.id, opponent: match.player1 }); }
   }
   advanceTournament(t);
   return res.json({ ok: true });
 });
 
 app.post(`${BASE_PATH}/api/admin/tournament/:id/cancel`, (req, res) => {
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   const t = loadTournament(req.params.id);
-  if (!t) return res.status(404).json({ error: 'Not found' });
+  if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== party.id) return res.status(404).json({ error: 'Not found' });
   t.status = 'cancelled';
   saveTournament(t);
   gameplayEventsTotal.inc({ event: 'tournament_cancelled' });
@@ -2300,42 +2482,57 @@ const SERVER_STARTED_AT = Date.now();
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
   let playerName: string | null = null;
+  let socketPartyId = DEFAULT_PARTY_ID;
+  let socketPartySlug = DEFAULT_PARTY_SLUG;
 
   // Send the server's startup id right away so the client can compare with
   // the one it stored from a previous connection and force a reload if the
   // server was redeployed in the meantime.
   socket.emit('server:hello', { startedAt: SERVER_STARTED_AT });
 
-  socket.on('player:identify', (name: string) => {
+  socket.on('player:identify', (payload: string | { name: string; partySlug?: string; partyId?: string }) => {
+    const name = typeof payload === 'string' ? payload : payload.name;
+    const party = typeof payload === 'string'
+      ? ensurePartyBySlug(DEFAULT_PARTY_SLUG)
+      : (payload.partyId
+          ? partyContextFromRow(db.prepare('SELECT id, slug, name FROM parties WHERE id = ?').get(payload.partyId))
+          : ensurePartyBySlug(payload.partySlug));
+    if (!party || !name) return;
     playerName = name;
-    connectedPlayers.set(name, socket.id);
+    socketPartyId = party.id;
+    socketPartySlug = party.slug;
+    socket.join(partyRoom(socketPartyId));
+    connectedPlayers.set(playerPresenceKey(socketPartyId, name), socket.id);
     playersOnline.set(connectedPlayers.size);
-    console.log(`Player identified: ${name}`);
+    console.log(`Player identified: ${name} in party ${socketPartySlug}`);
   });
 
   socket.on('battle:challenge', (data: string | { target: string; fieldSize?: number; totalPokemon?: number; allowLegendaries?: boolean }) => {
     if (!playerName) return;
+    const selfKey = playerPresenceKey(socketPartyId, playerName);
     const targetName = typeof data === 'string' ? data : data.target;
+    const targetKey = playerPresenceKey(socketPartyId, targetName);
     const fieldSize = (typeof data === 'object' ? data.fieldSize : undefined) ?? 3;
     const totalPokemon = (typeof data === 'object' ? data.totalPokemon : undefined) ?? 3;
     const allowLegendaries = typeof data === 'object' && data.allowLegendaries === false ? false : true;
-    pendingChallenges.set(playerName, targetName);
-    pendingChallengeConfigs.set(playerName, { fieldSize, totalPokemon, allowLegendaries });
+    pendingChallenges.set(selfKey, targetName);
+    pendingChallengeConfigs.set(selfKey, { fieldSize, totalPokemon, allowLegendaries });
     console.log(`${playerName} challenges ${targetName}`);
 
     // Check if there's a mutual challenge
-    const otherChallenge = pendingChallenges.get(targetName);
+    const otherChallenge = pendingChallenges.get(targetKey);
     if (otherChallenge === playerName) {
       // Match found!
-      pendingChallenges.delete(playerName);
-      pendingChallenges.delete(targetName);
+      pendingChallenges.delete(selfKey);
+      pendingChallenges.delete(targetKey);
 
-      const config = pendingChallengeConfigs.get(targetName) ?? { fieldSize: 3, totalPokemon: 3, allowLegendaries: true };
-      pendingChallengeConfigs.delete(playerName);
-      pendingChallengeConfigs.delete(targetName);
+      const config = pendingChallengeConfigs.get(targetKey) ?? { fieldSize: 3, totalPokemon: 3, allowLegendaries: true };
+      pendingChallengeConfigs.delete(selfKey);
+      pendingChallengeConfigs.delete(targetKey);
       const battleId = uuidv4();
       const battle: ActiveBattle = {
         id: battleId,
+        partyId: socketPartyId,
         player1: playerName,
         player2: targetName,
         player1Team: null,
@@ -2347,8 +2544,8 @@ io.on('connection', (socket) => {
       activeBattles.set(battleId, battle);
 
       // Notify both players
-      const socket1 = connectedPlayers.get(playerName);
-      const socket2 = connectedPlayers.get(targetName);
+      const socket1 = getConnectedPlayer(socketPartyId, playerName);
+      const socket2 = getConnectedPlayer(socketPartyId, targetName);
       const matchedPayload = { battleId, fieldSize: config.fieldSize, totalPokemon: config.totalPokemon, allowLegendaries: config.allowLegendaries };
       if (socket1) io.to(socket1).emit('battle:matched', { ...matchedPayload, opponent: targetName });
       if (socket2) io.to(socket2).emit('battle:matched', { ...matchedPayload, opponent: playerName });
@@ -2357,22 +2554,23 @@ io.on('connection', (socket) => {
       // Notify challenger they're waiting
       socket.emit('battle:waiting', { target: targetName });
       // Notify target they've been challenged
-      const targetSocket = connectedPlayers.get(targetName);
+      const targetSocket = getConnectedPlayer(socketPartyId, targetName);
       if (targetSocket) io.to(targetSocket).emit('battle:challenged', { challenger: playerName });
     }
   });
 
   socket.on('battle:cancel', () => {
     if (!playerName) return;
-    pendingChallenges.delete(playerName);
-    pendingChallengeConfigs.delete(playerName);
+    const selfKey = playerPresenceKey(socketPartyId, playerName);
+    pendingChallenges.delete(selfKey);
+    pendingChallengeConfigs.delete(selfKey);
     socket.emit('battle:cancelled');
   });
 
   socket.on('battle:selectTeam', ({ battleId, team, instanceIds, heldItems, moves, abilities, characters }: { battleId: string; team: number[]; instanceIds?: string[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[]; abilities?: (string | null)[]; characters?: (string | null)[] }) => {
     if (!playerName) return;
     const battle = activeBattles.get(battleId);
-    if (!battle) return;
+    if (!battle || battle.partyId !== socketPartyId) return;
 
     // Enforce legendary clause: silently drop illegal teams so clients can't bypass.
     if (!battle.allowLegendaries && Array.isArray(team) && team.some((id) => POKEMON_BY_ID[id]?.tier === 'legendary')) {
@@ -2385,8 +2583,8 @@ io.on('connection', (socket) => {
 
     // Check if both teams are selected
     if (battle.player1Team && battle.player2Team) {
-      const socket1 = connectedPlayers.get(battle.player1);
-      const socket2 = connectedPlayers.get(battle.player2);
+      const socket1 = getConnectedPlayer(battle.partyId, battle.player1);
+      const socket2 = getConnectedPlayer(battle.partyId, battle.player2);
 
       // Simulate battle on server so both players see the same result
       const snapshot = observeBattleSimulation(
@@ -2419,8 +2617,8 @@ io.on('connection', (socket) => {
       const winnerName = snapshot.winner === 'left' ? battle.player1 : battle.player2;
       const loserName = snapshot.winner === 'left' ? battle.player2 : battle.player1;
 
-      const winnerRow = db.prepare('SELECT id, elo FROM players WHERE name = ?').get(winnerName) as any;
-      const loserRow = db.prepare('SELECT id, elo FROM players WHERE name = ?').get(loserName) as any;
+      const winnerRow = db.prepare('SELECT id, elo FROM players WHERE party_id = ? AND name = ?').get(battle.partyId, winnerName) as any;
+      const loserRow = db.prepare('SELECT id, elo FROM players WHERE party_id = ? AND name = ?').get(battle.partyId, loserName) as any;
       if (winnerRow && loserRow) {
         const { winnerNewElo, loserNewElo, winnerDelta, loserDelta } = calculateEloChanges(winnerRow.elo, loserRow.elo);
         db.prepare('UPDATE players SET elo = ? WHERE id = ?').run(winnerNewElo, winnerRow.id);
@@ -2442,9 +2640,9 @@ io.on('connection', (socket) => {
 
         // Record battle in DB with config
         const recordBattle = db.prepare(
-          'INSERT INTO battles (id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO battles (id, party_id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
-        recordBattle.run(battleId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, battle.fieldSize, battle.totalPokemon, 'blind', 'pvp', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
+        recordBattle.run(battleId, battle.partyId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, battle.fieldSize, battle.totalPokemon, 'blind', 'pvp', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
 
         // Record team entries for recent-pokemon tracking
         const recordTeamEntry = db.prepare(
@@ -2476,17 +2674,20 @@ io.on('connection', (socket) => {
 
   socket.on('trade:request', (targetName: string) => {
     if (!playerName) return;
-    pendingTrades.set(playerName, targetName);
+    const selfKey = playerPresenceKey(socketPartyId, playerName);
+    const targetKey = playerPresenceKey(socketPartyId, targetName);
+    pendingTrades.set(selfKey, targetName);
     console.log(`${playerName} wants to trade with ${targetName}`);
 
-    const otherRequest = pendingTrades.get(targetName);
+    const otherRequest = pendingTrades.get(targetKey);
     if (otherRequest === playerName) {
-      pendingTrades.delete(playerName);
-      pendingTrades.delete(targetName);
+      pendingTrades.delete(selfKey);
+      pendingTrades.delete(targetKey);
 
       const tradeId = uuidv4();
       const trade: ActiveTrade = {
         id: tradeId,
+        partyId: socketPartyId,
         player1: playerName,
         player2: targetName,
         player1PokemonInstanceId: null,
@@ -2498,30 +2699,30 @@ io.on('connection', (socket) => {
       };
       activeTrades.set(tradeId, trade);
 
-      const socket1 = connectedPlayers.get(playerName);
-      const socket2 = connectedPlayers.get(targetName);
+      const socket1 = getConnectedPlayer(socketPartyId, playerName);
+      const socket2 = getConnectedPlayer(socketPartyId, targetName);
       if (socket1) io.to(socket1).emit('trade:matched', { tradeId, partner: targetName });
       if (socket2) io.to(socket2).emit('trade:matched', { tradeId, partner: playerName });
       console.log(`Trade matched: ${playerName} <-> ${targetName} (${tradeId})`);
     } else {
       socket.emit('trade:waiting', { target: targetName });
-      const targetSocket = connectedPlayers.get(targetName);
+      const targetSocket = getConnectedPlayer(socketPartyId, targetName);
       if (targetSocket) io.to(targetSocket).emit('trade:incoming', { from: playerName });
     }
   });
 
   socket.on('trade:cancel', () => {
     if (!playerName) return;
-    pendingTrades.delete(playerName);
+    pendingTrades.delete(playerPresenceKey(socketPartyId, playerName));
     socket.emit('trade:cancelled');
   });
 
   socket.on('trade:selectPokemon', ({ tradeId, pokemonId, instanceId }: { tradeId: string; pokemonId: number; instanceId?: string }) => {
     if (!playerName) return;
     const trade = activeTrades.get(tradeId);
-    if (!trade) return;
+    if (!trade || trade.partyId !== socketPartyId) return;
 
-    const player = db.prepare('SELECT id FROM players WHERE name = ?').get(playerName) as any;
+    const player = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(socketPartyId, playerName) as any;
     if (!player) {
       socket.emit('trade:error', { error: 'Player not found' });
       return;
@@ -2544,8 +2745,8 @@ io.on('connection', (socket) => {
 
     // Notify both when both have selected
     if (trade.player1Pokemon !== null && trade.player2Pokemon !== null) {
-      const socket1 = connectedPlayers.get(trade.player1);
-      const socket2 = connectedPlayers.get(trade.player2);
+      const socket1 = getConnectedPlayer(trade.partyId, trade.player1);
+      const socket2 = getConnectedPlayer(trade.partyId, trade.player2);
       const data = {
         tradeId,
         player1Pokemon: trade.player1Pokemon,
@@ -2563,16 +2764,16 @@ io.on('connection', (socket) => {
   socket.on('trade:confirm', ({ tradeId }: { tradeId: string }) => {
     if (!playerName) return;
     const trade = activeTrades.get(tradeId);
-    if (!trade) return;
+    if (!trade || trade.partyId !== socketPartyId) return;
 
     if (trade.player1 === playerName) trade.player1Confirmed = true;
     else if (trade.player2 === playerName) trade.player2Confirmed = true;
 
     if (trade.player1Confirmed && trade.player2Confirmed) {
-      const socket1 = connectedPlayers.get(trade.player1);
-      const socket2 = connectedPlayers.get(trade.player2);
-      const p1 = db.prepare('SELECT id FROM players WHERE name = ?').get(trade.player1) as any;
-      const p2 = db.prepare('SELECT id FROM players WHERE name = ?').get(trade.player2) as any;
+      const socket1 = getConnectedPlayer(trade.partyId, trade.player1);
+      const socket2 = getConnectedPlayer(trade.partyId, trade.player2);
+      const p1 = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(trade.partyId, trade.player1) as any;
+      const p2 = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(trade.partyId, trade.player2) as any;
       if (!p1 || !p2) {
         socket.emit('trade:error', { error: 'Trade player not found' });
         return;
@@ -2594,7 +2795,7 @@ io.on('connection', (socket) => {
         db.prepare('UPDATE owned_pokemon SET player_id = ? WHERE id = ? AND player_id = ?').run(p1.id, p2Pokemon.id, p2.id);
         db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)').run(p1.id, p2Pokemon.pokemon_id);
         db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)').run(p2.id, p1Pokemon.pokemon_id);
-        db.prepare('INSERT INTO trades (id, player1_id, player2_id, pokemon1_id, pokemon2_id) VALUES (?, ?, ?, ?, ?)').run(trade.id, p1.id, p2.id, p1Pokemon.id, p2Pokemon.id);
+        db.prepare('INSERT INTO trades (id, party_id, player1_id, player2_id, pokemon1_id, pokemon2_id) VALUES (?, ?, ?, ?, ?, ?)').run(trade.id, trade.partyId, p1.id, p2.id, p1Pokemon.id, p2Pokemon.id);
         db.exec('COMMIT');
       } catch (error) {
         db.exec('ROLLBACK');
@@ -2632,7 +2833,7 @@ io.on('connection', (socket) => {
   socket.on('tournament:join', (tournamentId: string) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
-    if (!t || t.status !== 'registration') return;
+    if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== socketPartyId || t.status !== 'registration') return;
     if (t.participants.includes(playerName)) return;
     t.participants.push(playerName);
     saveTournament(t);
@@ -2643,7 +2844,7 @@ io.on('connection', (socket) => {
   socket.on('tournament:leave', (tournamentId: string) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
-    if (!t || t.status !== 'registration') return;
+    if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== socketPartyId || t.status !== 'registration') return;
     t.participants = t.participants.filter(p => p !== playerName);
     if (t.fixedTeam) { delete t.frozenTeams[playerName]; }
     saveTournament(t);
@@ -2653,7 +2854,7 @@ io.on('connection', (socket) => {
   socket.on('tournament:lockTeam', ({ tournamentId, team }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
-    if (!t || t.status !== 'registration' || !t.fixedTeam) return;
+    if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== socketPartyId || t.status !== 'registration' || !t.fixedTeam) return;
     if (!t.participants.includes(playerName)) return;
     // team is an array of FrozenPokemon
     if (!Array.isArray(team) || team.length !== t.totalPokemon) return;
@@ -2673,7 +2874,7 @@ io.on('connection', (socket) => {
   socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities, characters, slotOrder }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
-    if (!t || t.status !== 'active') return;
+    if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== socketPartyId || t.status !== 'active') return;
     const match = t.bracket.find(m => m.id === matchId);
     if (!match || match.status !== 'active') return;
     if (match.player1 !== playerName && match.player2 !== playerName) return;
@@ -2727,7 +2928,7 @@ io.on('connection', (socket) => {
   socket.on('tournament:draftPick', ({ tournamentId, matchId, slotIndex }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
-    if (!t || t.status !== 'active' || t.pickMode !== 'draft') return;
+    if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== socketPartyId || t.status !== 'active' || t.pickMode !== 'draft') return;
     const match = t.bracket.find(m => m.id === matchId);
     if (!match || match.status !== 'active') return;
     if (match.player1 !== playerName && match.player2 !== playerName) return;
@@ -2777,7 +2978,7 @@ io.on('connection', (socket) => {
   socket.on('tournament:draftJoin', ({ tournamentId, matchId }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
-    if (!t || t.pickMode !== 'draft') return;
+    if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== socketPartyId || t.pickMode !== 'draft') return;
     const match = t.bracket.find(m => m.id === matchId);
     if (!match || match.status !== 'active') return;
     if (match.player1 !== playerName && match.player2 !== playerName) return;
@@ -2793,11 +2994,12 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     if (playerName) {
-      connectedPlayers.delete(playerName);
+      const selfKey = playerPresenceKey(socketPartyId, playerName);
+      connectedPlayers.delete(selfKey);
       playersOnline.set(connectedPlayers.size);
-      pendingChallenges.delete(playerName);
-      pendingChallengeConfigs.delete(playerName);
-      pendingTrades.delete(playerName);
+      pendingChallenges.delete(selfKey);
+      pendingChallengeConfigs.delete(selfKey);
+      pendingTrades.delete(selfKey);
     }
     console.log(`Client disconnected: ${socket.id}`);
   });

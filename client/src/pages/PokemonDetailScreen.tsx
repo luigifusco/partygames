@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 import type { PokemonInstance, Stats, OwnedItem } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
@@ -79,7 +79,7 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
     const abilityNeeded = abilityName && !abilityDex[abilityName] ? [abilityName] : [];
     if (movesNeeded.length === 0 && abilityNeeded.length === 0) return;
     let alive = true;
-    fetch(BASE_PATH + '/api/dex/lookup', {
+    fetch(apiUrl('/api/dex/lookup'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ moves: movesNeeded, abilities: abilityNeeded }),

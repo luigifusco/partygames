@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BASE_PATH } from '../config';
+import { apiUrl, withPartyBody } from '../party';
 import { getEffectiveMoves, type PokemonInstance } from '@shared/types';
 import AppleCatch from '../minigames/AppleCatch';
 import PettingCare from '../minigames/PettingCare';
@@ -101,15 +101,15 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(BASE_PATH + '/api/minigame/reward', {
+      const res = await fetch(apiUrl('/api/minigame/reward'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(withPartyBody({
           playerName,
           instanceId: selectedInst.instanceId,
           minigame: selectedGame.id,
           score,
-        }),
+        })),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));

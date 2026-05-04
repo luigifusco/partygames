@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 import { POKEMON } from '@shared/pokemon-data';
 import PokemonIcon from '../components/PokemonIcon';
 import Avatar from '../components/Avatar';
 import './AdminPanel.css';
-
-const API = BASE_PATH;
 
 interface PlayerRow {
   id: string;
@@ -63,9 +61,9 @@ export default function AdminPanel() {
 
   const refresh = useCallback(async () => {
     const [pRes, sRes, wRes] = await Promise.all([
-      fetch(`${API}/api/admin/players`),
-      fetch(`${API}/api/admin/stats`),
-      fetch(`${API}/api/admin/settings`),
+      fetch(apiUrl('/api/admin/players')),
+      fetch(apiUrl('/api/admin/stats')),
+      fetch(apiUrl('/api/admin/settings')),
     ]);
     setPlayers((await pRes.json()).players);
     setStats(await sRes.json());
@@ -80,7 +78,7 @@ export default function AdminPanel() {
     setAdminStatsLoading(true);
     setAdminStatsError(null);
     try {
-      const res = await fetch(`${API}/api/admin/stats/detail`);
+      const res = await fetch(apiUrl('/api/admin/stats/detail'));
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setAdminStatsError(data.error ?? 'Failed to load stats');
@@ -120,7 +118,7 @@ export default function AdminPanel() {
   const setEssence = async (id: string) => {
     const val = parseInt(editingEssence[id] ?? '', 10);
     if (isNaN(val)) return;
-    await fetch(`${API}/api/admin/player/${id}/set-essence`, {
+    await fetch(apiUrl(`/api/admin/player/${id}/set-essence`), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ essence: val }),
     });
@@ -130,7 +128,7 @@ export default function AdminPanel() {
   const setElo = async (id: string) => {
     const val = parseInt(editingElo[id] ?? '', 10);
     if (isNaN(val)) return;
-    await fetch(`${API}/api/admin/player/${id}/set-elo`, {
+    await fetch(apiUrl(`/api/admin/player/${id}/set-elo`), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ elo: val }),
     });
@@ -139,25 +137,25 @@ export default function AdminPanel() {
 
   const wipePokemon = async (id: string, name: string) => {
     if (!confirm(`Wipe all pokemon for ${name}?`)) return;
-    await fetch(`${API}/api/admin/player/${id}/wipe-pokemon`, { method: 'POST' });
+    await fetch(apiUrl(`/api/admin/player/${id}/wipe-pokemon`), { method: 'POST' });
     refresh();
   };
 
   const deletePlayer = async (id: string, name: string) => {
     if (!confirm(`DELETE player ${name}? This cannot be undone.`)) return;
-    await fetch(`${API}/api/admin/player/${id}/delete`, { method: 'POST' });
+    await fetch(apiUrl(`/api/admin/player/${id}/delete`), { method: 'POST' });
     refresh();
   };
 
   const resetPlayer = async (id: string, name: string) => {
     if (!confirm(`Reset ${name} to fresh state? This wipes all pokemon, items, story progress, and resets essence/elo.`)) return;
-    await fetch(`${API}/api/admin/player/${id}/reset`, { method: 'POST' });
+    await fetch(apiUrl(`/api/admin/player/${id}/reset`), { method: 'POST' });
     refresh();
   };
 
   const wipeAllPokemon = async () => {
     if (!confirm('Wipe ALL pokemon from ALL players?')) return;
-    await fetch(`${API}/api/admin/wipe-all-pokemon`, { method: 'POST' });
+    await fetch(apiUrl('/api/admin/wipe-all-pokemon'), { method: 'POST' });
     refresh();
   };
 
@@ -167,7 +165,7 @@ export default function AdminPanel() {
     const name = raw.trim() || '_dev_test_';
     if (!confirm(`Create/overwrite test user "${name}"?\n\nThey'll start with a completed story, 1,000,000 essence, every Pokémon, every held item, every TM, and every stat boost.`)) return;
     try {
-      const res = await fetch(`${API}/api/admin/create-test-user`, {
+      const res = await fetch(apiUrl('/api/admin/create-test-user'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
@@ -194,7 +192,7 @@ export default function AdminPanel() {
     )) return;
     if (!confirm('Really start a new season? This cannot be undone from the UI.')) return;
     try {
-      const res = await fetch(`${API}/api/admin/archive-db`, { method: 'POST' });
+      const res = await fetch(apiUrl('/api/admin/archive-db'), { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         alert('Archived as ' + (data.archive ?? 'snapshot') + '. Server is restarting — this page will reload.');
@@ -217,7 +215,7 @@ export default function AdminPanel() {
     if (!confirm(`Send this announcement to every connected player?\n\n${msg}`)) return;
     setBroadcasting(true);
     try {
-      const res = await fetch(`${API}/api/admin/broadcast`, {
+      const res = await fetch(apiUrl('/api/admin/broadcast'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg, from: broadcastFrom.trim() || undefined }),
@@ -291,7 +289,7 @@ export default function AdminPanel() {
       pack: p.pack || undefined,
       pokemonIds: p.pokemonIds.length > 0 ? p.pokemonIds : undefined,
     }));
-    await fetch(`${API}/api/admin/tournament/create`, {
+    await fetch(apiUrl('/api/admin/tournament/create'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -315,7 +313,7 @@ export default function AdminPanel() {
   ).slice(0, 40);
 
   const saveSetting = async (key: string, value: unknown) => {
-    await fetch(`${API}/api/admin/settings`, {
+    await fetch(apiUrl('/api/admin/settings'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, value }),

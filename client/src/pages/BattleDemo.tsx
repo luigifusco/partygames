@@ -12,13 +12,11 @@ import { getEffectiveMoves } from '@shared/types';
 import { AI_TRAINERS } from '@shared/trainer-data';
 import type { AITrainer } from '@shared/trainer-data';
 import { CHARACTER_UNLOCK_CHAPTER } from '@shared/story-data';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 import PokemonIcon from '../components/PokemonIcon';
 import { useStoryChapters } from '../hooks/useStoryChapters';
 import './BattleDemo.css';
 import './BattleMultiplayer.css';
-
-const API_BASE = BASE_PATH;
 
 const REGION_ORDER = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova'];
 const ROLE_ORDER = ['Gym Leader', 'Elite Four', 'Champion', 'Rival', 'Villain'];
@@ -153,7 +151,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         return inst?.instanceId ?? null;
       }).filter((x): x is string => !!x) : undefined;
 
-      const res = await fetch(`${API_BASE}/api/battle/simulate`, {
+      const res = await fetch(apiUrl('/api/battle/simulate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

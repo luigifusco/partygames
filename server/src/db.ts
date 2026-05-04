@@ -5,6 +5,10 @@ import { STARTING_ELO } from '../../shared/elo.js';
 import { NATURES } from '../../shared/natures.js';
 import { dataDirPath } from './paths.js';
 
+export const DEFAULT_PARTY_ID = 'main';
+export const DEFAULT_PARTY_SLUG = 'main';
+export const DEFAULT_PARTY_NAME = 'Main Party';
+
 export function initDb() {
   const dataDir = dataDirPath();
   fs.mkdirSync(dataDir, { recursive: true });
@@ -14,12 +18,22 @@ export function initDb() {
   db.exec('PRAGMA journal_mode = WAL');
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS parties (
+      id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS players (
       id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
+      party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}' REFERENCES parties(id),
+      name TEXT NOT NULL,
       essence INTEGER NOT NULL DEFAULT 0,
       elo INTEGER NOT NULL DEFAULT ${STARTING_ELO},
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      picture TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (party_id, name)
     );
 
     CREATE TABLE IF NOT EXISTS owned_pokemon (
@@ -38,6 +52,7 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS battles (
       id TEXT PRIMARY KEY,
+      party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}' REFERENCES parties(id),
       winner_id TEXT REFERENCES players(id),
       loser_id TEXT REFERENCES players(id),
       essence_gained INTEGER NOT NULL,
@@ -56,6 +71,7 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS trades (
       id TEXT PRIMARY KEY,
+      party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}' REFERENCES parties(id),
       player1_id TEXT REFERENCES players(id),
       player2_id TEXT REFERENCES players(id),
       pokemon1_id TEXT REFERENCES owned_pokemon(id),
@@ -85,6 +101,9 @@ export function initDb() {
     );
   `);
 
+  db.prepare('INSERT OR IGNORE INTO parties (id, slug, name) VALUES (?, ?, ?)')
+    .run(DEFAULT_PARTY_ID, DEFAULT_PARTY_SLUG, DEFAULT_PARTY_NAME);
+
   // Add elo column if it doesn't exist (migration for existing DBs)
   const cols = db.prepare("PRAGMA table_info(players)").all() as any[];
   if (!cols.find((c: any) => c.name === 'elo')) {
@@ -94,7 +113,32 @@ export function initDb() {
   if (!cols.find((c: any) => c.name === 'picture')) {
     db.exec(`ALTER TABLE players ADD COLUMN picture TEXT`);
   }
+  if (!cols.find((c: any) => c.name === 'party_id')) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE players_new (
+        id TEXT PRIMARY KEY,
+        party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}' REFERENCES parties(id),
+        name TEXT NOT NULL,
+        essence INTEGER NOT NULL DEFAULT 0,
+        elo INTEGER NOT NULL DEFAULT ${STARTING_ELO},
+        picture TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (party_id, name)
+      )
+    `);
+    db.exec(`
+      INSERT INTO players_new (id, party_id, name, essence, elo, picture, created_at)
+      SELECT id, '${DEFAULT_PARTY_ID}', name, essence, elo, picture, created_at FROM players
+    `);
+    db.exec('DROP TABLE players');
+    db.exec('ALTER TABLE players_new RENAME TO players');
+    db.exec('PRAGMA foreign_keys = ON');
+  }
   const battleCols = db.prepare("PRAGMA table_info(battles)").all() as any[];
+  if (!battleCols.find((c: any) => c.name === 'party_id')) {
+    db.exec(`ALTER TABLE battles ADD COLUMN party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}'`);
+  }
   if (!battleCols.find((c: any) => c.name === 'winner_elo_delta')) {
     db.exec(`ALTER TABLE battles ADD COLUMN winner_elo_delta INTEGER NOT NULL DEFAULT 0`);
     db.exec(`ALTER TABLE battles ADD COLUMN loser_elo_delta INTEGER NOT NULL DEFAULT 0`);
@@ -191,10 +235,28 @@ export function initDb() {
   // Game settings table (key-value store for admin-adjustable settings)
   db.exec(`
     CREATE TABLE IF NOT EXISTS game_settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
+      party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}' REFERENCES parties(id),
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (party_id, key)
     )
   `);
+  const settingsCols = db.prepare("PRAGMA table_info(game_settings)").all() as any[];
+  if (!settingsCols.find((c: any) => c.name === 'party_id')) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE game_settings_new (
+        party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}' REFERENCES parties(id),
+        key TEXT NOT NULL,
+        value TEXT NOT NULL,
+        PRIMARY KEY (party_id, key)
+      )
+    `);
+    db.exec(`INSERT INTO game_settings_new (party_id, key, value) SELECT '${DEFAULT_PARTY_ID}', key, value FROM game_settings`);
+    db.exec('DROP TABLE game_settings');
+    db.exec('ALTER TABLE game_settings_new RENAME TO game_settings');
+    db.exec('PRAGMA foreign_keys = ON');
+  }
 
   // Clean up removed setting (pack tiers are now hardcoded)
   db.prepare("DELETE FROM game_settings WHERE key = 'rarity_weights'").run();
@@ -213,6 +275,7 @@ export function initDb() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS tournaments (
       id TEXT PRIMARY KEY,
+      party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}' REFERENCES parties(id),
       name TEXT NOT NULL,
       field_size INTEGER NOT NULL DEFAULT 1,
       total_pokemon INTEGER NOT NULL DEFAULT 3,
@@ -236,6 +299,9 @@ export function initDb() {
 
   // Add fixed_team columns if missing (migration for existing DBs)
   const tournCols = db.prepare("PRAGMA table_info(tournaments)").all() as any[];
+  if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'party_id')) {
+    db.exec(`ALTER TABLE tournaments ADD COLUMN party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}'`);
+  }
   if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'fixed_team')) {
     db.exec(`ALTER TABLE tournaments ADD COLUMN fixed_team INTEGER NOT NULL DEFAULT 0`);
     db.exec(`ALTER TABLE tournaments ADD COLUMN frozen_teams TEXT NOT NULL DEFAULT '{}'`);
@@ -252,6 +318,10 @@ export function initDb() {
   }
   if (tournCols.length > 0 && !tournCols.find((c: any) => c.name === 'pick_mode')) {
     db.exec(`ALTER TABLE tournaments ADD COLUMN pick_mode TEXT NOT NULL DEFAULT 'blind'`);
+  }
+  const tradeCols = db.prepare("PRAGMA table_info(trades)").all() as any[];
+  if (tradeCols.length > 0 && !tradeCols.find((c: any) => c.name === 'party_id')) {
+    db.exec(`ALTER TABLE trades ADD COLUMN party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}'`);
   }
 
   // Query indexes for the main per-player and battle-history hot paths.
@@ -276,7 +346,11 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_battle_pokemon_usage_player_used ON battle_pokemon_usage(player_id, times_used DESC);
 
     CREATE INDEX IF NOT EXISTS idx_tournaments_status_created ON tournaments(status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_tournaments_party_status_created ON tournaments(party_id, status, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_tournaments_created ON tournaments(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_players_party_name ON players(party_id, name);
+    CREATE INDEX IF NOT EXISTS idx_battles_party_created ON battles(party_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_trades_party_created ON trades(party_id, created_at DESC);
   `);
 
   return db;

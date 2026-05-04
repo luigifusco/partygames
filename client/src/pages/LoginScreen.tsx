@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BASE_PATH } from '../config';
+import { apiUrl, currentPartySlug, partyPath, withPartyBody } from '../party';
 import './LoginScreen.css';
 
 interface PlayerData {
@@ -14,8 +14,6 @@ interface PlayerData {
 interface LoginScreenProps {
   onLogin: (player: PlayerData, pokemonRows: any[], itemRows: any[], recentPokemonIds?: number[]) => void;
 }
-
-const API_BASE = BASE_PATH;
 
 const LAST_PLAYER_KEY = 'lastPlayerName';
 const PICTURE_MAX_SIZE = 256;
@@ -62,7 +60,8 @@ function captureVideoFrame(video: HTMLVideoElement): string {
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const navigate = useNavigate();
-  const [name, setName] = useState(() => localStorage.getItem(LAST_PLAYER_KEY) ?? '');
+  const partySlug = currentPartySlug();
+  const [name, setName] = useState(() => localStorage.getItem(`${LAST_PLAYER_KEY}:${partySlug}`) ?? '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginDisabled, setLoginDisabled] = useState(false);
@@ -77,7 +76,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    fetch(API_BASE + '/api/settings/features')
+    fetch(apiUrl('/api/settings/features', partySlug))
       .then(r => r.json())
       .then(data => { setLoginDisabled(data.loginDisabled ?? false); setCheckingStatus(false); })
       .catch(() => setCheckingStatus(false));
@@ -153,19 +152,19 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setError('');
 
     try {
-      const res = await fetch(`${API_BASE}/api/register`, {
+      const res = await fetch(apiUrl('/api/register', partySlug), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), picture }),
+        body: JSON.stringify(withPartyBody({ name: name.trim(), picture }, partySlug)),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Registration failed');
         return;
       }
-      localStorage.setItem(LAST_PLAYER_KEY, name.trim());
+      localStorage.setItem(`${LAST_PLAYER_KEY}:${partySlug}`, name.trim());
       onLogin(data.player, [], []);
-      navigate('/play');
+      navigate(partyPath('/play', partySlug));
     } catch {
       setError('Cannot connect to server');
     } finally {
@@ -179,21 +178,21 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setError('');
 
     try {
-      const res = await fetch(`${API_BASE}/api/login`, {
+      const res = await fetch(apiUrl('/api/login', partySlug), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify(withPartyBody({ name: name.trim() }, partySlug)),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Login failed');
         return;
       }
-      localStorage.setItem(LAST_PLAYER_KEY, name.trim());
+      localStorage.setItem(`${LAST_PLAYER_KEY}:${partySlug}`, name.trim());
       const pokemonRows = data.pokemon;
       const itemRows = data.items ?? [];
       onLogin(data.player, pokemonRows, itemRows, data.recentPokemonIds);
-      navigate('/play');
+      navigate(partyPath('/play', partySlug));
     } catch {
       setError('Cannot connect to server');
     } finally {

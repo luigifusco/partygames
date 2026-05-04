@@ -1,9 +1,7 @@
 import type { PokemonInstance, NatureName, OwnedItem } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 
-import { BASE_PATH } from './config';
-
-const API_BASE = BASE_PATH;
+import { apiUrl } from './party';
 
 // Build a PokemonInstance from a server-returned owned_pokemon row
 export function buildInstance(row: any): PokemonInstance | null {
@@ -51,7 +49,7 @@ export function buildItem(row: any): OwnedItem {
 }
 
 export async function syncEssence(playerId: string, essence: number) {
-  await fetch(`${API_BASE}/api/player/${playerId}/essence`, {
+  await fetch(apiUrl(`/api/player/${playerId}/essence`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ essence }),
@@ -59,7 +57,7 @@ export async function syncEssence(playerId: string, essence: number) {
 }
 
 export async function addPokemonToServer(playerId: string, pokemonIds: number[]): Promise<PokemonInstance[]> {
-  const res = await fetch(`${API_BASE}/api/player/${playerId}/pokemon`, {
+  const res = await fetch(apiUrl(`/api/player/${playerId}/pokemon`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pokemonIds }),
@@ -69,7 +67,7 @@ export async function addPokemonToServer(playerId: string, pokemonIds: number[])
 }
 
 export async function removePokemonFromServer(playerId: string, pokemonId: number, count: number) {
-  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/remove`, {
+  await fetch(apiUrl(`/api/player/${playerId}/pokemon/remove`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pokemonId, count }),
@@ -77,7 +75,7 @@ export async function removePokemonFromServer(playerId: string, pokemonId: numbe
 }
 
 export async function addItemsToServer(playerId: string, items: { itemType: string; itemData: string }[]): Promise<OwnedItem[]> {
-  const res = await fetch(`${API_BASE}/api/player/${playerId}/items`, {
+  const res = await fetch(apiUrl(`/api/player/${playerId}/items`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ items }),
@@ -87,7 +85,7 @@ export async function addItemsToServer(playerId: string, items: { itemType: stri
 }
 
 export async function removeItemsFromServer(playerId: string, itemType: string, itemData: string, count: number) {
-  await fetch(`${API_BASE}/api/player/${playerId}/items/remove`, {
+  await fetch(apiUrl(`/api/player/${playerId}/items/remove`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ itemType, itemData, count }),
@@ -95,7 +93,7 @@ export async function removeItemsFromServer(playerId: string, itemType: string, 
 }
 
 export async function evolvePokemonOnServer(playerId: string, instanceId: string, newPokemonId: number) {
-  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/evolve`, {
+  await fetch(apiUrl(`/api/player/${playerId}/pokemon/evolve`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instanceId, newPokemonId }),
@@ -105,7 +103,7 @@ export async function evolvePokemonOnServer(playerId: string, instanceId: string
 export async function reawakenPokemonOnServer(playerId: string, pokemonId: number):
   Promise<{ ok: true; cost: { tokens: number; essence: number }; newInstance: any } | { ok: false; error: string }>
 {
-  const res = await fetch(`${API_BASE}/api/player/${playerId}/pokemon/reawaken`, {
+  const res = await fetch(apiUrl(`/api/player/${playerId}/pokemon/reawaken`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pokemonId }),
@@ -116,7 +114,7 @@ export async function reawakenPokemonOnServer(playerId: string, pokemonId: numbe
 }
 
 export async function teachTMOnServer(playerId: string, instanceId: string, moveName: string, moveSlot: 0 | 1) {
-  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/teach-tm`, {
+  await fetch(apiUrl(`/api/player/${playerId}/pokemon/teach-tm`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instanceId, moveName, moveSlot }),
@@ -124,7 +122,7 @@ export async function teachTMOnServer(playerId: string, instanceId: string, move
 }
 
 export async function useBoostOnServer(playerId: string, instanceId: string, stat: string) {
-  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/use-boost`, {
+  await fetch(apiUrl(`/api/player/${playerId}/pokemon/use-boost`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instanceId, stat }),
@@ -132,7 +130,7 @@ export async function useBoostOnServer(playerId: string, instanceId: string, sta
 }
 
 export async function giveHeldItemOnServer(playerId: string, instanceId: string, itemId: string) {
-  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/give-item`, {
+  await fetch(apiUrl(`/api/player/${playerId}/pokemon/give-item`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instanceId, itemId }),
@@ -140,7 +138,7 @@ export async function giveHeldItemOnServer(playerId: string, instanceId: string,
 }
 
 export async function takeHeldItemOnServer(playerId: string, instanceId: string) {
-  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/take-item`, {
+  await fetch(apiUrl(`/api/player/${playerId}/pokemon/take-item`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instanceId }),
@@ -148,7 +146,7 @@ export async function takeHeldItemOnServer(playerId: string, instanceId: string)
 }
 
 export async function setFavoriteOnServer(playerId: string, instanceId: string, favorite: boolean) {
-  await fetch(`${API_BASE}/api/player/${playerId}/pokemon/favorite`, {
+  await fetch(apiUrl(`/api/player/${playerId}/pokemon/favorite`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instanceId, favorite }),

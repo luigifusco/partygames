@@ -26,7 +26,7 @@ import MinigamesScreen from './pages/MinigamesScreen';
 import TournamentPrizeModal, { type TournamentPrizeAward } from './components/TournamentPrizeModal';
 import { socket } from './socket';
 import { syncEssence, addPokemonToServer, removePokemonFromServer, addItemsToServer, removeItemsFromServer, evolvePokemonOnServer, reawakenPokemonOnServer, teachTMOnServer, useBoostOnServer, giveHeldItemOnServer, takeHeldItemOnServer, setFavoriteOnServer, buildInstance, buildItem } from './api';
-import { BASE_PATH } from './config';
+import { apiUrl, currentPartySlug, DEFAULT_PARTY_SLUG, partyPath } from './party';
 import { STARTING_ESSENCE } from '@shared/essence';
 import { STARTING_ELO } from '@shared/elo';
 import { evolveGate, bondThresholdForStep } from '@shared/evolution';
@@ -46,6 +46,8 @@ interface PlayerState {
 }
 
 export default function App() {
+  const partySlug = currentPartySlug();
+  const route = (path: string) => partySlug === DEFAULT_PARTY_SLUG ? path : `/p/:partySlug${path}`;
   const [player, setPlayer] = useState<PlayerState | null>(null);
   const [essence, setEssence] = useState(0);
   const [elo, setElo] = useState(STARTING_ELO);
@@ -285,7 +287,7 @@ export default function App() {
   const refreshFromServer = useCallback(async () => {
     if (!player) return;
     try {
-      const res = await fetch(`${BASE_PATH}/api/player/${player.id}`);
+      const res = await fetch(apiUrl(`/api/player/${player.id}`, partySlug));
       if (!res.ok) return;
       const data = await res.json();
       if (data.player) {
@@ -426,9 +428,9 @@ export default function App() {
       return;
     }
     const routes: Record<Exclude<Notification['type'], 'announcement'>, string> = {
-      battle: '/battle',
-      trade: '/trade',
-      tournament: '/tournaments',
+      battle: partyPath('/battle', partySlug),
+      trade: partyPath('/trade', partySlug),
+      tournament: partyPath('/tournaments', partySlug),
     };
     // Accepting takes the user somewhere else — close the overlay first
     // so the destination screen isn't covered by it.
@@ -445,25 +447,25 @@ export default function App() {
     setRecentPokemonIds(recentPokemon ?? []);
 
     // Backfill pokedex from owned pokemon, then load discovered set
-    await fetch(`${BASE_PATH}/api/player/${playerData.id}/pokedex/backfill`, { method: 'POST' });
-    const pdRes = await fetch(`${BASE_PATH}/api/player/${playerData.id}/pokedex`);
+    await fetch(apiUrl(`/api/player/${playerData.id}/pokedex/backfill`, partySlug), { method: 'POST' });
+    const pdRes = await fetch(apiUrl(`/api/player/${playerData.id}/pokedex`, partySlug));
     const pdData = await pdRes.json();
     setDiscovered(new Set(pdData.discovered));
     // Connect socket and identify
     socket.connect();
-    socket.emit('player:identify', playerData.name);
+    socket.emit('player:identify', { name: playerData.name, partySlug });
   };
 
   // TV and admin views are always accessible without login
   if (!player) {
     return (
       <Routes>
-        <Route path="/tv" element={<TVView />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/bg-demo" element={<BackgroundsDemo />} />
-        <Route path="/replay" element={<ReplayListScreen />} />
-        <Route path="/replay/:id" element={<ReplayWatchScreen />} />
-        <Route path="/weather" element={<WeatherTuner />} />
+        <Route path={route('/tv')} element={<TVView />} />
+        <Route path={route('/admin')} element={<AdminPanel />} />
+        <Route path={route('/bg-demo')} element={<BackgroundsDemo />} />
+        <Route path={route('/replay')} element={<ReplayListScreen />} />
+        <Route path={route('/replay/:id')} element={<ReplayWatchScreen />} />
+        <Route path={route('/weather')} element={<WeatherTuner />} />
         <Route path="*" element={<LoginScreen onLogin={handleLogin} />} />
       </Routes>
     );
@@ -472,27 +474,27 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route path="/play" element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} onOpenNotifications={() => setNotifModalOpen(true)} />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/notifications" element={<NotificationsRedirect onOpen={() => setNotifModalOpen(true)} />} />
-        <Route path="/collection" element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} onRefresh={refreshFromServer} />} />
-        <Route path="/pokemon/:idx" element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} onTeachTM={teachTM} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} playerId={player.id} />} />
-        <Route path="/pokedex" element={<PokedexScreen discovered={discovered} />} />
-        <Route path="/store" element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
-        <Route path="/shop" element={<ProtectedShopRoute playerId={player.id} essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
-        <Route path="/items" element={<ItemsScreen items={items} collection={collection} essence={essence} playerId={player.id} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} onReawaken={reawakenPokemon} />} />
-        <Route path="/trade" element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
-        <Route path="/battle" element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
-        <Route path="/battle-demo" element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
-        <Route path="/story" element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
-        <Route path="/tournaments" element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} onEloUpdate={(newElo) => setElo(newElo)} onBattleViewingChange={setIsTournamentBattleViewing} />} />
-        <Route path="/minigames" element={<MinigamesScreen playerName={player.name} collection={collection} />} />
-        <Route path="/tv" element={<TVView />} />
-        <Route path="/replay" element={<ReplayListScreen />} />
-        <Route path="/replay/:id" element={<ReplayWatchScreen />} />
-        <Route path="/weather" element={<WeatherTuner />} />
-        <Route path="/bg-demo" element={<BackgroundsDemo />} />
-        <Route path="*" element={<Navigate to="/play" replace />} />
+        <Route path={route('/play')} element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} onOpenNotifications={() => setNotifModalOpen(true)} />} />
+        <Route path={route('/admin')} element={<AdminPanel />} />
+        <Route path={route('/notifications')} element={<NotificationsRedirect onOpen={() => setNotifModalOpen(true)} />} />
+        <Route path={route('/collection')} element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} onRefresh={refreshFromServer} />} />
+        <Route path={route('/pokemon/:idx')} element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} onTeachTM={teachTM} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} playerId={player.id} />} />
+        <Route path={route('/pokedex')} element={<PokedexScreen discovered={discovered} />} />
+        <Route path={route('/store')} element={<StoreScreen essence={essence} onSpendEssence={spendEssence} onAddPokemon={addPokemon} onAddItems={addItems} />} />
+        <Route path={route('/shop')} element={<ProtectedShopRoute playerId={player.id} essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
+        <Route path={route('/items')} element={<ItemsScreen items={items} collection={collection} essence={essence} playerId={player.id} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} onReawaken={reawakenPokemon} />} />
+        <Route path={route('/trade')} element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
+        <Route path={route('/battle')} element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
+        <Route path={route('/battle-demo')} element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
+        <Route path={route('/story')} element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
+        <Route path={route('/tournaments')} element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} onEloUpdate={(newElo) => setElo(newElo)} onBattleViewingChange={setIsTournamentBattleViewing} />} />
+        <Route path={route('/minigames')} element={<MinigamesScreen playerName={player.name} collection={collection} />} />
+        <Route path={route('/tv')} element={<TVView />} />
+        <Route path={route('/replay')} element={<ReplayListScreen />} />
+        <Route path={route('/replay/:id')} element={<ReplayWatchScreen />} />
+        <Route path={route('/weather')} element={<WeatherTuner />} />
+        <Route path={route('/bg-demo')} element={<BackgroundsDemo />} />
+        <Route path="*" element={<Navigate to={partyPath('/play', partySlug)} replace />} />
       </Routes>
       {prizeQueue.length > 0 && !isTournamentBattleViewing && (
         <TournamentPrizeModal
@@ -543,7 +545,7 @@ function NotificationsRedirect({ onOpen }: { onOpen: () => void }) {
   const navigate = useNavigate();
   useEffect(() => {
     onOpen();
-    navigate('/play', { replace: true });
+    navigate(partyPath('/play', currentPartySlug()), { replace: true });
   }, [onOpen, navigate]);
   return null;
 }
@@ -556,6 +558,6 @@ function ProtectedShopRoute({ playerId, essence, onSpendEssence, onAddItems }: {
 }) {
   const { chapters, loaded } = useStoryChaptersStatus(playerId);
   if (!loaded) return null;
-  if (!chapters.has(SHOP_UNLOCK_CHAPTER)) return <Navigate to="/play" replace />;
+  if (!chapters.has(SHOP_UNLOCK_CHAPTER)) return <Navigate to={partyPath('/play', currentPartySlug())} replace />;
   return <ShopScreen essence={essence} onSpendEssence={onSpendEssence} onAddItems={onAddItems} />;
 }

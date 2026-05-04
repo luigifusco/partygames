@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BASE_PATH } from '../config';
+import { apiUrl } from '../party';
 
 /**
  * Fetches the set of completed story chapter ids for a player.
@@ -21,7 +21,7 @@ export function useStoryChaptersStatus(playerId: string | null | undefined): { c
     if (!playerId) { setLoaded(true); return; }
     let alive = true;
     setLoaded(false);
-    fetch(BASE_PATH + '/api/player/' + playerId + '/story')
+    fetch(apiUrl('/api/player/' + playerId + '/story'))
       .then(r => r.json())
       .then(data => {
         if (!alive) return;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BASE_PATH } from './config';
+import { apiUrl } from './party';
 
 export interface OnlinePlayer {
   name: string;
@@ -14,7 +14,7 @@ export function useOnlinePlayers(playerName: string) {
 
     const fetchPlayers = async () => {
       try {
-        const res = await fetch(`${BASE_PATH}/api/players/online`);
+        const res = await fetch(apiUrl('/api/players/online'));
         const data = await res.json();
         if (!cancelled) {
           const raw = data.players ?? [];
