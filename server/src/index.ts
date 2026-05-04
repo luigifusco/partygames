@@ -1292,6 +1292,45 @@ app.get(`${BASE_PATH}/api/replay/:id`, (req, res) => {
 
 // ─── Admin endpoints ────────────────────────────────────────────────
 
+app.get(`${BASE_PATH}/api/admin/parties`, (_req, res) => {
+  const rows = db.prepare(`
+    SELECT p.id, p.slug, p.name, p.created_at,
+           (SELECT COUNT(*) FROM players pl WHERE pl.party_id = p.id) as player_count,
+           (SELECT COUNT(*) FROM tournaments t WHERE t.party_id = p.id) as tournament_count
+    FROM parties p
+    ORDER BY CASE WHEN p.slug = ? THEN 0 ELSE 1 END, p.created_at DESC
+  `).all(DEFAULT_PARTY_SLUG) as any[];
+  const parties = rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    createdAt: row.created_at,
+    playerCount: row.player_count ?? 0,
+    tournamentCount: row.tournament_count ?? 0,
+    onlineCount: Array.from(connectedPlayers.keys()).filter((key) => key.startsWith(`${row.id}:`)).length,
+  }));
+  return res.json({ parties });
+});
+
+app.post(`${BASE_PATH}/api/admin/parties`, (req, res) => {
+  const slug = normalizePartySlug(req.body?.slug);
+  const rawName = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  if (!slug || slug === DEFAULT_PARTY_SLUG) {
+    return res.status(400).json({ error: 'Choose a new party slug' });
+  }
+  if (slug.length > 32) {
+    return res.status(400).json({ error: 'Party slug is too long' });
+  }
+  const existing = getPartyBySlug(slug);
+  if (existing) {
+    return res.status(409).json({ error: 'Party already exists' });
+  }
+  const name = (rawName || partyNameFromSlug(slug)).slice(0, 80);
+  const id = uuidv4();
+  db.prepare('INSERT INTO parties (id, slug, name) VALUES (?, ?, ?)').run(id, slug, name);
+  return res.status(201).json({ party: { id, slug, name, playerCount: 0, tournamentCount: 0, onlineCount: 0 } });
+});
+
 app.get(`${BASE_PATH}/api/admin/players`, (req, res) => {
   const party = partyFromRequest(req);
   if (!party) return res.status(404).json({ error: 'Party not found' });

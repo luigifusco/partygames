@@ -16,6 +16,7 @@ import NotificationToasts from './components/NotificationToasts';
 import NotificationsModal from './components/NotificationsModal';
 import TVView from './pages/TVView';
 import AdminPanel from './pages/AdminPanel';
+import PartiesAdmin from './pages/PartiesAdmin';
 import BackgroundsDemo from './pages/BackgroundsDemo';
 import StoryScreen from './pages/StoryScreen';
 import ReplayListScreen from './pages/ReplayListScreen';
@@ -462,6 +463,8 @@ export default function App() {
       <Routes>
         <Route path={route('/tv')} element={<TVView />} />
         <Route path={route('/admin')} element={<AdminPanel />} />
+        <Route path={route('/parties')} element={<PartiesAdmin />} />
+        <Route path={route('/party')} element={<PartiesAdmin />} />
         <Route path={route('/bg-demo')} element={<BackgroundsDemo />} />
         <Route path={route('/replay')} element={<ReplayListScreen />} />
         <Route path={route('/replay/:id')} element={<ReplayWatchScreen />} />
@@ -476,6 +479,8 @@ export default function App() {
       <Routes>
         <Route path={route('/play')} element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} onOpenNotifications={() => setNotifModalOpen(true)} />} />
         <Route path={route('/admin')} element={<AdminPanel />} />
+        <Route path={route('/parties')} element={<PartiesAdmin />} />
+        <Route path={route('/party')} element={<PartiesAdmin />} />
         <Route path={route('/notifications')} element={<NotificationsRedirect onOpen={() => setNotifModalOpen(true)} />} />
         <Route path={route('/collection')} element={<CollectionScreen collection={collection} items={items} onEvolve={evolvePokemon} onShard={shardPokemon} playerId={player.id} onRefresh={refreshFromServer} />} />
         <Route path={route('/pokemon/:idx')} element={<PokemonDetailScreen collection={collection} items={items} onShard={shardPokemon} onEvolve={evolvePokemon} onToggleFavorite={toggleFavorite} onTeachTM={teachTM} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} playerId={player.id} />} />
