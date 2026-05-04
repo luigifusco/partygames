@@ -479,7 +479,8 @@ function getRecentPokemonIds(playerId: string): number[] {
 // Register a new player (requires picture)
 app.post(`${BASE_PATH}/api/register`, (req, res) => {
   const { name, picture } = req.body;
-  const party = partyFromRequest(req, true)!;
+  const party = partyFromRequest(req);
+  if (!party) return res.status(404).json({ error: 'Party not found' });
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Name is required' });
   }
@@ -2496,7 +2497,7 @@ io.on('connection', (socket) => {
       ? ensurePartyBySlug(DEFAULT_PARTY_SLUG)
       : (payload.partyId
           ? partyContextFromRow(db.prepare('SELECT id, slug, name FROM parties WHERE id = ?').get(payload.partyId))
-          : ensurePartyBySlug(payload.partySlug));
+          : getPartyBySlug(normalizePartySlug(payload.partySlug)));
     if (!party || !name) return;
     playerName = name;
     socketPartyId = party.id;
