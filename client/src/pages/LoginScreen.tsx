@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiUrl, currentPartySlug, normalizePartySlug, partyPath, withPartyBody } from '../party';
+import { apiUrl, currentPartySlug, partyPath, withPartyBody } from '../party';
 import './LoginScreen.css';
 
 interface PlayerData {
@@ -62,7 +62,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const navigate = useNavigate();
   const partySlug = currentPartySlug();
   const [name, setName] = useState(() => localStorage.getItem(`${LAST_PLAYER_KEY}:${partySlug}`) ?? '');
-  const [partyInput, setPartyInput] = useState(partySlug);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginDisabled, setLoginDisabled] = useState(false);
@@ -78,7 +77,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
   useEffect(() => {
     setName(localStorage.getItem(`${LAST_PLAYER_KEY}:${partySlug}`) ?? '');
-    setPartyInput(partySlug);
     fetch(apiUrl('/api/settings/features', partySlug))
       .then(r => r.json())
       .then(data => { setLoginDisabled(data.loginDisabled ?? false); setCheckingStatus(false); })
@@ -196,24 +194,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const itemRows = data.items ?? [];
       onLogin(data.player, pokemonRows, itemRows, data.recentPokemonIds);
       navigate(partyPath('/play', partySlug));
-    } catch {
-      setError('Cannot connect to server');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleJoinParty = async () => {
-    const nextPartySlug = normalizePartySlug(partyInput);
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(apiUrl('/api/settings/features', nextPartySlug));
-      if (!res.ok) {
-        setError('Party not found');
-        return;
-      }
-      navigate(partyPath('/', nextPartySlug));
     } catch {
       setError('Cannot connect to server');
     } finally {
@@ -340,25 +320,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           disabled={loading}
         />
         <div className="login-party-line">
-          <label className="login-party-label" htmlFor="party-slug">Party</label>
-          <input
-            id="party-slug"
-            className="ds-input login-party-input"
-            type="text"
-            placeholder="main"
-            value={partyInput}
-            onChange={(e) => setPartyInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleJoinParty(); }}
-            maxLength={32}
-            disabled={loading}
-          />
-          <button
-            className="ds-btn"
-            onClick={handleJoinParty}
-            disabled={!partyInput.trim() || loading}
-          >
-            Join
-          </button>
+          Joining party: <strong>{partySlug}</strong>
         </div>
         <div className="login-buttons">
           <button
