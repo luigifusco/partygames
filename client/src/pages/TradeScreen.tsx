@@ -356,7 +356,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
             </div>
           </div>
         )}
-        <div className="team-select-grid" style={{ flex: 1, overflow: 'auto', padding: '8px', alignContent: 'start' }}>
+        <div className="team-select-grid trade-selection-grid">
           {indices.length === 0 && (
             <div className="team-select-empty" style={{ gridColumn: '1 / -1' }}>
               No Pokémon match “{nameQuery}”.
