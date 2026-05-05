@@ -370,6 +370,21 @@ function parseProtocol(
     const prefix = slotPrefix(ident);
     if (activeSlot[prefix]) return activeSlot[prefix];
     if (identToInstanceId[ident]) return identToInstanceId[ident];
+
+    // Some protocol events target a side-level ident like "p2: Relicanth"
+    // after the slotted active has already fainted. Resolve those by the
+    // active pokemon's displayed name instead of consuming the next reserve.
+    const parsed = parsePokemonIdent(ident);
+    const sideKey = parsed.side === 'left' ? 'p1' : 'p2';
+    const activeByName = Object.entries(activeSlot).find(([slot, instanceId]) =>
+      slot.startsWith(sideKey) &&
+      pokemonState[instanceId]?.name === parsed.name
+    );
+    if (activeByName) {
+      identToInstanceId[ident] = activeByName[1];
+      return activeByName[1];
+    }
+
     // Fallback: lazily assign (shouldn't normally happen — switch events come first)
     return assignSlot(ident);
   }
