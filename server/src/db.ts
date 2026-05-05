@@ -93,6 +93,37 @@ export function initDb() {
       pokemon_id INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS battle_tower_progress (
+      player_id TEXT NOT NULL REFERENCES players(id),
+      format TEXT NOT NULL,
+      current_streak INTEGER NOT NULL DEFAULT 0,
+      best_streak INTEGER NOT NULL DEFAULT 0,
+      total_clears INTEGER NOT NULL DEFAULT 0,
+      total_attempts INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (player_id, format)
+    );
+
+    CREATE TABLE IF NOT EXISTS battle_tower_runs (
+      id TEXT PRIMARY KEY,
+      party_id TEXT NOT NULL DEFAULT '${DEFAULT_PARTY_ID}' REFERENCES parties(id),
+      player_id TEXT NOT NULL REFERENCES players(id),
+      format TEXT NOT NULL,
+      field_size INTEGER NOT NULL,
+      team_size INTEGER NOT NULL,
+      entry_cost INTEGER NOT NULL,
+      reward_essence INTEGER NOT NULL,
+      tower_level INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'in_progress',
+      current_battle_index INTEGER NOT NULL DEFAULT 0,
+      player_team_json TEXT NOT NULL,
+      opponents_json TEXT NOT NULL,
+      pending_snapshot_json TEXT,
+      pending_result_json TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      completed_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS owned_items (
       id TEXT PRIMARY KEY,
       player_id TEXT NOT NULL REFERENCES players(id),

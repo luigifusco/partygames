@@ -23,6 +23,7 @@ import ReplayListScreen from './pages/ReplayListScreen';
 import ReplayWatchScreen from './pages/ReplayWatchScreen';
 import WeatherTuner from './pages/WeatherTuner';
 import TournamentScreen from './pages/TournamentScreen';
+import BattleTowerScreen from './pages/BattleTowerScreen';
 import MinigamesScreen from './pages/MinigamesScreen';
 import TournamentPrizeModal, { type TournamentPrizeAward } from './components/TournamentPrizeModal';
 import { socket } from './socket';
@@ -477,7 +478,7 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route path={route('/play')} element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} itemCount={items.length} notificationCount={notifications.length} onOpenNotifications={() => setNotifModalOpen(true)} />} />
+        <Route path={route('/play')} element={<MenuScreen playerName={player.name} playerId={player.id} playerPicture={player.picture} essence={essence} elo={elo} collectionSize={collection.length} towerEligibleCount={collection.filter((inst) => inst.pokemon.tier !== 'legendary').length} itemCount={items.length} notificationCount={notifications.length} onOpenNotifications={() => setNotifModalOpen(true)} />} />
         <Route path={route('/admin')} element={<AdminPanel />} />
         <Route path={route('/parties')} element={<PartiesAdmin />} />
         <Route path={route('/party')} element={<PartiesAdmin />} />
@@ -490,6 +491,7 @@ export default function App() {
         <Route path={route('/items')} element={<ItemsScreen items={items} collection={collection} essence={essence} playerId={player.id} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} onReawaken={reawakenPokemon} />} />
         <Route path={route('/trade')} element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
         <Route path={route('/battle')} element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} items={items} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
+        <Route path={route('/battle-tower')} element={<BattleTowerScreen playerId={player.id} collection={collection} items={items} essence={essence} onUpdateEssence={setEssence} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
         <Route path={route('/battle-demo')} element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} items={items} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} playerName={player.name} playerId={player.id} />} />
         <Route path={route('/story')} element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} items={items} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
         <Route path={route('/tournaments')} element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} items={items} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} onEloUpdate={(newElo) => setElo(newElo)} onBattleViewingChange={setIsTournamentBattleViewing} />} />

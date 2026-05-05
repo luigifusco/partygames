@@ -13,12 +13,13 @@ interface MenuScreenProps {
   essence: number;
   elo: number;
   collectionSize: number;
+  towerEligibleCount: number;
   itemCount: number;
   notificationCount: number;
   onOpenNotifications: () => void;
 }
 
-export default function MenuScreen({ playerName, playerId, playerPicture, essence, elo, collectionSize, itemCount, notificationCount, onOpenNotifications }: MenuScreenProps) {
+export default function MenuScreen({ playerName, playerId, playerPicture, essence, elo, collectionSize, towerEligibleCount, itemCount, notificationCount, onOpenNotifications }: MenuScreenProps) {
   const navigate = useNavigate();
   const [aiBattleEnabled, setAiBattleEnabled] = useState(false);
   const { chapters, loaded: chaptersLoaded } = useStoryChaptersStatus(playerId);
@@ -90,6 +91,12 @@ export default function MenuScreen({ playerName, playerId, playerPicture, essenc
               <span className="menu-tile-icon">🏆</span>
               <span className="menu-tile-label">Tournaments</span>
             </button>
+            {towerEligibleCount >= 3 && (
+              <button className="menu-tile menu-tile-accent" onClick={() => navigate('/battle-tower')}>
+                <span className="menu-tile-icon">🗼</span>
+                <span className="menu-tile-label">Battle Tower</span>
+              </button>
+            )}
             {aiBattleEnabled && collectionSize >= 2 && (
               <button className="menu-tile" onClick={() => navigate('/battle-demo')}>
                 <span className="menu-tile-icon">🤖</span>
