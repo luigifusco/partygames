@@ -23,7 +23,7 @@ function getBattleClass() {
 
 const GEN5_DEX = Dex.forGen(5);
 
-interface BattleTeamEntry {
+export interface BattleTeamEntry {
   pokemon: Pokemon;
   heldItem?: string | null;
   moves: [string, string];

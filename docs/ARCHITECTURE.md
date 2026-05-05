@@ -6,7 +6,7 @@
 - **Backend:** Express + TypeScript (run via `tsx`), Socket.IO 4.7
 - **Database:** SQLite via Node `node:sqlite` `DatabaseSync` (WAL mode)
 - **Battle math:** `@smogon/calc` (Gen 4 damage formula, git submodule at `damage-calc/`)
-- **Deployment:** Docker. The default image remains a combined server, while production deploys use split `frontend` and `backend` targets so static assets are served independently from the Node API/socket process.
+- **Deployment:** Docker. The default image remains a combined server, while production deploys use split `frontend`, `backend`, and internal `battle-service` targets so static assets and CPU-heavy simulations are isolated from the Node API/socket coordinator.
 
 ## Data Flow
 
@@ -21,20 +21,22 @@
               │  Express Server    │
               │  ├── REST API      │
               │  ├── Socket.IO     │
-              │  ├── Battle engine │
+              │  ├── Battle client │
               │  └── Static files  │
               └─────────┬──────────┘
+                        ├────────── SQLite (game.db)
                         │
-                   SQLite (game.db)
+                        └────────── Internal battle-service
+                                     └── Pokémon Showdown simulation
 ```
 
 - **REST API** handles: registration, login, player data, collection CRUD, leaderboard, AI battle simulation.
 - **Socket.IO** handles: real-time PvP challenges, team selection, battle resolution, trading, draft mode.
-- **Battle engine** runs entirely server-side using `@smogon/calc` for damage. Both players get the same `BattleSnapshot` (flipped so each sees themselves on the left).
+- **Battle engine** runs server-side through the internal battle service in production, with a direct local fallback when `BATTLE_SERVICE_URL` is unset. Both players get the same `BattleSnapshot` (flipped so each sees themselves on the left).
 
 ## Production Routing
 
-Production runs two containers behind Traefik:
+Production runs frontend/backend containers behind Traefik plus a private internal battle service:
 
 | Route | Service | Purpose |
 |-------|---------|---------|
@@ -42,8 +44,15 @@ Production runs two containers behind Traefik:
 | `/pokemonparty/api/*` | backend | Express REST API |
 | `/pokemonparty/socket.io/*` | backend | Socket.IO realtime traffic |
 | `/pokemonparty/metrics` | backend | Prometheus metrics |
+| internal `http://pokemonparty-battle:3002/simulate` | battle-service | CPU-heavy Pokémon Showdown simulations |
 
-This keeps the frontend responsive even when backend CPU work, such as battle simulation, is busy. The backend still supports serving `client/dist` when built with the default Docker target for local/single-container deployments.
+This keeps the frontend responsive even when backend API work is busy, and keeps the backend event loop responsive while battle simulations run in a separate container. The backend still supports direct in-process simulation when built with the default Docker target or when `BATTLE_SERVICE_URL` is unset.
+
+Battle simulation boundaries:
+
+- Backend validates player state, team ownership, items, tournament state, and writes SQLite.
+- Battle service receives fully materialized teams, runs `runShowdownBattle()`, and returns a `BattleSnapshot`.
+- Battle service does not read/write the game database or award rewards.
 
 ## Client Architecture
 
@@ -77,12 +86,19 @@ This keeps the frontend responsive even when backend CPU work, such as battle si
 
 ## Server Architecture
 
-Single file (`server/src/index.ts`, ~1200 lines) containing:
+Main coordinator (`server/src/index.ts`) containing:
 
-1. **Battle engine** (~550 lines): `simulateBattleFromIds()` — full Gen 4 battle simulation using `@smogon/calc`. Handles speed tiers, move selection, type effectiveness, STAB, secondary effects, status conditions, multi-hit moves.
+1. **Battle coordination**: `simulateBattleFromIds()` materializes teams and calls `battle-client.ts`, which uses `BATTLE_SERVICE_URL` in production and falls back to local Showdown simulation in dev/single-container mode.
 2. **REST API** (~250 lines): 13 endpoints for player/collection/item CRUD.
 3. **Socket.IO events** (~400 lines): PvP challenges, team selection, battle resolution, trading, draft mode.
-4. **Static serving**: In production, serves `client/dist/` with SPA fallback.
+4. **Static serving**: In split production, Nginx serves `client/dist/`; the backend still serves it when present for single-container deployments.
+
+Battle service files:
+
+- `battle-service.ts` — private Express service exposing `/health` and `/simulate`.
+- `battle-client.ts` — backend wrapper with timeout and local fallback.
+- `battle-service-protocol.ts` — JSON request/response types.
+- `showdown-battle.ts` — Pokémon Showdown wrapper and protocol parser.
 
 ## Database Schema
 

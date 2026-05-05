@@ -79,6 +79,14 @@ EXPOSE 3001
 
 CMD ["./server/node_modules/.bin/tsx", "server/src/index.ts"]
 
+# --- Battle simulation runtime (internal service) ---
+FROM backend AS battle-service
+
+ENV PORT=3002
+EXPOSE 3002
+
+CMD ["./server/node_modules/.bin/tsx", "server/src/battle-service.ts"]
+
 # --- Combined runtime (default, backwards-compatible) ---
 FROM backend AS runtime
 

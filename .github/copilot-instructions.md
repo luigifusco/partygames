@@ -34,8 +34,9 @@ Production split targets:
 ```
 docker build --target frontend -t pokemonparty-frontend .
 docker build --target backend -t pokemonparty-backend .
+docker build --target battle-service -t pokemonparty-battle .
 ```
-The deployed compose uses separate frontend and backend services. Traefik routes `/pokemonparty/api`, `/pokemonparty/socket.io`, and `/pokemonparty/metrics` to the backend; other `/pokemonparty` paths go to the frontend static server.
+The deployed compose uses separate frontend, backend, and internal battle services. Traefik routes `/pokemonparty/api`, `/pokemonparty/socket.io`, and `/pokemonparty/metrics` to the backend; other `/pokemonparty` paths go to the frontend static server. The backend calls `BATTLE_SERVICE_URL=http://pokemonparty-battle:3002` for simulations.
 
 Deployed instance (Docker Compose via Traefik):
 ```

@@ -17,9 +17,10 @@ cd client && npm install && npm run dev
 docker build -t pokemonparty .
 docker run -p 3001:3001 -v ./data:/app/data pokemonparty
 
-# Production split targets (frontend static server + backend API/socket server)
+# Production split targets (frontend static server + backend API/socket server + battle service)
 docker build --target frontend -t pokemonparty-frontend .
 docker build --target backend -t pokemonparty-backend .
+docker build --target battle-service -t pokemonparty-battle .
 ```
 
 ## Configuration
@@ -43,7 +44,10 @@ docker build --target backend -t pokemonparty-backend .
 │       └── components/      Battle scene, animations, icons
 ├── server/          Express + Socket.IO backend
 │   └── src/
-│       ├── index.ts         Routes, battle engine, Socket.IO events
+│       ├── index.ts         Routes, game state, Socket.IO events
+│       ├── battle-client.ts Backend client/fallback for battle simulations
+│       ├── battle-service.ts Internal battle simulation service
+│       ├── showdown-battle.ts Showdown battle engine wrapper
 │       └── db.ts            SQLite schema & migrations
 ├── shared/          TypeScript types & game data (used by both)
 ├── assets-public/   Static assets (sprites, backgrounds, FX)

@@ -22,7 +22,8 @@ import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../s
 import type { Pokemon as AppPokemon } from '../../shared/types.js';
 import { computeBondXp, bondThresholdForStep, reawakenCost, type BondBattleMode } from '../../shared/evolution.js';
 import { evolutionStepFor } from '../../shared/evolution-helpers.js';
-import { runShowdownBattle, randomAbilityForSpecies, replayParseSnapshot } from './showdown-battle.js';
+import { randomAbilityForSpecies, replayParseSnapshot } from './showdown-battle.js';
+import { simulateBattle } from './battle-client.js';
 import { clientDistPath, dataDirPath, showdownSimPath } from './paths.js';
 
 interface ShowdownDexApi {
@@ -323,7 +324,7 @@ function makeCalcPokemon(p: AppPokemon, curHP?: number, boosts?: Record<string, 
   });
 }
 
-function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[], leftMoves?: ([string, string] | null)[], rightMoves?: ([string, string] | null)[], leftAbilities?: (string | null)[], rightAbilities?: (string | null)[], leftCharacters?: (string | null)[], rightCharacters?: (string | null)[]): BattleSnapshot {
+async function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[], leftMoves?: ([string, string] | null)[], rightMoves?: ([string, string] | null)[], leftAbilities?: (string | null)[], rightAbilities?: (string | null)[], leftCharacters?: (string | null)[], rightCharacters?: (string | null)[]): Promise<BattleSnapshot> {
   const activeFieldSize = fieldSize ?? leftIds.length;
 
   const leftEntries = leftIds.map((id, i) => {
@@ -354,13 +355,13 @@ function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?
     };
   }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string; character?: string | null }[];
 
-  return runShowdownBattle(leftEntries, rightEntries, activeFieldSize > 1 ? activeFieldSize : 1);
+  return simulateBattle({ leftEntries, rightEntries, fieldSize: activeFieldSize > 1 ? activeFieldSize : 1 });
 }
 
-function observeBattleSimulation<T>(labels: { field_size: string; total_pokemon: string; opponent_type: string }, run: () => T): T {
+async function observeBattleSimulation<T>(labels: { field_size: string; total_pokemon: string; opponent_type: string }, run: () => Promise<T>): Promise<T> {
   const end = battleSimulationDuration.startTimer(labels);
   try {
-    return run();
+    return await run();
   } finally {
     end();
   }
@@ -1760,44 +1761,50 @@ app.post(`${BASE_PATH}/api/player/:id/pokedex/backfill`, (req, res) => {
 });
 
 // AI / demo battle endpoint
-app.post(`${BASE_PATH}/api/battle/simulate`, (req, res) => {
-  const party = partyFromRequest(req);
-  if (!party) return res.status(404).json({ error: 'Party not found' });
-  if (party.stoppedAt) return partyStoppedResponse(res);
-  const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters, playerName, leftInstanceIds, bondMode } = req.body;
-  if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
-    return res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
-  }
-  const fs = fieldSize ?? leftTeam.length;
-  const mode = selectionMode ?? 'blind';
-  const labels = { field_size: String(fs), total_pokemon: String(leftTeam.length), selection_mode: mode, opponent_type: 'ai' };
-  const snapshot = observeBattleSimulation(
-    { field_size: labels.field_size, total_pokemon: labels.total_pokemon, opponent_type: labels.opponent_type },
-    () => simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters),
-  );
-
-  battlesTotal.inc(labels);
-  battleRounds.observe({ field_size: String(fs), total_pokemon: String(leftTeam.length) }, snapshot.round);
-
-  // Record in DB (no player IDs for AI battles)
-  db.prepare(
-    'INSERT INTO battles (id, party_id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?)'
-  ).run(uuidv4(), party.id, fs, leftTeam.length, mode, 'ai', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
-
-  // Award Bond XP if the caller identifies a real player + their instance IDs.
-  let bondAwards: BondAward[] = [];
-  if (playerName && Array.isArray(leftInstanceIds) && leftInstanceIds.length > 0) {
-    const playerRow = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, playerName) as any;
-    if (playerRow) {
-      const bm: BondBattleMode = (bondMode === 'story' || bondMode === 'friendly' || bondMode === 'demo') ? bondMode : 'ai';
-      const playerWon = snapshot.winner === 'left';
-      bondAwards = awardBondXp(playerRow.id, leftInstanceIds, snapshot.left, snapshot.round, playerWon, bm);
-      const sock = getConnectedPlayer(party.id, playerName);
-      if (sock && bondAwards.length) io.to(sock).emit('battle:bondUpdate', { awards: bondAwards });
+app.post(`${BASE_PATH}/api/battle/simulate`, async (req, res) => {
+  try {
+    const party = partyFromRequest(req);
+    if (!party) { res.status(404).json({ error: 'Party not found' }); return; }
+    if (party.stoppedAt) { partyStoppedResponse(res); return; }
+    const { leftTeam, rightTeam, fieldSize, selectionMode, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters, playerName, leftInstanceIds, bondMode } = req.body;
+    if (!Array.isArray(leftTeam) || !Array.isArray(rightTeam)) {
+      res.status(400).json({ error: 'leftTeam and rightTeam must be arrays of pokemon IDs' });
+      return;
     }
-  }
+    const fs = fieldSize ?? leftTeam.length;
+    const mode = selectionMode ?? 'blind';
+    const labels = { field_size: String(fs), total_pokemon: String(leftTeam.length), selection_mode: mode, opponent_type: 'ai' };
+    const snapshot = await observeBattleSimulation(
+      { field_size: labels.field_size, total_pokemon: labels.total_pokemon, opponent_type: labels.opponent_type },
+      () => simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters),
+    );
 
-  return res.json({ snapshot, bondAwards });
+    battlesTotal.inc(labels);
+    battleRounds.observe({ field_size: String(fs), total_pokemon: String(leftTeam.length) }, snapshot.round);
+
+    // Record in DB (no player IDs for AI battles)
+    db.prepare(
+      'INSERT INTO battles (id, party_id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?)'
+    ).run(uuidv4(), party.id, fs, leftTeam.length, mode, 'ai', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
+
+    // Award Bond XP if the caller identifies a real player + their instance IDs.
+    let bondAwards: BondAward[] = [];
+    if (playerName && Array.isArray(leftInstanceIds) && leftInstanceIds.length > 0) {
+      const playerRow = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, playerName) as any;
+      if (playerRow) {
+        const bm: BondBattleMode = (bondMode === 'story' || bondMode === 'friendly' || bondMode === 'demo') ? bondMode : 'ai';
+        const playerWon = snapshot.winner === 'left';
+        bondAwards = awardBondXp(playerRow.id, leftInstanceIds, snapshot.left, snapshot.round, playerWon, bm);
+        const sock = getConnectedPlayer(party.id, playerName);
+        if (sock && bondAwards.length) io.to(sock).emit('battle:bondUpdate', { awards: bondAwards });
+      }
+    }
+
+    res.json({ snapshot, bondAwards });
+  } catch (error) {
+    console.error('Battle simulation failed:', error);
+    res.status(502).json({ error: 'Battle simulation failed' });
+  }
 });
 
 // --- Minigame reward ---
@@ -2060,7 +2067,7 @@ interface SubmittedTeam {
   characters: (string | null)[] | undefined;
   instanceIds: string[] | undefined;
 }
-function handleTournamentTeamSubmission(
+async function handleTournamentTeamSubmission(
   t: Tournament,
   match: TournamentMatch,
   playerName: string,
@@ -2102,16 +2109,27 @@ function handleTournamentTeamSubmission(
   }
 
   // Both ready — simulate.
-  const snapshot = observeBattleSimulation(
-    { field_size: String(t.fieldSize), total_pokemon: String(t.totalPokemon), opponent_type: 'tournament' },
-    () => simulateBattleFromIds(
-      battle.player1Team!, battle.player2Team!, t.fieldSize,
-      battle.player1HeldItems, battle.player2HeldItems,
-      battle.player1Moves, battle.player2Moves,
-      battle.player1Abilities, battle.player2Abilities,
-      (battle as any).player1Characters, (battle as any).player2Characters,
-    ),
-  );
+  let snapshot: BattleSnapshot;
+  try {
+    snapshot = await observeBattleSimulation(
+      { field_size: String(t.fieldSize), total_pokemon: String(t.totalPokemon), opponent_type: 'tournament' },
+      () => simulateBattleFromIds(
+        battle.player1Team!, battle.player2Team!, t.fieldSize,
+        battle.player1HeldItems, battle.player2HeldItems,
+        battle.player1Moves, battle.player2Moves,
+        battle.player1Abilities, battle.player2Abilities,
+        (battle as any).player1Characters, (battle as any).player2Characters,
+      ),
+    );
+  } catch (error) {
+    console.error('Tournament battle simulation failed:', error);
+    const s1 = getConnectedPlayer(battle.partyId, battle.player1);
+    const s2 = getConnectedPlayer(battle.partyId, battle.player2);
+    if (s1) io.to(s1).emit('tournament:invalidTeam', { tournamentId, reason: 'simulation-failed' });
+    if (s2) io.to(s2).emit('tournament:invalidTeam', { tournamentId, reason: 'simulation-failed' });
+    activeBattles.delete(matchId);
+    return;
+  }
 
   const winnerName = snapshot.winner === 'left' ? battle.player1 : battle.player2;
   match.winner = winnerName;
@@ -2667,7 +2685,7 @@ io.on('connection', (socket) => {
     socket.emit('battle:cancelled');
   });
 
-  socket.on('battle:selectTeam', ({ battleId, team, instanceIds, heldItems, moves, abilities, characters }: { battleId: string; team: number[]; instanceIds?: string[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[]; abilities?: (string | null)[]; characters?: (string | null)[] }) => {
+  socket.on('battle:selectTeam', async ({ battleId, team, instanceIds, heldItems, moves, abilities, characters }: { battleId: string; team: number[]; instanceIds?: string[]; heldItems?: (string | null)[]; moves?: ([string, string] | null)[]; abilities?: (string | null)[]; characters?: (string | null)[] }) => {
     if (!playerName) return;
     const battle = activeBattles.get(battleId);
     if (!battle || battle.partyId !== socketPartyId) return;
@@ -2687,10 +2705,19 @@ io.on('connection', (socket) => {
       const socket2 = getConnectedPlayer(battle.partyId, battle.player2);
 
       // Simulate battle on server so both players see the same result
-      const snapshot = observeBattleSimulation(
-        { field_size: String(battle.fieldSize), total_pokemon: String(battle.totalPokemon), opponent_type: 'pvp' },
-        () => simulateBattleFromIds(battle.player1Team!, battle.player2Team!, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters),
-      );
+      let snapshot: BattleSnapshot;
+      try {
+        snapshot = await observeBattleSimulation(
+          { field_size: String(battle.fieldSize), total_pokemon: String(battle.totalPokemon), opponent_type: 'pvp' },
+          () => simulateBattleFromIds(battle.player1Team!, battle.player2Team!, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters),
+        );
+      } catch (error) {
+        console.error('PvP battle simulation failed:', error);
+        if (socket1) io.to(socket1).emit('battle:error', { reason: 'simulation-failed' });
+        if (socket2) io.to(socket2).emit('battle:error', { reason: 'simulation-failed' });
+        activeBattles.delete(battleId);
+        return;
+      }
 
       const battleDataP1 = {
         battleId,
@@ -2971,7 +2998,7 @@ io.on('connection', (socket) => {
     broadcastTournamentUpdate(t);
   });
 
-  socket.on('tournament:selectTeam', ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities, characters, slotOrder }: any) => {
+  socket.on('tournament:selectTeam', async ({ tournamentId, matchId, team, instanceIds, heldItems, moves, abilities, characters, slotOrder }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
     if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== socketPartyId || t.status !== 'active') return;
@@ -3018,14 +3045,14 @@ io.on('connection', (socket) => {
       finalInstanceIds = undefined; // frozen teams don't carry live instance ids — skip bond xp
     }
 
-    handleTournamentTeamSubmission(t, match, playerName, {
+    await handleTournamentTeamSubmission(t, match, playerName, {
       team: finalTeam, heldItems: finalHeldItems, moves: finalMoves,
       abilities: finalAbilities, characters: finalCharacters, instanceIds: finalInstanceIds,
     }, socket);
   });
 
   /** Draft pick: picker selects which slot of their own frozen team to reveal next. */
-  socket.on('tournament:draftPick', ({ tournamentId, matchId, slotIndex }: any) => {
+  socket.on('tournament:draftPick', async ({ tournamentId, matchId, slotIndex }: any) => {
     if (!playerName) return;
     const t = loadTournament(tournamentId);
     if (!t || (t.partyId ?? DEFAULT_PARTY_ID) !== socketPartyId || t.status !== 'active' || t.pickMode !== 'draft') return;
@@ -3068,8 +3095,8 @@ io.on('connection', (socket) => {
       const p1Built = frozenToBattle(t.frozenTeams[d.player1], d.p1Order);
       const p2Built = frozenToBattle(t.frozenTeams[d.player2], d.p2Order);
       // Seed both sides into activeBattles and run the match.
-      handleTournamentTeamSubmission(t, match, d.player1, { ...p1Built, instanceIds: undefined } as any);
-      handleTournamentTeamSubmission(t, match, d.player2, { ...p2Built, instanceIds: undefined } as any);
+      await handleTournamentTeamSubmission(t, match, d.player1, { ...p1Built, instanceIds: undefined } as any);
+      await handleTournamentTeamSubmission(t, match, d.player2, { ...p2Built, instanceIds: undefined } as any);
       activeDrafts.delete(matchId);
     }
   });
