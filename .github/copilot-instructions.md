@@ -30,11 +30,18 @@ docker build -t pokemonparty .
 docker run -p 3001:3001 -v ./data:/app/data pokemonparty
 ```
 
+Production split targets:
+```
+docker build --target frontend -t pokemonparty-frontend .
+docker build --target backend -t pokemonparty-backend .
+```
+The deployed compose uses separate frontend and backend services. Traefik routes `/pokemonparty/api`, `/pokemonparty/socket.io`, and `/pokemonparty/metrics` to the backend; other `/pokemonparty` paths go to the frontend static server.
+
 Deployed instance (Docker Compose via Traefik):
 ```
 cd ~/Carlo/docker/pokemonparty && docker compose up -d --build
 ```
-The compose file at `~/Carlo/docker/pokemonparty/docker-compose.yaml` builds from the project source at `~/projects/pokemonparty` (via symlink at `~/Carlo/projects/pokemonparty`). After making changes, rebuild and restart with the command above to deploy.
+The compose file at `~/Carlo/docker/pokemonparty/docker-compose.yaml` builds the split Docker targets from the project source at `~/projects/pokemonparty` (via symlink at `~/Carlo/projects/pokemonparty`). After making changes, rebuild and restart with the command above to deploy.
 
 ## Configuration
 

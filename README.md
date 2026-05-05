@@ -13,9 +13,13 @@ cd pokemonparty
 cd server && npm install && npm run dev &
 cd client && npm install && npm run dev
 
-# Production (Docker)
+# Production (single-container Docker)
 docker build -t pokemonparty .
 docker run -p 3001:3001 -v ./data:/app/data pokemonparty
+
+# Production split targets (frontend static server + backend API/socket server)
+docker build --target frontend -t pokemonparty-frontend .
+docker build --target backend -t pokemonparty-backend .
 ```
 
 ## Configuration
@@ -44,7 +48,8 @@ docker run -p 3001:3001 -v ./data:/app/data pokemonparty
 ├── shared/          TypeScript types & game data (used by both)
 ├── assets-public/   Static assets (sprites, backgrounds, FX)
 ├── damage-calc/     Smogon damage calculator (git submodule)
-└── Dockerfile       Production multi-stage build
+├── docker/          Production frontend server config
+└── Dockerfile       Production multi-stage build (split + combined targets)
 ```
 
 See [docs/](docs/) for architecture, game design, and API reference.

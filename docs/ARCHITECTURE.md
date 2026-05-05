@@ -4,9 +4,9 @@
 
 - **Frontend:** React 18 + TypeScript, Vite, React Router v6
 - **Backend:** Express + TypeScript (run via `tsx`), Socket.IO 4.7
-- **Database:** SQLite via `better-sqlite3` (WAL mode)
+- **Database:** SQLite via Node `node:sqlite` `DatabaseSync` (WAL mode)
 - **Battle math:** `@smogon/calc` (Gen 4 damage formula, git submodule at `damage-calc/`)
-- **Deployment:** Docker (single container serves API + static files)
+- **Deployment:** Docker. The default image remains a combined server, while production deploys use split `frontend` and `backend` targets so static assets are served independently from the Node API/socket process.
 
 ## Data Flow
 
@@ -31,6 +31,19 @@
 - **REST API** handles: registration, login, player data, collection CRUD, leaderboard, AI battle simulation.
 - **Socket.IO** handles: real-time PvP challenges, team selection, battle resolution, trading, draft mode.
 - **Battle engine** runs entirely server-side using `@smogon/calc` for damage. Both players get the same `BattleSnapshot` (flipped so each sees themselves on the left).
+
+## Production Routing
+
+Production runs two containers behind Traefik:
+
+| Route | Service | Purpose |
+|-------|---------|---------|
+| `/pokemonparty/` | frontend | Built React app and static assets from Nginx |
+| `/pokemonparty/api/*` | backend | Express REST API |
+| `/pokemonparty/socket.io/*` | backend | Socket.IO realtime traffic |
+| `/pokemonparty/metrics` | backend | Prometheus metrics |
+
+This keeps the frontend responsive even when backend CPU work, such as battle simulation, is busy. The backend still supports serving `client/dist` when built with the default Docker target for local/single-container deployments.
 
 ## Client Architecture
 

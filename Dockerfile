@@ -43,13 +43,18 @@ ARG BASE_PATH=pokemonparty
 ENV BASE_PATH=${BASE_PATH}
 RUN cd client && npm run build
 
-# --- Runtime ---
-FROM node:25-slim
+# --- Frontend runtime (split production) ---
+FROM nginx:1.27-alpine AS frontend
+
+COPY docker/frontend-nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/client/dist /usr/share/nginx/html/pokemonparty
+
+EXPOSE 80
+
+# --- Backend runtime (split production) ---
+FROM node:25-slim AS backend
 
 WORKDIR /app
-
-# Copy built client
-COPY --from=builder /app/client/dist client/dist
 
 # Copy server source + deps (binary addon matches since same base image)
 COPY --from=builder /app/server server
@@ -72,4 +77,10 @@ COPY --from=builder /app/pokemon-showdown/node_modules pokemon-showdown/node_mod
 ENV PORT=3001
 EXPOSE 3001
 
-CMD ["npx", "tsx", "server/src/index.ts"]
+CMD ["./server/node_modules/.bin/tsx", "server/src/index.ts"]
+
+# --- Combined runtime (default, backwards-compatible) ---
+FROM backend AS runtime
+
+# Copy built client for single-container deployments
+COPY --from=builder /app/client/dist client/dist
