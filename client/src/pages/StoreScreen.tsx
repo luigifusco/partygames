@@ -34,6 +34,45 @@ const TIER_RARITY: Record<PackTierId, 'common' | 'uncommon' | 'rare' | 'epic' | 
 };
 
 const TIER_STORAGE_KEY = 'store:preferred-tier';
+const PACK_OPENING_MIN_MS = 1800;
+const PACK_IMAGE_PRELOAD_TIMEOUT_MS = 3500;
+const VISIBLE_REVEAL_STACK_SIZE = 3;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function preloadImage(src: string): Promise<void> {
+  if (!src) return Promise.resolve();
+  return new Promise((resolve) => {
+    const img = new Image();
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      resolve();
+    };
+    const decodeThenFinish = () => {
+      if (typeof img.decode === 'function') {
+        img.decode().then(finish, finish);
+      } else {
+        finish();
+      }
+    };
+    const timeout = window.setTimeout(finish, PACK_IMAGE_PRELOAD_TIMEOUT_MS);
+    img.decoding = 'sync';
+    img.onload = decodeThenFinish;
+    img.onerror = finish;
+    img.src = src;
+    if (img.complete) decodeThenFinish();
+  });
+}
+
+async function preloadPackSprites(cards: PackCard[]): Promise<void> {
+  const urls = [...new Set(cards.map((card) => card.sprite).filter(Boolean))];
+  await Promise.all(urls.map(preloadImage));
+}
 
 export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onAddItems }: StoreScreenProps) {
   const navigate = useNavigate();
@@ -42,6 +81,7 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
   const [revealIndex, setRevealIndex] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
+  const [packError, setPackError] = useState<string | null>(null);
   const dragStartX = useRef(0);
   const dragging = useRef(false);
   const [selectedTier, setSelectedTier] = useState<PackTierId>(() => {
@@ -56,14 +96,31 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
   };
 
   const handleBuy = async (packId: string) => {
+    if (phase !== 'idle') return;
     const cost = packTierCost(packId, selectedTier);
     if (cost <= 0 || essence < cost) return;
 
     const result = openPack(packId, selectedTier);
     if (result.pokemon.length === 0) return;
-    onSpendEssence(cost);
+    const openingStartedAt = performance.now();
+    setPackError(null);
+    setCards(null);
+    setRevealIndex(0);
+    setSwiping(false);
+    setSwipeX(0);
+    setPhase('opening');
 
-    const instances = await onAddPokemon(result.pokemon.map((p) => p.id));
+    let instances: PokemonInstance[];
+    try {
+      instances = await onAddPokemon(result.pokemon.map((p) => p.id));
+    } catch (error) {
+      console.error('Pack opening failed:', error);
+      setPackError('Could not open pack. Please try again.');
+      setCards(null);
+      setPhase('idle');
+      return;
+    }
+    onSpendEssence(cost);
 
     const bonusItems: { itemType: string; itemData: string }[] = [];
     for (const tm of result.bonusTMs) bonusItems.push({ itemType: 'tm', itemData: tm });
@@ -99,12 +156,14 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
       });
     }
 
-    setCards(packCards);
+    const remainingOpeningMs = Math.max(0, PACK_OPENING_MIN_MS - (performance.now() - openingStartedAt));
+    await Promise.all([preloadPackSprites(packCards), wait(remainingOpeningMs)]);
+
     setRevealIndex(0);
     setSwiping(false);
     setSwipeX(0);
-    setPhase('opening');
-    setTimeout(() => setPhase('reveal'), 1800);
+    setCards(packCards);
+    setPhase('reveal');
   };
 
   const swipeThreshold = 80;
@@ -207,6 +266,8 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
         </span>
       </div>
 
+      {packError && <div className="store-error">{packError}</div>}
+
       <div className="store-boxes">
         {PACKS.map((pack) => {
           const cost = packTierCost(pack.id, selectedTier);
@@ -254,8 +315,7 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
         >
           <div className="pack-counter">{revealIndex + 1} / {cards.length}</div>
 
-          {cards.slice(revealIndex).reverse().map((card, ri) => {
-            const stackIndex = cards.length - revealIndex - 1 - ri;
+          {cards.slice(revealIndex, revealIndex + VISIBLE_REVEAL_STACK_SIZE).map((card, stackIndex) => {
             const isTop = stackIndex === 0;
             const depth = stackIndex;
 
@@ -277,13 +337,17 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
                 }}
               >
                 <div className={`pack-card-inner ${borderClass}`}>
-                  <img
-                    src={card.sprite}
-                    alt={card.name}
-                    className={card.type === 'pokemon' ? 'pack-reveal-sprite' : 'pack-reveal-sprite-item'}
-                    draggable={false}
-                    onContextMenu={(e) => e.preventDefault()}
-                  />
+                  <div className={card.type === 'pokemon' ? 'pack-reveal-sprite-frame' : 'pack-reveal-sprite-item-frame'}>
+                    <img
+                      src={card.sprite}
+                      alt={card.name}
+                      className={card.type === 'pokemon' ? 'pack-reveal-sprite' : 'pack-reveal-sprite-item'}
+                      draggable={false}
+                      loading="eager"
+                      decoding="sync"
+                      onContextMenu={(e) => e.preventDefault()}
+                    />
+                  </div>
                   <div className="pack-reveal-name">{card.name}</div>
                   {card.type === 'pokemon' && card.moves && (
                     <div className="pack-reveal-info">
