@@ -210,7 +210,7 @@ function formatLogEntry(entry: BattleLogEntry): React.ReactNode {
 
     parts.push(<span className="damage" key="dmg"> ({entry.damage} dmg)</span>);
   } else if (entry.effectiveness === null) {
-    parts.push(` → ${entry.targetName}`);
+    return <>{entry.message}</>;
   } else if (entry.damage === 0) {
     parts.push(` on ${entry.targetName} — Missed!`);
   }

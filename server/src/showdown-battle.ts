@@ -130,6 +130,11 @@ function effectivenessLabel(e: number): 'super' | 'neutral' | 'not-very' | 'immu
   return 'neutral';
 }
 
+function isStatusMove(moveName: string): boolean {
+  const move = GEN5_DEX.moves.get(moveName);
+  return !!move?.exists && move.category === 'Status';
+}
+
 const STATUS_MAP: Record<string, string> = {
   'brn': 'burn',
   'par': 'paralysis',
@@ -470,12 +475,15 @@ function parseProtocol(
     const m = pendingMove;
     const attackerInstId = getInstanceId(m.attackerIdent);
     const targetInstId = getInstanceId(m.targetIdent);
+    const statusMoveSucceeded = pendingDamage === 0 && pendingEffectiveness === 'neutral' && isStatusMove(m.moveName);
 
-    let message = `${m.attackerName} used ${m.moveName} on ${m.targetName}!`;
+    let message = statusMoveSucceeded
+      ? `${m.attackerName} used ${m.moveName}!`
+      : `${m.attackerName} used ${m.moveName} on ${m.targetName}!`;
     if (pendingCrit) message += ' Critical hit!';
     if (pendingDamage === 0 && pendingEffectiveness === 'immune') {
       message += ' It had no effect...';
-    } else {
+    } else if (!statusMoveSucceeded) {
       if (pendingEffectiveness === 'super') message += " It's super effective!";
       else if (pendingEffectiveness === 'not-very') message += " It's not very effective...";
       if (pendingDamage > 0) message += ` (${pendingDamage} dmg)`;
@@ -490,7 +498,7 @@ function parseProtocol(
       targetInstanceId: targetInstId,
       targetName: m.targetName,
       damage: pendingDamage,
-      effectiveness: pendingEffectiveness,
+      effectiveness: statusMoveSucceeded ? null : pendingEffectiveness,
       targetFainted: pendingFainted,
       crit: pendingCrit || undefined,
       message,
