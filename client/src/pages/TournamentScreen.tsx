@@ -6,7 +6,7 @@ import BattleScene from '../components/BattleScene';
 import TeamSelectGrid from '../components/TeamSelectGrid';
 import Avatar from '../components/Avatar';
 import type { BattleSnapshot, EloUpdate } from '@shared/battle-types';
-import type { PokemonInstance } from '@shared/types';
+import type { OwnedItem, PokemonInstance } from '@shared/types';
 import type { Tournament, TournamentSummary, TournamentMatch, FrozenPokemon } from '@shared/tournament-types';
 import { CHARACTER_UNLOCK_CHAPTER } from '@shared/story-data';
 import { useStoryChapters } from '../hooks/useStoryChapters';
@@ -15,6 +15,7 @@ import './TournamentScreen.css';
 interface TournamentScreenProps {
   playerName: string;
   collection: PokemonInstance[];
+  items: OwnedItem[];
   playerId?: string;
   onEloUpdate: (newElo: number) => void;
   onBattleViewingChange: (viewing: boolean) => void;
@@ -29,7 +30,7 @@ interface ForfeitNotice {
   player2: string | null;
 }
 
-export default function TournamentScreen({ playerName, collection, playerId, onEloUpdate, onBattleViewingChange }: TournamentScreenProps) {
+export default function TournamentScreen({ playerName, collection, items, playerId, onEloUpdate, onBattleViewingChange }: TournamentScreenProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const characterPickUnlocked = chapters.has(CHARACTER_UNLOCK_CHAPTER);
@@ -40,6 +41,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [selectedCharacters, setSelectedCharacters] = useState<(string | null)[]>([]);
+  const [selectedHeldItems, setSelectedHeldItems] = useState<(string | null)[]>([]);
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [battleFinished, setBattleFinished] = useState(false);
   const [viewingTeamOf, setViewingTeamOf] = useState<string | null>(null);
@@ -178,6 +180,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
     setActiveMatchId(matchId);
     setSelected([]);
     setSelectedCharacters([]);
+    setSelectedHeldItems([]);
     setPickOrder([]);
     setDraftState(null);
     // Fixed-team tournaments: enter the per-match ordering phase (blind or draft).
@@ -226,7 +229,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
       matchId: activeMatchId,
       team: selected.map(idx => collection[idx].pokemon.id),
       instanceIds: selected.map(idx => collection[idx].instanceId),
-      heldItems: selected.map(idx => collection[idx].heldItem ?? null),
+      heldItems: selected.map((idx, i) => i < selectedHeldItems.length ? selectedHeldItems[i] ?? null : collection[idx].heldItem ?? null),
       moves: selected.map(idx => collection[idx].learnedMoves ?? null),
       abilities: selected.map(idx => collection[idx].ability ?? null),
       characters: selected.map((_, i) => selectedCharacters[i] ?? 'balanced'),
@@ -241,7 +244,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
         pokemonId: inst.pokemon.id,
         name: inst.pokemon.name,
         sprite: inst.pokemon.sprite,
-        heldItem: inst.heldItem ?? null,
+        heldItem: i < selectedHeldItems.length ? selectedHeldItems[i] ?? null : inst.heldItem ?? null,
         moves: inst.learnedMoves ?? inst.pokemon.moves as [string, string],
         ability: inst.ability ?? null,
         character: selectedCharacters[i] ?? 'balanced',
@@ -329,9 +332,11 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
       if (i !== -1) {
         setSelected(selected.filter((_, k) => k !== i));
         setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
+        setSelectedHeldItems(selectedHeldItems.filter((_, k) => k !== i));
       } else if (selected.length < teamSize) {
         setSelected([...selected, idx]);
         setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
+        setSelectedHeldItems([...selectedHeldItems, collection[idx].heldItem ?? null]);
       }
     };
     const updateSelectedCharacter = (idx: number, character: string) => {
@@ -339,17 +344,25 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
       if (i === -1) return;
       setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
     };
+    const updateSelectedHeldItem = (idx: number, itemId: string | null) => {
+      const i = selected.indexOf(idx);
+      if (i === -1) return;
+      setSelectedHeldItems(selectedHeldItems.map((held, k) => k === i ? itemId : held));
+    };
     return (
       <TeamSelectGrid
         instances={collection}
         selected={selected}
         onToggle={toggleSelect}
         onUpdateCharacter={updateSelectedCharacter}
+        onUpdateHeldItem={updateSelectedHeldItem}
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? submitLockedTeam : undefined}
         submitLabel="Lock Team"
         enableCharacterPick={characterPickUnlocked}
         selectedCharacters={selectedCharacters}
+        selectedHeldItems={selectedHeldItems}
+        ownedItems={items}
         disallowLegendaries={activeTournament.allowLegendaries === false}
         onBack={() => setPhase('detail')}
         title="Lock Tournament Team"
@@ -518,9 +531,11 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
       if (i !== -1) {
         setSelected(selected.filter((_, k) => k !== i));
         setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
+        setSelectedHeldItems(selectedHeldItems.filter((_, k) => k !== i));
       } else if (selected.length < teamSize) {
         setSelected([...selected, idx]);
         setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
+        setSelectedHeldItems([...selectedHeldItems, collection[idx].heldItem ?? null]);
       }
     };
     const updateSelectedCharacter = (idx: number, character: string) => {
@@ -528,17 +543,25 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
       if (i === -1) return;
       setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
     };
+    const updateSelectedHeldItem = (idx: number, itemId: string | null) => {
+      const i = selected.indexOf(idx);
+      if (i === -1) return;
+      setSelectedHeldItems(selectedHeldItems.map((held, k) => k === i ? itemId : held));
+    };
     return (
       <TeamSelectGrid
         instances={collection}
         selected={selected}
         onToggle={toggleSelect}
         onUpdateCharacter={updateSelectedCharacter}
+        onUpdateHeldItem={updateSelectedHeldItem}
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? submitTeam : undefined}
         submitLabel="Lock In!"
         enableCharacterPick={characterPickUnlocked}
         selectedCharacters={selectedCharacters}
+        selectedHeldItems={selectedHeldItems}
+        ownedItems={items}
         disallowLegendaries={activeTournament.allowLegendaries === false}
         onBack={() => setPhase('detail')}
         title="Tournament Match"
@@ -622,7 +645,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
               ) : (
                 <>
                   {t.fixedTeam && !t.frozenTeams[playerName] && (
-                    <button className="ds-btn ds-btn-gold ds-btn-block" onClick={() => { setSelected([]); setSelectedCharacters([]); setPhase('lockTeam'); }}>
+                    <button className="ds-btn ds-btn-gold ds-btn-block" onClick={() => { setSelected([]); setSelectedCharacters([]); setSelectedHeldItems([]); setPhase('lockTeam'); }}>
                       Lock Your Team
                     </button>
                   )}

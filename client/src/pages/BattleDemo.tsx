@@ -7,7 +7,7 @@ import type { BattleSnapshot, BattleConfig } from '@shared/battle-types';
 import { POKEMON } from '@shared/pokemon-data';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { calculateBattleEssence } from '@shared/essence';
-import type { Pokemon, PokemonInstance } from '@shared/types';
+import type { OwnedItem, Pokemon, PokemonInstance } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
 import { AI_TRAINERS } from '@shared/trainer-data';
 import type { AITrainer } from '@shared/trainer-data';
@@ -72,12 +72,13 @@ interface BattleDemoProps {
   essence: number;
   onGainEssence: (amount: number) => void;
   collection: PokemonInstance[];
+  items: OwnedItem[];
   recentPokemonIds?: number[];
   playerName?: string;
   playerId?: string;
 }
 
-export default function BattleDemo({ essence, onGainEssence, collection, recentPokemonIds, playerName, playerId }: BattleDemoProps) {
+export default function BattleDemo({ essence, onGainEssence, collection, items, recentPokemonIds, playerName, playerId }: BattleDemoProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const characterPickUnlocked = chapters.has(CHARACTER_UNLOCK_CHAPTER);
@@ -85,6 +86,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
   const [config, setConfig] = useState<(BattleConfig & { useOwnPokemon?: boolean }) | null>(null);
   const [selected, setSelected] = useState<number[]>([]);       // indices into `instances`
   const [selectedCharacters, setSelectedCharacters] = useState<(string | null)[]>([]);
+  const [selectedHeldItems, setSelectedHeldItems] = useState<(string | null)[]>([]);
   const [aiTeam, setAiTeam] = useState<Pokemon[]>([]);
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [bondAwards, setBondAwards] = useState<{ instanceId: string; slot: number; delta: number; total: number }[]>([]);
@@ -127,29 +129,17 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
     setOpponentTeam(theirTeam);
     setLoading(true);
     try {
-      const leftMoves = useOwn ? myTeam.map((p) => {
-        const inst = instances.find((i) => i.pokemon.id === p.id);
-        return inst?.learnedMoves ?? null;
-      }) : undefined;
-      const leftHeldItems = useOwn ? myTeam.map((p) => {
-        const inst = instances.find((i) => i.pokemon.id === p.id);
-        return inst?.heldItem ?? null;
-      }) : undefined;
-      const leftAbilities = useOwn ? myTeam.map((p) => {
-        const inst = instances.find((i) => i.pokemon.id === p.id);
-        return inst?.ability ?? null;
-      }) : undefined;
-      const leftCharacters = useOwn ? myTeam.map((p, i) => {
-        const inst = instances.find((it) => it.pokemon.id === p.id);
+      const leftMoves = useOwn ? selected.map((idx) => instances[idx]?.learnedMoves ?? null) : undefined;
+      const leftHeldItems = useOwn ? selected.map((idx, i) => i < selectedHeldItems.length ? selectedHeldItems[i] ?? null : instances[idx]?.heldItem ?? null) : undefined;
+      const leftAbilities = useOwn ? selected.map((idx) => instances[idx]?.ability ?? null) : undefined;
+      const leftCharacters = useOwn ? selected.map((idx, i) => {
+        const inst = instances[idx];
         // selectedCharacters is aligned with `selected` array, which order-matches myTeam
         const override = selectedCharacters[i] ?? 'balanced';
         return override ?? inst?.character ?? null;
       }) : undefined;
 
-      const leftInstanceIds = useOwn ? myTeam.map((p) => {
-        const inst = instances.find((i) => i.pokemon.id === p.id);
-        return inst?.instanceId ?? null;
-      }).filter((x): x is string => !!x) : undefined;
+      const leftInstanceIds = useOwn ? selected.map((idx) => instances[idx]?.instanceId ?? null).filter((x): x is string => !!x) : undefined;
 
       const res = await fetch(apiUrl('/api/battle/simulate'), {
         method: 'POST',
@@ -272,17 +262,19 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
   if (!config) {
     return (
       <BattleConfigScreen
-        onConfirm={(c) => {
-          setConfig(c);
-          if (c.selectionMode === 'draft') {
-            setDraftSchedule(buildDraftSchedule(c.totalPokemon));
-            setDraftPhase(0);
-            setAllPickedIndices(new Set());
-            setAllPickedAiIds(new Set());
+          onConfirm={(c) => {
+            setConfig(c);
             setSelected([]);
-            setAiTeam([]);
-            setDraftBattleStarted(false);
-          }
+            setSelectedCharacters([]);
+            setSelectedHeldItems([]);
+            if (c.selectionMode === 'draft') {
+              setDraftSchedule(buildDraftSchedule(c.totalPokemon));
+              setDraftPhase(0);
+              setAllPickedIndices(new Set());
+              setAllPickedAiIds(new Set());
+              setAiTeam([]);
+              setDraftBattleStarted(false);
+            }
         }}
         onBack={() => setTrainer(null)}
         showDraftOption={true}
@@ -307,7 +299,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
           trainerId={trainer?.id}
           bondAwards={bondAwards}
           onFinished={() => setBattleFinished(true)}
-          onContinue={battleFinished ? () => { setSnapshot(null); setBondAwards([]); setSelected([]); setSelectedCharacters([]); setAiTeam([]); setOpponentTeam([]); setRewarded(false); setBattleFinished(false); setConfig(null); setTrainer(null); setDraftSchedule([]); setDraftPhase(0); setAllPickedIndices(new Set()); setAllPickedAiIds(new Set()); setDraftBattleStarted(false); } : undefined}
+          onContinue={battleFinished ? () => { setSnapshot(null); setBondAwards([]); setSelected([]); setSelectedCharacters([]); setSelectedHeldItems([]); setAiTeam([]); setOpponentTeam([]); setRewarded(false); setBattleFinished(false); setConfig(null); setTrainer(null); setDraftSchedule([]); setDraftPhase(0); setAllPickedIndices(new Set()); setAllPickedAiIds(new Set()); setDraftBattleStarted(false); } : undefined}
           continueLabel={snapshot.winner === 'left' ? 'Claim Rewards' : 'Back'}
         />
       </div>
@@ -325,16 +317,23 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         if (!allPickedIndices.has(idx)) {
           setSelected(selected.filter((_, k) => k !== i));
           setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
+          setSelectedHeldItems(selectedHeldItems.filter((_, k) => k !== i));
         }
       } else if (selected.length < aiTeam.length + currentDraftStep.picks) {
         setSelected([...selected, idx]);
         setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
+        setSelectedHeldItems([...selectedHeldItems, instances[idx].heldItem ?? null]);
       }
     };
     const updateDraftCharacter = (idx: number, character: string) => {
       const i = selected.indexOf(idx);
       if (i === -1) return;
       setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
+    };
+    const updateDraftHeldItem = (idx: number, itemId: string | null) => {
+      const i = selected.indexOf(idx);
+      if (i === -1) return;
+      setSelectedHeldItems(selectedHeldItems.map((held, k) => k === i ? itemId : held));
     };
 
     const confirmDraftPick = () => {
@@ -369,6 +368,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         selected={selected}
         onToggle={draftToggle}
         onUpdateCharacter={updateDraftCharacter}
+        onUpdateHeldItem={useOwn ? updateDraftHeldItem : undefined}
         teamSize={teamSize}
         disabledIndices={disabledIndices}
         onSubmit={isMyDraftTurn && pendingPicks === neededPicks ? confirmDraftPick : undefined}
@@ -376,6 +376,8 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         recentPokemonIds={useOwn ? recentPokemonIds : undefined}
         enableCharacterPick={useOwn && characterPickUnlocked}
         selectedCharacters={selectedCharacters}
+        selectedHeldItems={selectedHeldItems}
+        ownedItems={useOwn ? items : undefined}
         onBack={() => setConfig(null)}
         title="Draft"
         subtitle={draftDone ? '⏳ Starting battle…' : isMyDraftTurn ? `Your pick (${neededPicks})` : 'AI is picking…'}
@@ -400,15 +402,22 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
     if (i !== -1) {
       setSelected(selected.filter((_, k) => k !== i));
       setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
+      setSelectedHeldItems(selectedHeldItems.filter((_, k) => k !== i));
     } else if (selected.length < teamSize) {
       setSelected([...selected, idx]);
       setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
+      setSelectedHeldItems([...selectedHeldItems, instances[idx].heldItem ?? null]);
     }
   };
   const updateBlindCharacter = (idx: number, character: string) => {
     const i = selected.indexOf(idx);
     if (i === -1) return;
     setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
+  };
+  const updateBlindHeldItem = (idx: number, itemId: string | null) => {
+    const i = selected.indexOf(idx);
+    if (i === -1) return;
+    setSelectedHeldItems(selectedHeldItems.map((held, k) => k === i ? itemId : held));
   };
 
   const startBattle = async () => {
@@ -424,12 +433,15 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
       selected={selected}
       onToggle={toggleBlind}
       onUpdateCharacter={updateBlindCharacter}
+      onUpdateHeldItem={useOwn ? updateBlindHeldItem : undefined}
       teamSize={teamSize}
       onSubmit={selected.length === teamSize ? startBattle : undefined}
       submitLabel={loading ? 'Simulating...' : 'Battle!'}
       recentPokemonIds={useOwn ? recentPokemonIds : undefined}
       enableCharacterPick={useOwn && characterPickUnlocked}
       selectedCharacters={selectedCharacters}
+      selectedHeldItems={selectedHeldItems}
+      ownedItems={useOwn ? items : undefined}
       onBack={() => setConfig(null)}
       title="Pick Your Team"
     />

@@ -7,7 +7,7 @@ import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { calculateBattleEssence } from '@shared/essence';
 import { useOnlinePlayers } from '../useOnlinePlayers';
 import Avatar from '../components/Avatar';
-import type { PokemonInstance } from '@shared/types';
+import type { OwnedItem, PokemonInstance } from '@shared/types';
 import { getEffectiveMoves } from '@shared/types';
 import type { BattleSnapshot, BattleConfig, EloUpdate } from '@shared/battle-types';
 import { DEFAULT_BATTLE_CONFIG } from '@shared/battle-types';
@@ -24,6 +24,7 @@ type Phase = 'config' | 'challenge' | 'waiting' | 'teamSelect' | 'waitingTeam' |
 interface BattleMultiplayerProps {
   playerName: string;
   collection: PokemonInstance[];
+  items: OwnedItem[];
   essence: number;
   onGainEssence: (amount: number) => void;
   onEloUpdate: (newElo: number) => void;
@@ -32,7 +33,7 @@ interface BattleMultiplayerProps {
   playerId?: string;
 }
 
-export default function BattleMultiplayer({ playerName, collection, essence, onGainEssence, onEloUpdate, recentPokemonIds, onUpdateRecentPokemonIds, playerId }: BattleMultiplayerProps) {
+export default function BattleMultiplayer({ playerName, collection, items, essence, onGainEssence, onEloUpdate, recentPokemonIds, onUpdateRecentPokemonIds, playerId }: BattleMultiplayerProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const chapters = useStoryChapters(playerId);
@@ -48,6 +49,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
   const [challengers, setChallengers] = useState<string[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [selectedCharacters, setSelectedCharacters] = useState<(string | null)[]>([]);
+  const [selectedHeldItems, setSelectedHeldItems] = useState<(string | null)[]>([]);
   const [snapshot, setSnapshot] = useState<BattleSnapshot | null>(null);
   const [bondAwards, setBondAwards] = useState<{ instanceId: string; slot: number; delta: number; total: number }[]>([]);
   const [opponentTeamIds, setOpponentTeamIds] = useState<number[]>([]);
@@ -74,6 +76,9 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
       if (totalPokemon) setTeamSize(totalPokemon);
       if (fieldSize) setConfig((prev) => ({ ...prev, fieldSize: fieldSize as 2 | 3, totalPokemon: totalPokemon ?? prev.totalPokemon, allowLegendaries: allowLegendaries ?? prev.allowLegendaries }));
       else if (typeof allowLegendaries === 'boolean') setConfig((prev) => ({ ...prev, allowLegendaries }));
+      setSelected([]);
+      setSelectedCharacters([]);
+      setSelectedHeldItems([]);
       setPhase('teamSelect');
     };
 
@@ -156,9 +161,11 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     if (i !== -1) {
       setSelected(selected.filter((_, k) => k !== i));
       setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
+      setSelectedHeldItems(selectedHeldItems.filter((_, k) => k !== i));
     } else if (selected.length < teamSize) {
       setSelected([...selected, idx]);
       setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
+      setSelectedHeldItems([...selectedHeldItems, collection[idx].heldItem ?? null]);
     }
   };
 
@@ -166,6 +173,11 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
     const i = selected.indexOf(idx);
     if (i === -1) return;
     setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
+  };
+  const updateSelectedHeldItem = (idx: number, itemId: string | null) => {
+    const i = selected.indexOf(idx);
+    if (i === -1) return;
+    setSelectedHeldItems(selectedHeldItems.map((held, k) => k === i ? itemId : held));
   };
 
   const submitTeam = () => {
@@ -175,7 +187,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
       battleId,
       team: teamPokemonIds,
       instanceIds: teamInstanceIds,
-      heldItems: selected.map((idx) => collection[idx].heldItem ?? null),
+      heldItems: selected.map((idx, i) => i < selectedHeldItems.length ? selectedHeldItems[i] ?? null : collection[idx].heldItem ?? null),
       moves: selected.map((idx) => {
         const inst = collection[idx];
         return inst.learnedMoves ?? null;
@@ -198,6 +210,9 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         onConfirm={(c) => {
           setConfig(c);
           setTeamSize(c.totalPokemon);
+          setSelected([]);
+          setSelectedCharacters([]);
+          setSelectedHeldItems([]);
           setPhase('challenge');
         }}
         onBack={() => navigate('/play')}
@@ -238,6 +253,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         selected={selected}
         onToggle={(idx, ch) => phase === 'teamSelect' && togglePokemon(idx, ch)}
         onUpdateCharacter={(idx, ch) => phase === 'teamSelect' && updateSelectedCharacter(idx, ch)}
+        onUpdateHeldItem={(idx, itemId) => phase === 'teamSelect' && updateSelectedHeldItem(idx, itemId)}
         teamSize={teamSize}
         disabled={phase === 'waitingTeam'}
         onSubmit={selected.length === teamSize ? submitTeam : undefined}
@@ -245,6 +261,8 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         recentPokemonIds={recentPokemonIds}
         enableCharacterPick={characterPickUnlocked}
         selectedCharacters={selectedCharacters}
+        selectedHeldItems={selectedHeldItems}
+        ownedItems={items}
         disallowLegendaries={config.allowLegendaries === false}
         onBack={() => navigate('/play')}
         title="Pick Your Team"

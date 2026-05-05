@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import PokemonIcon from './PokemonIcon';
 import { getEffectiveMoves } from '@shared/types';
-import type { PokemonInstance } from '@shared/types';
+import type { OwnedItem, PokemonInstance } from '@shared/types';
 import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import {
   PROFILE_NAMES,
@@ -22,6 +22,7 @@ interface TeamSelectGridProps {
   selected: number[];          // indices into `instances`
   onToggle: (idx: number, character?: string | null) => void;
   onUpdateCharacter?: (idx: number, character: ProfileName) => void;
+  onUpdateHeldItem?: (idx: number, itemId: string | null) => void;
   teamSize: number;
   disabled?: boolean;
   disabledIndices?: Set<number>;
@@ -41,6 +42,10 @@ interface TeamSelectGridProps {
   enableCharacterPick?: boolean;
   /** Per-selected-index character override (aligned with `selected`). Shown in the chosen bar. */
   selectedCharacters?: (string | null | undefined)[];
+  /** Per-selected-index held-item override (aligned with `selected`). */
+  selectedHeldItems?: (string | null | undefined)[];
+  /** Inventory items available for temporary battle loadout assignment. */
+  ownedItems?: OwnedItem[];
   /** When true, legendary-tier Pokémon cannot be selected. Selected ones are auto-removed. */
   disallowLegendaries?: boolean;
 }
@@ -50,6 +55,7 @@ export default function TeamSelectGrid({
   selected,
   onToggle,
   onUpdateCharacter,
+  onUpdateHeldItem,
   teamSize,
   disabled = false,
   disabledIndices,
@@ -63,6 +69,8 @@ export default function TeamSelectGrid({
   recentPokemonIds,
   enableCharacterPick = false,
   selectedCharacters,
+  selectedHeldItems,
+  ownedItems = [],
   disallowLegendaries = false,
 }: TeamSelectGridProps) {
   const [actionPick, setActionPick] = useState<number | null>(null);
@@ -110,6 +118,33 @@ export default function TeamSelectGrid({
     ? resolveCharacterName(selectedCharacters?.[actionSelectedIndex] ?? 'balanced', actionInst.pokemon.name)
     : null;
   const actionInfo = actionCharacter ? PROFILE_INFO[actionCharacter] : null;
+  const effectiveHeldItemAt = (selectedIndex: number): string | null => {
+    const idx = selected[selectedIndex];
+    if (idx == null) return null;
+    if (selectedHeldItems && selectedIndex in selectedHeldItems) {
+      return selectedHeldItems[selectedIndex] ?? null;
+    }
+    return instances[idx]?.heldItem ?? null;
+  };
+  const selectedHeldItem = actionSelectedIndex >= 0 ? effectiveHeldItemAt(actionSelectedIndex) : null;
+
+  const itemPoolCounts = new Map<string, number>();
+  for (const item of ownedItems) {
+    if (item.itemType !== 'held_item') continue;
+    itemPoolCounts.set(item.itemData, (itemPoolCounts.get(item.itemData) ?? 0) + 1);
+  }
+  for (const idx of selected) {
+    const held = instances[idx]?.heldItem;
+    if (!held) continue;
+    itemPoolCounts.set(held, (itemPoolCounts.get(held) ?? 0) + 1);
+  }
+  const usedHeldCounts = new Map<string, number>();
+  selected.forEach((_, i) => {
+    const held = effectiveHeldItemAt(i);
+    if (!held) return;
+    usedHeldCounts.set(held, (usedHeldCounts.get(held) ?? 0) + 1);
+  });
+  const heldItemOptions = [...itemPoolCounts.keys()].sort((a, b) => getHeldItemName(a).localeCompare(getHeldItemName(b)));
 
   return (
     <div className="team-select-screen">
@@ -152,6 +187,7 @@ export default function TeamSelectGrid({
             {selected.map((idx, i) => {
               const inst = instances[idx];
               const p = inst.pokemon;
+              const heldItem = effectiveHeldItemAt(i);
               const charOverride = selectedCharacters?.[i] ?? null;
               const effectiveChar = (charOverride ?? inst.character) as ProfileName | null | undefined;
               const resolved = resolveCharacterName(effectiveChar, p.name);
@@ -159,13 +195,13 @@ export default function TeamSelectGrid({
               return (
                 <div key={`sel-${idx}`} className="team-select-chosen-card" onClick={() => setActionPick(idx)}>
                   <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
-                  {inst.heldItem && (
+                  {heldItem && (
                     <span
                       className="team-select-chosen-held"
-                      title={getHeldItemName(inst.heldItem)}
-                      aria-label={getHeldItemName(inst.heldItem)}
+                      title={getHeldItemName(heldItem)}
+                      aria-label={getHeldItemName(heldItem)}
                     >
-                      <img src={getHeldItemSprite(inst.heldItem)} alt="" />
+                      <img src={getHeldItemSprite(heldItem)} alt="" />
                     </span>
                   )}
                   <span
@@ -323,6 +359,52 @@ export default function TeamSelectGrid({
                 })}
               </div>
             )}
+            {onUpdateHeldItem && (
+              <div className="team-select-held-picker">
+                <div className="team-select-action-section-title">Held item for this battle</div>
+                <button
+                  type="button"
+                  className={`team-select-held-option ${selectedHeldItem == null ? 'is-active' : ''}`}
+                  onClick={() => {
+                    onUpdateHeldItem(actionPick!, null);
+                    setActionPick(null);
+                  }}
+                >
+                  <span className="team-select-held-option-icon">—</span>
+                  <span>No item</span>
+                </button>
+                {heldItemOptions.map((itemId) => {
+                  const active = selectedHeldItem === itemId;
+                  const available = itemPoolCounts.get(itemId) ?? 0;
+                  const usedByOthers = (usedHeldCounts.get(itemId) ?? 0) - (active ? 1 : 0);
+                  const disabledOption = usedByOthers >= available;
+                  return (
+                    <button
+                      type="button"
+                      key={itemId}
+                      className={`team-select-held-option ${active ? 'is-active' : ''}`}
+                      disabled={disabledOption && !active}
+                      onClick={() => {
+                        if (disabledOption && !active) return;
+                        onUpdateHeldItem(actionPick!, itemId);
+                        setActionPick(null);
+                      }}
+                    >
+                      <span className="team-select-held-option-icon">
+                        <img src={getHeldItemSprite(itemId)} alt="" />
+                      </span>
+                      <span>{getHeldItemName(itemId)}</span>
+                      <span className="team-select-held-option-count">
+                        {Math.max(0, available - usedByOthers)} left
+                      </span>
+                    </button>
+                  );
+                })}
+                {heldItemOptions.length === 0 && (
+                  <div className="team-select-held-empty">No held items available.</div>
+                )}
+              </div>
+            )}
             <div className="team-select-action-list">
               <button
                 type="button"
@@ -333,9 +415,6 @@ export default function TeamSelectGrid({
                 }}
               >
                 Remove from team
-              </button>
-              <button type="button" className="team-select-action-button" disabled>
-                Change held item (coming soon)
               </button>
             </div>
           </div>

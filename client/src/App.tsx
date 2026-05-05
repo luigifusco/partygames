@@ -489,10 +489,10 @@ export default function App() {
         <Route path={route('/shop')} element={<ProtectedShopRoute playerId={player.id} essence={essence} onSpendEssence={spendEssence} onAddItems={addItems} />} />
         <Route path={route('/items')} element={<ItemsScreen items={items} collection={collection} essence={essence} playerId={player.id} onTeachTM={teachTM} onUseBoost={useBoost} onGiveHeldItem={giveHeldItem} onTakeHeldItem={takeHeldItem} onReawaken={reawakenPokemon} />} />
         <Route path={route('/trade')} element={<TradeScreen playerName={player.name} collection={collection} onTrade={handleTrade} />} />
-        <Route path={route('/battle')} element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
-        <Route path={route('/battle-demo')} element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
-        <Route path={route('/story')} element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} />} />
-        <Route path={route('/tournaments')} element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} onEloUpdate={(newElo) => setElo(newElo)} onBattleViewingChange={setIsTournamentBattleViewing} />} />
+        <Route path={route('/battle')} element={<BattleMultiplayer playerName={player.name} playerId={player.id} collection={collection} items={items} essence={essence} onGainEssence={gainEssence} onEloUpdate={(newElo) => setElo(newElo)} recentPokemonIds={recentPokemonIds} onUpdateRecentPokemonIds={setRecentPokemonIds} />} />
+        <Route path={route('/battle-demo')} element={<BattleDemo essence={essence} onGainEssence={gainEssence} collection={collection} items={items} recentPokemonIds={recentPokemonIds} playerName={player.name} playerId={player.id} />} />
+        <Route path={route('/story')} element={<StoryScreen playerId={player.id} playerName={player.name} essence={essence} onGainEssence={gainEssence} onAddPokemon={addPokemon} onAddItems={addItems} collection={collection} items={items} />} />
+        <Route path={route('/tournaments')} element={<TournamentScreen playerName={player.name} playerId={player.id} collection={collection} items={items} onEloUpdate={(newElo) => setElo(newElo)} onBattleViewingChange={setIsTournamentBattleViewing} />} />
         <Route path={route('/minigames')} element={<MinigamesScreen playerName={player.name} collection={collection} />} />
         <Route path={route('/tv')} element={<TVView />} />
         <Route path={route('/replay')} element={<ReplayListScreen />} />

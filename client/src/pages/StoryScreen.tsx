@@ -9,7 +9,7 @@ import { rollBoost } from '@shared/boost-data';
 import BattleScene from '../components/BattleScene';
 import TeamSelectGrid from '../components/TeamSelectGrid';
 import type { BattleSnapshot } from '@shared/battle-types';
-import type { PokemonInstance } from '@shared/types';
+import type { OwnedItem, PokemonInstance } from '@shared/types';
 import { apiUrl } from '../party';
 import { getLocalizedStoryStepText } from '../storyLocalization';
 import './StoryScreen.css';
@@ -40,6 +40,7 @@ interface StoryScreenProps {
   onAddPokemon: (pokemonIds: number[]) => Promise<PokemonInstance[]>;
   onAddItems: (items: { itemType: string; itemData: string }[]) => void;
   collection: PokemonInstance[];
+  items: OwnedItem[];
 }
 
 type Phase = 'hub' | 'dialogue' | 'select' | 'battle' | 'victory' | 'reward' | 'teamChoice' | 'info';
@@ -55,7 +56,7 @@ function stepKey(storylineId: string, stepIdx: number) {
   return storylineId + ':' + stepIdx;
 }
 
-export default function StoryScreen({ playerId, playerName, essence, onGainEssence, onAddPokemon, onAddItems, collection }: StoryScreenProps) {
+export default function StoryScreen({ playerId, playerName, essence, onGainEssence, onAddPokemon, onAddItems, collection, items }: StoryScreenProps) {
   const navigate = useNavigate();
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>('hub');
@@ -67,6 +68,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
   const [firstClear, setFirstClear] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [selectedCharacters, setSelectedCharacters] = useState<(string | null)[]>([]);
+  const [selectedHeldItems, setSelectedHeldItems] = useState<(string | null)[]>([]);
   const [battleFinished, setBattleFinished] = useState(false);
   const [dialogueLineIdx, setDialogueLineIdx] = useState(0);
 
@@ -123,6 +125,8 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     if (nextStep >= sl.steps.length) return; // already complete
     setActiveStepIdx(nextStep);
     setSelected([]);
+    setSelectedCharacters([]);
+    setSelectedHeldItems([]);
     setSnapshot(null);
     setFirstClear(false);
     setBattleFinished(false);
@@ -176,7 +180,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       const teamSize = step.team.length;
       const playerTeam = selected.map(idx => collection[idx].pokemon.id);
       const playerMoves = selected.map(idx => collection[idx].learnedMoves ?? null);
-      const playerHeldItems = selected.map(idx => collection[idx].heldItem ?? null);
+      const playerHeldItems = selected.map((idx, i) => i < selectedHeldItems.length ? selectedHeldItems[i] ?? null : collection[idx].heldItem ?? null);
       const playerAbilities = selected.map(idx => collection[idx].ability ?? null);
       const playerCharacters = selected.map((_, i) => selectedCharacters[i] ?? 'balanced');
       const playerInstanceIds = selected.map(idx => collection[idx].instanceId);
@@ -221,6 +225,8 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     }
     setActiveStepIdx(nextIdx);
     setSelected([]);
+    setSelectedCharacters([]);
+    setSelectedHeldItems([]);
     setSnapshot(null);
     setBattleFinished(false);
     setDialogueLineIdx(0);
@@ -480,9 +486,11 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       if (i !== -1) {
         setSelected(selected.filter((_, k) => k !== i));
         setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
+        setSelectedHeldItems(selectedHeldItems.filter((_, k) => k !== i));
       } else if (selected.length < teamSize) {
         setSelected([...selected, idx]);
         setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
+        setSelectedHeldItems([...selectedHeldItems, collection[idx].heldItem ?? null]);
       }
     };
     const updateSelectedCharacter = (idx: number, character: string) => {
@@ -490,17 +498,25 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       if (i === -1) return;
       setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
     };
+    const updateSelectedHeldItem = (idx: number, itemId: string | null) => {
+      const i = selected.indexOf(idx);
+      if (i === -1) return;
+      setSelectedHeldItems(selectedHeldItems.map((held, k) => k === i ? itemId : held));
+    };
     return (
       <TeamSelectGrid
         instances={collection}
         selected={selected}
         onToggle={toggleSelect}
         onUpdateCharacter={updateSelectedCharacter}
+        onUpdateHeldItem={updateSelectedHeldItem}
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? () => startBattleStep(activeStoryline, activeStepIdx) : undefined}
         submitLabel={loading ? 'Loading...' : 'Battle!'}
         enableCharacterPick={completedSteps.has(CHARACTER_UNLOCK_CHAPTER)}
         selectedCharacters={selectedCharacters}
+        selectedHeldItems={selectedHeldItems}
+        ownedItems={items}
         disallowLegendaries={!trainerHasLegendary}
         onBack={() => { setPhase('hub'); setActiveStoryline(null); }}
         title="Choose your team"
