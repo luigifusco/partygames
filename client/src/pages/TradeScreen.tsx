@@ -294,6 +294,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
       if (!normalizedQuery) return true;
       const q = normalizedQuery;
       if (inst.pokemon.name.toLowerCase().includes(q)) return true;
+      if (inst.pokemon.types.some((type) => type.toLowerCase().includes(q))) return true;
       if ((inst.ability ?? '').toLowerCase().includes(q)) return true;
       if ((inst.nature ?? '').toLowerCase().includes(q)) return true;
       return getEffectiveMoves(inst).some((m) => m.toLowerCase().includes(q));
@@ -327,7 +328,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
             <input
               className="team-select-search-input"
               type="text"
-              placeholder="Search name, move, ability, nature…"
+              placeholder="Search name, type, move, ability, nature…"
               value={nameQuery}
               onChange={(e) => setNameQuery(e.target.value)}
               maxLength={40}

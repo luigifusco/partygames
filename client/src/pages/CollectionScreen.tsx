@@ -114,6 +114,7 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
     if (normalizedQuery === '') return true;
     const q = normalizedQuery;
     if (inst.pokemon.name.toLowerCase().includes(q)) return true;
+    if (inst.pokemon.types.some((type) => type.toLowerCase().includes(q))) return true;
     if ((inst.ability ?? '').toLowerCase().includes(q)) return true;
     if ((inst.nature ?? '').toLowerCase().includes(q)) return true;
     const moves = getEffectiveMoves(inst);
@@ -193,7 +194,7 @@ export default function CollectionScreen({ collection, items, onShard, playerId,
         <input
           type="search"
           className="collection-search-input"
-          placeholder="Search name, move, ability, nature…"
+          placeholder="Search name, type, move, ability, nature…"
           value={nameQuery}
           onChange={(e) => setNameQuery(e.target.value)}
           aria-label="Search Pokémon by name"

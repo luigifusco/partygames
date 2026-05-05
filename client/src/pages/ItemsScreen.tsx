@@ -210,7 +210,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
         type="search"
         value={pokemonPickerSearch}
         onChange={(e) => setPokemonPickerSearch(e.target.value)}
-        placeholder="Search name, move, ability, nature…"
+        placeholder="Search name, type, move, ability, nature…"
         aria-label="Search Pokémon"
       />
       {pokemonPickerSearch && (
