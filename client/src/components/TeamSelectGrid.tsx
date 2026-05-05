@@ -74,6 +74,7 @@ export default function TeamSelectGrid({
   disallowLegendaries = false,
 }: TeamSelectGridProps) {
   const [actionPick, setActionPick] = useState<number | null>(null);
+  const [actionSubcard, setActionSubcard] = useState<'menu' | 'style' | 'item'>('menu');
   const [nameQuery, setNameQuery] = useState('');
 
   const recentSet = new Set(recentPokemonIds ?? []);
@@ -107,6 +108,7 @@ export default function TeamSelectGrid({
     const isSelected = selected.includes(idx);
     if (isSelected) {
       setActionPick(idx);
+      setActionSubcard('menu');
       return;
     }
     onToggle(idx, 'balanced');
@@ -193,7 +195,7 @@ export default function TeamSelectGrid({
               const resolved = resolveCharacterName(effectiveChar, p.name);
               const info = PROFILE_INFO[resolved];
               return (
-                <div key={`sel-${idx}`} className="team-select-chosen-card" onClick={() => setActionPick(idx)}>
+                <div key={`sel-${idx}`} className="team-select-chosen-card" onClick={() => { setActionPick(idx); setActionSubcard('menu'); }}>
                   <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
                   {heldItem && (
                     <span
@@ -320,54 +322,102 @@ export default function TeamSelectGrid({
             <div className="character-pick-header">
               <PokemonIcon pokemonId={actionInst.pokemon.id} size={32} />
               <div>
-                <div className="character-pick-title">Team slot options</div>
+                <div className="character-pick-title">
+                  {actionSubcard === 'style' ? 'Battle style' : actionSubcard === 'item' ? 'Held item' : 'Team slot options'}
+                </div>
                 <div className="character-pick-subtitle">{actionInst.pokemon.name}</div>
               </div>
               <button className="character-pick-close" onClick={() => setActionPick(null)}>✕</button>
             </div>
-            <div className="team-select-action-current">
-              Current battle style:
-              <span style={{ color: actionInfo.color }}>
-                {actionInfo.icon} {actionInfo.label}
-              </span>
-            </div>
-            {enableCharacterPick && (
-              <div className="character-pick-list">
-                {PROFILE_NAMES.map((name) => {
-                  const info = PROFILE_INFO[name];
-                  const isActive = name === actionCharacter;
-                  return (
+
+            {actionSubcard === 'menu' && (
+              <>
+                <div className="team-select-action-summary">
+                  <button
+                    type="button"
+                    className="team-select-action-summary-button"
+                    onClick={() => setActionSubcard('style')}
+                    disabled={!enableCharacterPick}
+                  >
+                    <span className="team-select-action-summary-label">Battle style</span>
+                    <span className="team-select-action-summary-value" style={{ color: actionInfo.color }}>
+                      {actionInfo.icon} {actionInfo.label}
+                    </span>
+                  </button>
+                  {onUpdateHeldItem && (
                     <button
-                      key={name}
-                      className={`character-pick-option ${isActive ? 'is-active' : ''}`}
-                      style={{ borderColor: isActive ? info.color : undefined }}
-                      onClick={() => {
-                        onUpdateCharacter?.(actionPick!, name);
-                        setActionPick(null);
-                      }}
+                      type="button"
+                      className="team-select-action-summary-button"
+                      onClick={() => setActionSubcard('item')}
                     >
-                      <span className="character-pick-icon" style={{ color: info.color }}>{info.icon}</span>
-                      <div className="character-pick-text">
-                        <div className="character-pick-name" style={{ color: info.color }}>
-                          {info.label}
-                          {name === 'balanced' && <span className="character-pick-default-tag"> (default)</span>}
-                        </div>
-                        <div className="character-pick-blurb">{info.blurb}</div>
-                      </div>
+                      <span className="team-select-action-summary-label">Held item</span>
+                      <span className="team-select-action-summary-value">
+                        {selectedHeldItem ? (
+                          <>
+                            <img src={getHeldItemSprite(selectedHeldItem)} alt="" />
+                            {getHeldItemName(selectedHeldItem)}
+                          </>
+                        ) : 'No item'}
+                      </span>
                     </button>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+                <div className="team-select-action-list">
+                  <button
+                    type="button"
+                    className="team-select-action-button team-select-action-button-danger"
+                    onClick={() => {
+                      onToggle(actionPick!);
+                      setActionPick(null);
+                    }}
+                  >
+                    Remove from team
+                  </button>
+                </div>
+              </>
             )}
-            {onUpdateHeldItem && (
+
+            {actionSubcard === 'style' && (
+              <>
+                <button type="button" className="team-select-subcard-back" onClick={() => setActionSubcard('menu')}>← Team slot options</button>
+                <div className="character-pick-list">
+                  {PROFILE_NAMES.map((name) => {
+                    const info = PROFILE_INFO[name];
+                    const isActive = name === actionCharacter;
+                    return (
+                      <button
+                        key={name}
+                        className={`character-pick-option ${isActive ? 'is-active' : ''}`}
+                        style={{ borderColor: isActive ? info.color : undefined }}
+                        onClick={() => {
+                          onUpdateCharacter?.(actionPick!, name);
+                          setActionSubcard('menu');
+                        }}
+                      >
+                        <span className="character-pick-icon" style={{ color: info.color }}>{info.icon}</span>
+                        <div className="character-pick-text">
+                          <div className="character-pick-name" style={{ color: info.color }}>
+                            {info.label}
+                            {name === 'balanced' && <span className="character-pick-default-tag"> (default)</span>}
+                          </div>
+                          <div className="character-pick-blurb">{info.blurb}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {actionSubcard === 'item' && onUpdateHeldItem && (
               <div className="team-select-held-picker">
-                <div className="team-select-action-section-title">Held item for this battle</div>
+                <button type="button" className="team-select-subcard-back" onClick={() => setActionSubcard('menu')}>← Team slot options</button>
                 <button
                   type="button"
                   className={`team-select-held-option ${selectedHeldItem == null ? 'is-active' : ''}`}
                   onClick={() => {
                     onUpdateHeldItem(actionPick!, null);
-                    setActionPick(null);
+                    setActionSubcard('menu');
                   }}
                 >
                   <span className="team-select-held-option-icon">—</span>
@@ -387,7 +437,7 @@ export default function TeamSelectGrid({
                       onClick={() => {
                         if (disabledOption && !active) return;
                         onUpdateHeldItem(actionPick!, itemId);
-                        setActionPick(null);
+                        setActionSubcard('menu');
                       }}
                     >
                       <span className="team-select-held-option-icon">
@@ -405,18 +455,16 @@ export default function TeamSelectGrid({
                 )}
               </div>
             )}
-            <div className="team-select-action-list">
+
+            {actionSubcard === 'style' && !enableCharacterPick && (
               <button
                 type="button"
-                className="team-select-action-button team-select-action-button-danger"
-                onClick={() => {
-                  onToggle(actionPick!);
-                  setActionPick(null);
-                }}
+                className="team-select-subcard-back"
+                onClick={() => setActionSubcard('menu')}
               >
-                Remove from team
+                ← Team slot options
               </button>
-            </div>
+            )}
           </div>
         </div>
       )}
