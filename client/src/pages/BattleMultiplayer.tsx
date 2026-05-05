@@ -93,6 +93,8 @@ export default function BattleMultiplayer({ playerName, collection, items, essen
     const onBattleStart = (data: { battleId: string; player1: string; player2: string; player1Team: number[]; player2Team: number[]; snapshot: BattleSnapshot }) => {
       const isPlayer1 = data.player1 === playerName;
       const theirTeam = isPlayer1 ? data.player2Team : data.player1Team;
+      const myTeam = isPlayer1 ? data.player1Team : data.player2Team;
+      onUpdateRecentPokemonIds?.(myTeam);
       setOpponentTeamIds(theirTeam);
       setSnapshot(data.snapshot);
       setBattleId(data.battleId);
@@ -130,7 +132,7 @@ export default function BattleMultiplayer({ playerName, collection, items, essen
       socket.off('battle:eloUpdate', handleEloUpdate);
       socket.off('battle:bondUpdate', onBondAwards);
     };
-  }, [playerName, opponentName]);
+  }, [playerName, opponentName, onUpdateRecentPokemonIds]);
 
   // Auto-challenge when accepting a notification
   useEffect(() => {
@@ -195,11 +197,6 @@ export default function BattleMultiplayer({ playerName, collection, items, essen
       abilities: selected.map((idx) => collection[idx].ability ?? null),
       characters: selected.map((_, i) => selectedCharacters[i] ?? 'balanced'),
     });
-    // Optimistically update recent pokemon with the just-submitted team
-    if (onUpdateRecentPokemonIds && recentPokemonIds) {
-      const merged = [...new Set([...teamPokemonIds, ...recentPokemonIds])];
-      onUpdateRecentPokemonIds(merged);
-    }
     setPhase('waitingTeam');
   };
 

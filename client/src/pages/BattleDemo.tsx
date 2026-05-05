@@ -74,11 +74,12 @@ interface BattleDemoProps {
   collection: PokemonInstance[];
   items: OwnedItem[];
   recentPokemonIds?: number[];
+  onUpdateRecentPokemonIds?: (ids: number[]) => void;
   playerName?: string;
   playerId?: string;
 }
 
-export default function BattleDemo({ essence, onGainEssence, collection, items, recentPokemonIds, playerName, playerId }: BattleDemoProps) {
+export default function BattleDemo({ essence, onGainEssence, collection, items, recentPokemonIds, onUpdateRecentPokemonIds, playerName, playerId }: BattleDemoProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const characterPickUnlocked = chapters.has(CHARACTER_UNLOCK_CHAPTER);
@@ -129,6 +130,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, items, 
     setOpponentTeam(theirTeam);
     setLoading(true);
     try {
+      const selectedPokemonIds = selected.map((idx) => instances[idx].pokemon.id);
       const leftMoves = useOwn ? selected.map((idx) => instances[idx]?.learnedMoves ?? null) : undefined;
       const leftHeldItems = useOwn ? selected.map((idx, i) => i < selectedHeldItems.length ? selectedHeldItems[i] ?? null : instances[idx]?.heldItem ?? null) : undefined;
       const leftAbilities = useOwn ? selected.map((idx) => instances[idx]?.ability ?? null) : undefined;
@@ -159,6 +161,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, items, 
         }),
       });
       const data = await res.json();
+      if (useOwn) onUpdateRecentPokemonIds?.(selectedPokemonIds);
       setSnapshot(data.snapshot);
       setBondAwards(data.bondAwards ?? []);
     } catch (err) {

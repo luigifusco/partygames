@@ -41,6 +41,8 @@ interface StoryScreenProps {
   onAddItems: (items: { itemType: string; itemData: string }[]) => void;
   collection: PokemonInstance[];
   items: OwnedItem[];
+  recentPokemonIds?: number[];
+  onUpdateRecentPokemonIds?: (ids: number[]) => void;
 }
 
 type Phase = 'hub' | 'dialogue' | 'select' | 'battle' | 'victory' | 'reward' | 'teamChoice' | 'info';
@@ -56,7 +58,7 @@ function stepKey(storylineId: string, stepIdx: number) {
   return storylineId + ':' + stepIdx;
 }
 
-export default function StoryScreen({ playerId, playerName, essence, onGainEssence, onAddPokemon, onAddItems, collection, items }: StoryScreenProps) {
+export default function StoryScreen({ playerId, playerName, essence, onGainEssence, onAddPokemon, onAddItems, collection, items, recentPokemonIds, onUpdateRecentPokemonIds }: StoryScreenProps) {
   const navigate = useNavigate();
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>('hub');
@@ -204,6 +206,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
         }),
       });
       const data = await res.json();
+      onUpdateRecentPokemonIds?.(playerTeam);
       setSnapshot(data.snapshot);
       setBondAwards(data.bondAwards ?? []);
       setBattleFinished(false);
@@ -213,7 +216,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
     } finally {
       setLoading(false);
     }
-  }, [collection, selected, selectedCharacters, playerName]);
+  }, [collection, selected, selectedCharacters, selectedHeldItems, playerName, onUpdateRecentPokemonIds]);
 
   const advanceToNextStep = useCallback(() => {
     if (!activeStoryline) return;
@@ -517,6 +520,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
         selectedCharacters={selectedCharacters}
         selectedHeldItems={selectedHeldItems}
         ownedItems={items}
+        recentPokemonIds={recentPokemonIds}
         disallowLegendaries={!trainerHasLegendary}
         onBack={() => { setPhase('hub'); setActiveStoryline(null); }}
         title="Choose your team"

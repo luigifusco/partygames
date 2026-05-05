@@ -93,14 +93,16 @@ export default function TeamSelectGrid({
     .map((_, i) => i)
     .filter((i) => matchesQuery(instances[i]))
     .sort((a, b) => {
-    const aFav = instances[a].favorite ? 0 : 1;
-    const bFav = instances[b].favorite ? 0 : 1;
-    if (aFav !== bFav) return aFav - bFav;
-    const aRecent = recentSet.has(instances[a].pokemon.id) ? 0 : 1;
-    const bRecent = recentSet.has(instances[b].pokemon.id) ? 0 : 1;
-    if (aRecent !== bRecent) return aRecent - bRecent;
-    return instances[a].pokemon.id - instances[b].pokemon.id;
-  });
+      const rank = (idx: number) => {
+        if (instances[idx].favorite) return 0;
+        if (recentSet.has(instances[idx].pokemon.id)) return 1;
+        return 2;
+      };
+      const aRank = rank(a);
+      const bRank = rank(b);
+      if (aRank !== bRank) return aRank - bRank;
+      return instances[a].pokemon.id - instances[b].pokemon.id;
+    });
 
   const handleCardClick = (idx: number) => {
     if (disabled) return;

@@ -471,18 +471,21 @@ function awardBondXpDirect(playerId: string, instanceId: string, delta: number):
 
 // --- REST API ---
 
-// Get distinct pokemon IDs used in a player's last 3 battles
+// Get pokemon IDs used in a player's most recently recorded battle.
 function getRecentPokemonIds(playerId: string): number[] {
   const rows = db.prepare(`
-    SELECT DISTINCT bte.pokemon_id
+    SELECT bte.pokemon_id
     FROM battle_team_entries bte
-    WHERE bte.player_id = ? AND bte.battle_id IN (
-      SELECT b.id FROM battles b
-      WHERE b.winner_id = ? OR b.loser_id = ?
+    WHERE bte.player_id = ? AND bte.battle_id = (
+      SELECT recent.battle_id
+      FROM battle_team_entries recent
+      JOIN battles b ON b.id = recent.battle_id
+      WHERE recent.player_id = ?
       ORDER BY b.created_at DESC
-      LIMIT 3
+      LIMIT 1
     )
-  `).all(playerId, playerId, playerId) as any[];
+    ORDER BY bte.rowid ASC
+  `).all(playerId, playerId) as any[];
   return rows.map((r: any) => r.pokemon_id);
 }
 
@@ -1782,16 +1785,21 @@ app.post(`${BASE_PATH}/api/battle/simulate`, async (req, res) => {
     battlesTotal.inc(labels);
     battleRounds.observe({ field_size: String(fs), total_pokemon: String(leftTeam.length) }, snapshot.round);
 
-    // Record in DB (no player IDs for AI battles)
+    // Record in DB. If a real player is attached, also record their team so
+    // the next picker can surface the last-battle team.
+    const battleRecordId = uuidv4();
     db.prepare(
       'INSERT INTO battles (id, party_id, winner_id, loser_id, essence_gained, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log) VALUES (?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?)'
-    ).run(uuidv4(), party.id, fs, leftTeam.length, mode, 'ai', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
+    ).run(battleRecordId, party.id, fs, leftTeam.length, mode, 'ai', snapshot.round, (snapshot.rawLog ?? []).join('\n'));
 
-    // Award Bond XP if the caller identifies a real player + their instance IDs.
+    // Award Bond XP and record team usage when the caller identifies real
+    // collection instances.
     let bondAwards: BondAward[] = [];
     if (playerName && Array.isArray(leftInstanceIds) && leftInstanceIds.length > 0) {
       const playerRow = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, playerName) as any;
       if (playerRow) {
+        const recordTeamEntry = db.prepare('INSERT INTO battle_team_entries (battle_id, player_id, pokemon_id) VALUES (?, ?, ?)');
+        for (const pid of leftTeam) recordTeamEntry.run(battleRecordId, playerRow.id, pid);
         const bm: BondBattleMode = (bondMode === 'story' || bondMode === 'friendly' || bondMode === 'demo') ? bondMode : 'ai';
         const playerWon = snapshot.winner === 'left';
         bondAwards = awardBondXp(playerRow.id, leftInstanceIds, snapshot.left, snapshot.round, playerWon, bm);
@@ -2167,9 +2175,14 @@ async function handleTournamentTeamSubmission(
     if (s1) io.to(s1).emit('battle:eloUpdate', eloUpdate);
     if (s2) io.to(s2).emit('battle:eloUpdate', eloUpdate);
 
+    const battleRecordId = uuidv4();
     db.prepare(
       'INSERT INTO battles (id, party_id, winner_id, loser_id, essence_gained, winner_elo_delta, loser_elo_delta, field_size, total_pokemon, selection_mode, opponent_type, rounds, showdown_log, tournament_id, tournament_match_id) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(uuidv4(), battle.partyId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, t.fieldSize, (battle.player1Team ?? []).length, t.pickMode ?? 'blind', 'tournament', snapshot.round, (snapshot.rawLog ?? []).join('\n'), tournamentId, matchId);
+    ).run(battleRecordId, battle.partyId, winnerRow.id, loserRow.id, winnerDelta, loserDelta, t.fieldSize, (battle.player1Team ?? []).length, t.pickMode ?? 'blind', 'tournament', snapshot.round, (snapshot.rawLog ?? []).join('\n'), tournamentId, matchId);
+
+    const recordTeamEntry = db.prepare('INSERT INTO battle_team_entries (battle_id, player_id, pokemon_id) VALUES (?, ?, ?)');
+    for (const pid of battle.player1Team ?? []) recordTeamEntry.run(battleRecordId, p1Row.id, pid);
+    for (const pid of battle.player2Team ?? []) recordTeamEntry.run(battleRecordId, p2Row.id, pid);
 
     console.log(`Tournament Elo update: ${winnerName} ${winnerRow.elo}->${winnerNewElo} (+${winnerDelta}), ${loserName} ${loserRow.elo}->${loserNewElo} (${loserDelta})`);
   }

@@ -16,6 +16,8 @@ interface TournamentScreenProps {
   playerName: string;
   collection: PokemonInstance[];
   items: OwnedItem[];
+  recentPokemonIds?: number[];
+  onUpdateRecentPokemonIds?: (ids: number[]) => void;
   playerId?: string;
   onEloUpdate: (newElo: number) => void;
   onBattleViewingChange: (viewing: boolean) => void;
@@ -30,7 +32,7 @@ interface ForfeitNotice {
   player2: string | null;
 }
 
-export default function TournamentScreen({ playerName, collection, items, playerId, onEloUpdate, onBattleViewingChange }: TournamentScreenProps) {
+export default function TournamentScreen({ playerName, collection, items, recentPokemonIds, onUpdateRecentPokemonIds, playerId, onEloUpdate, onBattleViewingChange }: TournamentScreenProps) {
   const navigate = useNavigate();
   const chapters = useStoryChapters(playerId);
   const characterPickUnlocked = chapters.has(CHARACTER_UNLOCK_CHAPTER);
@@ -200,6 +202,7 @@ export default function TournamentScreen({ playerName, collection, items, player
     if (!activeTournament || !activeMatchId) return;
     const frozen = activeTournament.frozenTeams[playerName];
     if (!frozen || pickOrder.length !== frozen.length) return;
+    onUpdateRecentPokemonIds?.(pickOrder.map(i => frozen[i].pokemonId));
     socket.emit('tournament:selectTeam', {
       tournamentId: activeTournament.id,
       matchId: activeMatchId,
@@ -224,10 +227,12 @@ export default function TournamentScreen({ playerName, collection, items, player
 
   const submitTeam = () => {
     if (!activeTournament || !activeMatchId) return;
+    const teamPokemonIds = selected.map(idx => collection[idx].pokemon.id);
+    onUpdateRecentPokemonIds?.(teamPokemonIds);
     socket.emit('tournament:selectTeam', {
       tournamentId: activeTournament.id,
       matchId: activeMatchId,
-      team: selected.map(idx => collection[idx].pokemon.id),
+      team: teamPokemonIds,
       instanceIds: selected.map(idx => collection[idx].instanceId),
       heldItems: selected.map((idx, i) => i < selectedHeldItems.length ? selectedHeldItems[i] ?? null : collection[idx].heldItem ?? null),
       moves: selected.map(idx => collection[idx].learnedMoves ?? null),
@@ -363,6 +368,7 @@ export default function TournamentScreen({ playerName, collection, items, player
         selectedCharacters={selectedCharacters}
         selectedHeldItems={selectedHeldItems}
         ownedItems={items}
+        recentPokemonIds={recentPokemonIds}
         disallowLegendaries={activeTournament.allowLegendaries === false}
         onBack={() => setPhase('detail')}
         title="Lock Tournament Team"
@@ -562,6 +568,7 @@ export default function TournamentScreen({ playerName, collection, items, player
         selectedCharacters={selectedCharacters}
         selectedHeldItems={selectedHeldItems}
         ownedItems={items}
+        recentPokemonIds={recentPokemonIds}
         disallowLegendaries={activeTournament.allowLegendaries === false}
         onBack={() => setPhase('detail')}
         title="Tournament Match"
