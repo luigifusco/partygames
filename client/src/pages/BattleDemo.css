@@ -912,6 +912,34 @@
   border-color: var(--color-border-strong);
 }
 
+.team-select-locked-card {
+  text-align: center;
+}
+
+.team-select-locked-icon {
+  margin-top: var(--space-2);
+  font-size: 36px;
+}
+
+.team-select-locked-title {
+  margin-top: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: 900;
+}
+
+.team-select-locked-copy {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .team-select-action-list {
   display: flex;
   flex-direction: column;

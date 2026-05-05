@@ -38,7 +38,7 @@ interface TeamSelectGridProps {
   opponent?: OpponentInfo;
   aboveGrid?: React.ReactNode;
   recentPokemonIds?: number[];
-  /** When true, clicking an unselected card opens a character-picker before adding it. */
+  /** When true, selected team slots can swap battle style from the slot-options modal. */
   enableCharacterPick?: boolean;
   /** Per-selected-index character override (aligned with `selected`). Shown in the chosen bar. */
   selectedCharacters?: (string | null | undefined)[];
@@ -337,11 +337,10 @@ export default function TeamSelectGrid({
                     type="button"
                     className="team-select-action-summary-button"
                     onClick={() => setActionSubcard('style')}
-                    disabled={!enableCharacterPick}
                   >
                     <span className="team-select-action-summary-label">Battle style</span>
-                    <span className="team-select-action-summary-value" style={{ color: actionInfo.color }}>
-                      {actionInfo.icon} {actionInfo.label}
+                    <span className="team-select-action-summary-value" style={{ color: enableCharacterPick ? actionInfo.color : undefined }}>
+                      {enableCharacterPick ? `${actionInfo.icon} ${actionInfo.label}` : 'Locked'}
                     </span>
                   </button>
                   {onUpdateHeldItem && (
@@ -377,7 +376,7 @@ export default function TeamSelectGrid({
               </>
             )}
 
-            {actionSubcard === 'style' && (
+            {actionSubcard === 'style' && enableCharacterPick && (
               <>
                 <button type="button" className="team-select-subcard-back" onClick={() => setActionSubcard('menu')}>← Team slot options</button>
                 <div className="character-pick-list">
@@ -457,13 +456,21 @@ export default function TeamSelectGrid({
             )}
 
             {actionSubcard === 'style' && !enableCharacterPick && (
-              <button
-                type="button"
-                className="team-select-subcard-back"
-                onClick={() => setActionSubcard('menu')}
-              >
-                ← Team slot options
-              </button>
+              <div className="team-select-locked-card">
+                <button
+                  type="button"
+                  className="team-select-subcard-back"
+                  onClick={() => setActionSubcard('menu')}
+                >
+                  ← Team slot options
+                </button>
+                <div className="team-select-locked-icon">🎭</div>
+                <div className="team-select-locked-title">Battle styles are locked</div>
+                <div className="team-select-locked-copy">
+                  Beat N in <b>A Familiar Stranger</b> to unlock battle-style swapping.
+                  Until then, new team picks use the Balanced style.
+                </div>
+              </div>
             )}
           </div>
         </div>

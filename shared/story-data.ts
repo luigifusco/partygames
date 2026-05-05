@@ -248,7 +248,8 @@ export const STORYLINES: Storyline[] = [
         "From now on, when you send out a Pokémon, choose how *you* show up too. Your style shapes their resolve. Their resolve shapes the fight.",
       ]},
       { type: 'info', infoTitle: 'Battle Styles — Unlocked!', infoIcon: '🎭', lines: [
-        "Pick a battle style for each Pokémon when you send it out.",
+        "Team picks still start as Balanced by default.",
+        "Tap a selected Pokémon, open Battle style, and choose how that slot fights.",
         "Different styles, different vibes. Find what fits you.",
       ]},
       { type: 'dialogue', speaker: 'N', sprite: sp('n'), lines: [
