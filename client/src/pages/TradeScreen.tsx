@@ -375,6 +375,15 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
                 onClick={() => phase === 'selectPokemon' && setSelectedIdx(idx)}
               >
                 {isFavorite && <span className="favorite-badge" title="Favorite">★</span>}
+                {inst.heldItem && (
+                  <span
+                    className="trade-held-badge"
+                    title={getHeldItemName(inst.heldItem)}
+                    aria-label={getHeldItemName(inst.heldItem)}
+                  >
+                    <img src={getHeldItemSprite(inst.heldItem)} alt="" />
+                  </span>
+                )}
                 <img src={p.sprite} alt={p.name} />
                 <div className="team-select-card-name">{p.name}</div>
                 <div className="team-select-card-info">
@@ -385,12 +394,6 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
                       <span key={i} className="team-select-card-move">{m}</span>
                     ))}
                   </div>
-                  {inst.heldItem && (
-                    <div className="team-select-card-held">
-                      <img src={getHeldItemSprite(inst.heldItem)} alt="" className="team-select-held-icon" />
-                      <span>{getHeldItemName(inst.heldItem)}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             );

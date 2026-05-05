@@ -302,6 +302,31 @@
   aspect-ratio: 1;
 }
 
+.trade-held-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 5;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(122, 167, 255, 0.65);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.team-select-grid.trade-selection-grid .trade-held-badge img {
+  width: 20px;
+  height: 20px;
+  aspect-ratio: auto;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
 @media (min-width: 600px) {
   .team-select-grid.trade-selection-grid {
     grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
