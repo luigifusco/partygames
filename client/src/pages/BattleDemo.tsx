@@ -142,7 +142,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
       const leftCharacters = useOwn ? myTeam.map((p, i) => {
         const inst = instances.find((it) => it.pokemon.id === p.id);
         // selectedCharacters is aligned with `selected` array, which order-matches myTeam
-        const override = selectedCharacters[i] ?? null;
+        const override = selectedCharacters[i] ?? 'balanced';
         return override ?? inst?.character ?? null;
       }) : undefined;
 
@@ -328,8 +328,13 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         }
       } else if (selected.length < aiTeam.length + currentDraftStep.picks) {
         setSelected([...selected, idx]);
-        setSelectedCharacters([...selectedCharacters, character ?? null]);
+        setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
       }
+    };
+    const updateDraftCharacter = (idx: number, character: string) => {
+      const i = selected.indexOf(idx);
+      if (i === -1) return;
+      setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
     };
 
     const confirmDraftPick = () => {
@@ -363,6 +368,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
         instances={instances}
         selected={selected}
         onToggle={draftToggle}
+        onUpdateCharacter={updateDraftCharacter}
         teamSize={teamSize}
         disabledIndices={disabledIndices}
         onSubmit={isMyDraftTurn && pendingPicks === neededPicks ? confirmDraftPick : undefined}
@@ -396,8 +402,13 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
       setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
     } else if (selected.length < teamSize) {
       setSelected([...selected, idx]);
-      setSelectedCharacters([...selectedCharacters, character ?? null]);
+      setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
     }
+  };
+  const updateBlindCharacter = (idx: number, character: string) => {
+    const i = selected.indexOf(idx);
+    if (i === -1) return;
+    setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
   };
 
   const startBattle = async () => {
@@ -412,6 +423,7 @@ export default function BattleDemo({ essence, onGainEssence, collection, recentP
       instances={instances}
       selected={selected}
       onToggle={toggleBlind}
+      onUpdateCharacter={updateBlindCharacter}
       teamSize={teamSize}
       onSubmit={selected.length === teamSize ? startBattle : undefined}
       submitLabel={loading ? 'Simulating...' : 'Battle!'}

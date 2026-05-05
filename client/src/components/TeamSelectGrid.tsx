@@ -21,6 +21,7 @@ interface TeamSelectGridProps {
   instances: PokemonInstance[];
   selected: number[];          // indices into `instances`
   onToggle: (idx: number, character?: string | null) => void;
+  onUpdateCharacter?: (idx: number, character: ProfileName) => void;
   teamSize: number;
   disabled?: boolean;
   disabledIndices?: Set<number>;
@@ -48,6 +49,7 @@ export default function TeamSelectGrid({
   instances,
   selected,
   onToggle,
+  onUpdateCharacter,
   teamSize,
   disabled = false,
   disabledIndices,
@@ -63,7 +65,7 @@ export default function TeamSelectGrid({
   selectedCharacters,
   disallowLegendaries = false,
 }: TeamSelectGridProps) {
-  const [pendingPick, setPendingPick] = useState<number | null>(null);
+  const [actionPick, setActionPick] = useState<number | null>(null);
   const [nameQuery, setNameQuery] = useState('');
 
   const recentSet = new Set(recentPokemonIds ?? []);
@@ -96,26 +98,18 @@ export default function TeamSelectGrid({
     if (disallowLegendaries && instances[idx].pokemon.tier === 'legendary' && !selected.includes(idx)) return;
     const isSelected = selected.includes(idx);
     if (isSelected) {
-      onToggle(idx);
+      setActionPick(idx);
       return;
     }
-    if (enableCharacterPick) {
-      setPendingPick(idx);
-    } else {
-      onToggle(idx);
-    }
+    onToggle(idx, 'balanced');
   };
 
-  const confirmPick = (character: string | null) => {
-    if (pendingPick == null) return;
-    onToggle(pendingPick, character);
-    setPendingPick(null);
-  };
-
-  const pendingInst = pendingPick != null ? instances[pendingPick] : null;
-  const pendingDefault: ProfileName | null = pendingInst
-    ? resolveCharacterName(pendingInst.character, pendingInst.pokemon.name)
+  const actionInst = actionPick != null ? instances[actionPick] : null;
+  const actionSelectedIndex = actionPick != null ? selected.indexOf(actionPick) : -1;
+  const actionCharacter = actionInst && actionSelectedIndex >= 0
+    ? resolveCharacterName(selectedCharacters?.[actionSelectedIndex] ?? 'balanced', actionInst.pokemon.name)
     : null;
+  const actionInfo = actionCharacter ? PROFILE_INFO[actionCharacter] : null;
 
   return (
     <div className="team-select-screen">
@@ -163,7 +157,7 @@ export default function TeamSelectGrid({
               const resolved = resolveCharacterName(effectiveChar, p.name);
               const info = PROFILE_INFO[resolved];
               return (
-                <div key={`sel-${idx}`} className="team-select-chosen-card" onClick={() => onToggle(idx)}>
+                <div key={`sel-${idx}`} className="team-select-chosen-card" onClick={() => setActionPick(idx)}>
                   <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
                   {inst.heldItem && (
                     <span
@@ -284,39 +278,65 @@ export default function TeamSelectGrid({
         )}
       </div>
 
-      {pendingInst && pendingDefault && (
-        <div className="ds-overlay" onClick={() => setPendingPick(null)}>
-          <div className="ds-modal character-pick-modal" onClick={(e) => e.stopPropagation()}>
+      {actionInst && actionInfo && (
+        <div className="ds-overlay" onClick={() => setActionPick(null)}>
+          <div className="ds-modal character-pick-modal team-select-action-modal" onClick={(e) => e.stopPropagation()}>
             <div className="character-pick-header">
-              <PokemonIcon pokemonId={pendingInst.pokemon.id} size={32} />
+              <PokemonIcon pokemonId={actionInst.pokemon.id} size={32} />
               <div>
-                <div className="character-pick-title">Choose battle style</div>
-                <div className="character-pick-subtitle">{pendingInst.pokemon.name}</div>
+                <div className="character-pick-title">Team slot options</div>
+                <div className="character-pick-subtitle">{actionInst.pokemon.name}</div>
               </div>
-              <button className="character-pick-close" onClick={() => setPendingPick(null)}>✕</button>
+              <button className="character-pick-close" onClick={() => setActionPick(null)}>✕</button>
             </div>
-            <div className="character-pick-list">
-              {PROFILE_NAMES.map((name) => {
-                const info = PROFILE_INFO[name];
-                const isDefault = name === pendingDefault;
-                return (
-                  <button
-                    key={name}
-                    className={`character-pick-option ${isDefault ? 'is-default' : ''}`}
-                    style={{ borderColor: info.color }}
-                    onClick={() => confirmPick(isDefault ? null : name)}
-                  >
-                    <span className="character-pick-icon" style={{ color: info.color }}>{info.icon}</span>
-                    <div className="character-pick-text">
-                      <div className="character-pick-name" style={{ color: info.color }}>
-                        {info.label}
-                        {isDefault && <span className="character-pick-default-tag"> (default)</span>}
+            <div className="team-select-action-current">
+              Current battle style:
+              <span style={{ color: actionInfo.color }}>
+                {actionInfo.icon} {actionInfo.label}
+              </span>
+            </div>
+            {enableCharacterPick && (
+              <div className="character-pick-list">
+                {PROFILE_NAMES.map((name) => {
+                  const info = PROFILE_INFO[name];
+                  const isActive = name === actionCharacter;
+                  return (
+                    <button
+                      key={name}
+                      className={`character-pick-option ${isActive ? 'is-active' : ''}`}
+                      style={{ borderColor: isActive ? info.color : undefined }}
+                      onClick={() => {
+                        onUpdateCharacter?.(actionPick!, name);
+                        setActionPick(null);
+                      }}
+                    >
+                      <span className="character-pick-icon" style={{ color: info.color }}>{info.icon}</span>
+                      <div className="character-pick-text">
+                        <div className="character-pick-name" style={{ color: info.color }}>
+                          {info.label}
+                          {name === 'balanced' && <span className="character-pick-default-tag"> (default)</span>}
+                        </div>
+                        <div className="character-pick-blurb">{info.blurb}</div>
                       </div>
-                      <div className="character-pick-blurb">{info.blurb}</div>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="team-select-action-list">
+              <button
+                type="button"
+                className="team-select-action-button team-select-action-button-danger"
+                onClick={() => {
+                  onToggle(actionPick!);
+                  setActionPick(null);
+                }}
+              >
+                Remove from team
+              </button>
+              <button type="button" className="team-select-action-button" disabled>
+                Change held item (coming soon)
+              </button>
             </div>
           </div>
         </div>

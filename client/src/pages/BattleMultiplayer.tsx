@@ -158,8 +158,14 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
       setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
     } else if (selected.length < teamSize) {
       setSelected([...selected, idx]);
-      setSelectedCharacters([...selectedCharacters, character ?? null]);
+      setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
     }
+  };
+
+  const updateSelectedCharacter = (idx: number, character: string) => {
+    const i = selected.indexOf(idx);
+    if (i === -1) return;
+    setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
   };
 
   const submitTeam = () => {
@@ -175,7 +181,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         return inst.learnedMoves ?? null;
       }),
       abilities: selected.map((idx) => collection[idx].ability ?? null),
-      characters: selected.map((idx, i) => selectedCharacters[i] ?? collection[idx].character ?? null),
+      characters: selected.map((_, i) => selectedCharacters[i] ?? 'balanced'),
     });
     // Optimistically update recent pokemon with the just-submitted team
     if (onUpdateRecentPokemonIds && recentPokemonIds) {
@@ -231,6 +237,7 @@ export default function BattleMultiplayer({ playerName, collection, essence, onG
         instances={collection}
         selected={selected}
         onToggle={(idx, ch) => phase === 'teamSelect' && togglePokemon(idx, ch)}
+        onUpdateCharacter={(idx, ch) => phase === 'teamSelect' && updateSelectedCharacter(idx, ch)}
         teamSize={teamSize}
         disabled={phase === 'waitingTeam'}
         onSubmit={selected.length === teamSize ? submitTeam : undefined}

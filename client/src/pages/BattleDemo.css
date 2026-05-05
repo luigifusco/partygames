@@ -799,7 +799,8 @@
   transform: translateY(-1px);
   background: var(--color-surface-3);
 }
-.character-pick-option.default {
+.character-pick-option.default,
+.character-pick-option.is-active {
   background: var(--color-surface-3);
   border-color: var(--color-border-strong);
 }
@@ -828,6 +829,62 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   line-height: 1.35;
+}
+
+.team-select-action-modal {
+  width: min(92vw, 480px);
+}
+
+.team-select-action-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.team-select-action-current span {
+  color: var(--color-text);
+}
+
+.team-select-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.team-select-action-button {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.team-select-action-button:hover:not(:disabled) {
+  background: var(--color-surface-3);
+}
+
+.team-select-action-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.team-select-action-button-danger {
+  border-color: rgba(255, 117, 117, 0.5);
+  background: rgba(255, 80, 80, 0.12);
+  color: #ffb3b3;
 }
 
 .team-select-empty {

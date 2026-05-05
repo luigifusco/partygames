@@ -178,7 +178,7 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
       const playerMoves = selected.map(idx => collection[idx].learnedMoves ?? null);
       const playerHeldItems = selected.map(idx => collection[idx].heldItem ?? null);
       const playerAbilities = selected.map(idx => collection[idx].ability ?? null);
-      const playerCharacters = selected.map((idx, i) => selectedCharacters[i] ?? collection[idx].character ?? null);
+      const playerCharacters = selected.map((_, i) => selectedCharacters[i] ?? 'balanced');
       const playerInstanceIds = selected.map(idx => collection[idx].instanceId);
       void teamSize;
 
@@ -482,14 +482,20 @@ export default function StoryScreen({ playerId, playerName, essence, onGainEssen
         setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
       } else if (selected.length < teamSize) {
         setSelected([...selected, idx]);
-        setSelectedCharacters([...selectedCharacters, character ?? null]);
+        setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
       }
+    };
+    const updateSelectedCharacter = (idx: number, character: string) => {
+      const i = selected.indexOf(idx);
+      if (i === -1) return;
+      setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
     };
     return (
       <TeamSelectGrid
         instances={collection}
         selected={selected}
         onToggle={toggleSelect}
+        onUpdateCharacter={updateSelectedCharacter}
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? () => startBattleStep(activeStoryline, activeStepIdx) : undefined}
         submitLabel={loading ? 'Loading...' : 'Battle!'}

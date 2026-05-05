@@ -229,7 +229,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
       heldItems: selected.map(idx => collection[idx].heldItem ?? null),
       moves: selected.map(idx => collection[idx].learnedMoves ?? null),
       abilities: selected.map(idx => collection[idx].ability ?? null),
-      characters: selected.map((idx, i) => selectedCharacters[i] ?? collection[idx].character ?? null),
+      characters: selected.map((_, i) => selectedCharacters[i] ?? 'balanced'),
     });
   };
 
@@ -244,7 +244,7 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
         heldItem: inst.heldItem ?? null,
         moves: inst.learnedMoves ?? inst.pokemon.moves as [string, string],
         ability: inst.ability ?? null,
-        character: selectedCharacters[i] ?? inst.character ?? null,
+        character: selectedCharacters[i] ?? 'balanced',
       };
     });
     socket.emit('tournament:lockTeam', { tournamentId: activeTournament.id, team: frozen });
@@ -331,14 +331,20 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
         setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
       } else if (selected.length < teamSize) {
         setSelected([...selected, idx]);
-        setSelectedCharacters([...selectedCharacters, character ?? null]);
+        setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
       }
+    };
+    const updateSelectedCharacter = (idx: number, character: string) => {
+      const i = selected.indexOf(idx);
+      if (i === -1) return;
+      setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
     };
     return (
       <TeamSelectGrid
         instances={collection}
         selected={selected}
         onToggle={toggleSelect}
+        onUpdateCharacter={updateSelectedCharacter}
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? submitLockedTeam : undefined}
         submitLabel="Lock Team"
@@ -514,14 +520,20 @@ export default function TournamentScreen({ playerName, collection, playerId, onE
         setSelectedCharacters(selectedCharacters.filter((_, k) => k !== i));
       } else if (selected.length < teamSize) {
         setSelected([...selected, idx]);
-        setSelectedCharacters([...selectedCharacters, character ?? null]);
+        setSelectedCharacters([...selectedCharacters, character ?? 'balanced']);
       }
+    };
+    const updateSelectedCharacter = (idx: number, character: string) => {
+      const i = selected.indexOf(idx);
+      if (i === -1) return;
+      setSelectedCharacters(selectedCharacters.map((ch, k) => k === i ? character : ch));
     };
     return (
       <TeamSelectGrid
         instances={collection}
         selected={selected}
         onToggle={toggleSelect}
+        onUpdateCharacter={updateSelectedCharacter}
         teamSize={teamSize}
         onSubmit={selected.length === teamSize ? submitTeam : undefined}
         submitLabel="Lock In!"
