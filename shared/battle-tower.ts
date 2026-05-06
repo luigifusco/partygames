@@ -13,6 +13,10 @@ export interface BattleTowerFormatDef {
 }
 
 export const BATTLE_TOWER_RUN_LENGTH = 3;
+export const BATTLE_TOWER_BASE_ENTRY_COST = 500;
+export const BATTLE_TOWER_BASE_REWARD = 2000;
+export const BATTLE_TOWER_ENTRY_SCALE_PER_CLEAR = 0.6;
+export const BATTLE_TOWER_REWARD_SCALE_PER_CLEAR = 0.9;
 
 export const BATTLE_TOWER_FORMATS: Record<BattleTowerFormat, BattleTowerFormatDef> = {
   single: {
@@ -21,8 +25,8 @@ export const BATTLE_TOWER_FORMATS: Record<BattleTowerFormat, BattleTowerFormatDe
     description: 'Three Pokémon, one active battler at a time.',
     fieldSize: 1,
     teamSize: 3,
-    baseEntryCost: 300,
-    baseReward: 900,
+    baseEntryCost: BATTLE_TOWER_BASE_ENTRY_COST,
+    baseReward: BATTLE_TOWER_BASE_REWARD,
   },
   double: {
     id: 'double',
@@ -30,8 +34,8 @@ export const BATTLE_TOWER_FORMATS: Record<BattleTowerFormat, BattleTowerFormatDe
     description: 'Four Pokémon, two active battlers at a time.',
     fieldSize: 2,
     teamSize: 4,
-    baseEntryCost: 450,
-    baseReward: 1400,
+    baseEntryCost: BATTLE_TOWER_BASE_ENTRY_COST,
+    baseReward: BATTLE_TOWER_BASE_REWARD,
   },
 };
 
@@ -55,12 +59,12 @@ export function battleTowerDifficultyLabel(level: number): string {
 export function battleTowerEconomy(format: BattleTowerFormat, currentStreak: number) {
   const def = BATTLE_TOWER_FORMATS[format];
   const level = battleTowerLevel(currentStreak);
-  const scale = 1 + level * 0.35;
+  const entryScale = 1 + level * BATTLE_TOWER_ENTRY_SCALE_PER_CLEAR;
+  const rewardScale = 1 + level * BATTLE_TOWER_REWARD_SCALE_PER_CLEAR;
   return {
     level,
     difficultyLabel: battleTowerDifficultyLabel(level),
-    entryCost: Math.round((def.baseEntryCost * scale) / 10) * 10,
-    rewardEssence: Math.round((def.baseReward * (1 + level * 0.45)) / 10) * 10,
+    entryCost: Math.round((def.baseEntryCost * entryScale) / 10) * 10,
+    rewardEssence: Math.round((def.baseReward * rewardScale) / 10) * 10,
   };
 }
-
