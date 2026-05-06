@@ -409,10 +409,14 @@ function parseProtocol(
   }
 
   const log: BattleLogEntry[] = [];
+  const loggedFaintIds = new Set<string>();
   // Helper to push log entries with automatic HP snapshot
   function pushLog(entry: BattleLogEntry) {
     entry.hpState = getHpSnapshot();
     log.push(entry);
+    if (entry.targetFainted && entry.targetInstanceId) {
+      loggedFaintIds.add(entry.targetInstanceId);
+    }
   }
   let currentRound = 0;
   let winner: 'left' | 'right' | null = null;
@@ -686,14 +690,16 @@ function parseProtocol(
         const dmgInstId = getInstanceId(dmgIdent);
         const prev = pokemonState[dmgInstId];
 
-        if (pendingMove) {
+        if (pendingMove && getInstanceId(pendingMove.targetIdent) === dmgInstId) {
           // Damage from the pending move
           if (prev) {
             pendingDamage = Math.max(0, prev.hp - hp);
             prev.hp = hp;
             if (maxHp > 0) prev.maxHp = maxHp;
+            if (hp <= 0 || hpStr.includes('fnt')) pendingFainted = true;
           }
         } else {
+          if (pendingMove) flushPendingMove();
           // Orphaned damage (recoil, status, item, ability, etc.)
           const dmgAmount = prev ? Math.max(0, prev.hp - hp) : 0;
           if (prev) {
@@ -702,7 +708,7 @@ function parseProtocol(
           }
           if (dmgAmount > 0) {
             const parsed = parsePokemonIdent(dmgIdent);
-            const sourceText = source.replace('[from] ', '').replace('item: ', '');
+            const sourceText = source.replace('[from] ', '').replace('item: ', '').replace('ability: ', '');
             pushLog({
               round: currentRound,
               attackerInstanceId: getInstanceId(dmgIdent),
@@ -793,6 +799,7 @@ function parseProtocol(
         if (pokemonState[faintInstId]) {
           pokemonState[faintInstId].hp = 0;
         }
+        if (loggedFaintIds.has(faintInstId)) break;
         // Mark the pending move's target as fainted if it matches
         if (pendingMove && pendingMove.targetIdent === faintIdent) {
           pendingFainted = true;
