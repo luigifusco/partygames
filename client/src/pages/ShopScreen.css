@@ -234,6 +234,18 @@
   text-transform: uppercase;
 }
 
+.shop-tm-badge.boost {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(95, 214, 122, 0.18);
+  color: var(--color-success);
+  border: 1px solid rgba(95, 214, 122, 0.45);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .shop-tm-acc {
   font-size: 10px;
   color: var(--color-text-muted);

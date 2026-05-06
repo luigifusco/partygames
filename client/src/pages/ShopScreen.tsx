@@ -5,6 +5,9 @@ import { getMoveType, getTMSprite, STAT_MOVES, getMoveAccuracy } from '@shared/m
 import { getMoveInfo } from '@shared/move-info';
 import { HELD_ITEMS } from '@shared/held-item-data';
 import type { HeldItemDef } from '@shared/held-item-data';
+import { BOOST_ITEMS, getBoostPrice, getBoostSprite, MAX_IV } from '@shared/boost-data';
+import type { BoostItem } from '@shared/boost-data';
+import { STAT_LABELS } from '@shared/natures';
 import type { PokemonType } from '@shared/types';
 import './ShopScreen.css';
 
@@ -30,10 +33,12 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
   const [bought, setBought] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedHeldItem, setSelectedHeldItem] = useState<HeldItemDef | null>(null);
-  const [tab, setTab] = useState<'tms' | 'held'>('tms');
+  const [selectedBoost, setSelectedBoost] = useState<BoostItem | null>(null);
+  const [tab, setTab] = useState<'tms' | 'boosts' | 'held'>('tms');
   const [sort, setSort] = useState<SortMode>('type');
   const [filter, setFilter] = useState<FilterType>('all');
   const [tmSearch, setTmSearch] = useState('');
+  const [boostSearch, setBoostSearch] = useState('');
   const [heldSearch, setHeldSearch] = useState('');
 
   const allTypes = useMemo(() => {
@@ -84,6 +89,20 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
     );
   }, [heldSearch]);
 
+  const filteredBoosts = useMemo(() => {
+    const q = boostSearch.trim().toLowerCase();
+    if (!q) return BOOST_ITEMS;
+    return BOOST_ITEMS.filter((boost) =>
+      [
+        boost.name,
+        boost.stat,
+        STAT_LABELS[boost.stat],
+        boost.description,
+        'iv vitamin boost',
+      ].some((field) => String(field).toLowerCase().includes(q))
+    );
+  }, [boostSearch]);
+
   const handleBuy = (moveName: string) => {
     const price = getTMPrice(moveName);
     if (essence < price) return;
@@ -103,6 +122,16 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
     setTimeout(() => setBought(null), 1500);
   };
 
+  const handleBuyBoost = (boost: BoostItem) => {
+    const price = getBoostPrice(boost.stat);
+    if (essence < price) return;
+    onSpendEssence(price);
+    onAddItems([{ itemType: 'boost', itemData: boost.stat }]);
+    setSelectedBoost(null);
+    setBought(boost.name);
+    setTimeout(() => setBought(null), 1500);
+  };
+
   return (
     <div className="shop-screen">
       <div className="ds-topbar">
@@ -117,6 +146,10 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
             className={`ds-tab ${tab === 'tms' ? 'ds-tab-active' : ''}`}
             onClick={() => setTab('tms')}
           >TMs</button>
+          <button
+            className={`ds-tab ${tab === 'boosts' ? 'ds-tab-active' : ''}`}
+            onClick={() => setTab('boosts')}
+          >Boosts</button>
           <button
             className={`ds-tab ${tab === 'held' ? 'ds-tab-active' : ''}`}
             onClick={() => setTab('held')}
@@ -249,6 +282,47 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
         </>
       )}
 
+      {tab === 'boosts' && (
+        <>
+          <div className="shop-search-row">
+            <span className="shop-search-icon" aria-hidden>🔍</span>
+            <input
+              className="shop-search-input"
+              type="search"
+              placeholder="Search boosts by stat…"
+              value={boostSearch}
+              onChange={(e) => setBoostSearch(e.target.value)}
+              aria-label="Search boosts"
+            />
+            {boostSearch && (
+              <button className="shop-search-clear" onClick={() => setBoostSearch('')} aria-label="Clear boost search">×</button>
+            )}
+          </div>
+          <div className="shop-grid">
+            {filteredBoosts.length === 0 && (
+              <div className="shop-empty">No boosts match your search.</div>
+            )}
+            {filteredBoosts.map((boost) => (
+              <div
+                key={boost.stat}
+                className="shop-tm-card"
+                onClick={() => setSelectedBoost(boost)}
+              >
+                <img src={getBoostSprite(boost.stat)} alt={boost.name} className="shop-tm-img" />
+                <div className="shop-tm-info">
+                  <div className="shop-tm-name">{boost.name}</div>
+                  <div className="shop-tm-meta">
+                    <span className="shop-tm-badge boost">BOOST</span>
+                    <span className="shop-tm-acc">{STAT_LABELS[boost.stat]} IV → {MAX_IV}</span>
+                  </div>
+                </div>
+                <div className="shop-tm-price">✦ {getBoostPrice(boost.stat)}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {tab === 'held' && (
         <>
           <div className="shop-search-row">
@@ -307,6 +381,39 @@ export default function ShopScreen({ essence, onSpendEssence, onAddItems }: Shop
                 <button
                   className="ds-btn ds-btn-gold ds-btn-block"
                   onClick={() => canAfford && handleBuyHeldItem(item)}
+                  disabled={!canAfford}
+                >
+                  {canAfford ? 'Buy' : 'Not enough ✦'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {selectedBoost && (() => {
+        const boost = selectedBoost;
+        const price = getBoostPrice(boost.stat);
+        const canAfford = essence >= price;
+        return (
+          <div className="ds-overlay" onClick={(e) => e.target === e.currentTarget && setSelectedBoost(null)}>
+            <div className="ds-modal shop-detail-card">
+              <img src={getBoostSprite(boost.stat)} alt={boost.name} className="shop-detail-img" />
+              <h3 className="shop-detail-name">{boost.name}</h3>
+              <div className="shop-detail-badges">
+                <span className="shop-tm-badge boost">BOOST</span>
+                <span className="shop-detail-cat">{STAT_LABELS[boost.stat]}</span>
+              </div>
+              <div className="shop-detail-stats">
+                <div className="shop-detail-stat"><span>IV Target</span><strong>{MAX_IV}</strong></div>
+              </div>
+              <p className="shop-detail-desc">{boost.description}</p>
+              <div className="shop-detail-price">✦ {price}</div>
+              <div className="shop-detail-actions">
+                <button className="ds-btn ds-btn-ghost ds-btn-block" onClick={() => setSelectedBoost(null)}>Back</button>
+                <button
+                  className="ds-btn ds-btn-gold ds-btn-block"
+                  onClick={() => canAfford && handleBuyBoost(boost)}
                   disabled={!canAfford}
                 >
                   {canAfford ? 'Buy' : 'Not enough ✦'}
