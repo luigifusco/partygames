@@ -704,6 +704,38 @@
   background: #c45454;
 }
 
+.detail-showdown-copy {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin: 14px 0 10px;
+  padding: 12px 18px;
+  border: 1px solid rgba(122, 167, 255, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(122, 167, 255, 0.22), rgba(84, 126, 255, 0.16));
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+  transition: transform 0.08s, background 0.12s, border-color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.detail-showdown-copy:active {
+  transform: scale(0.98);
+}
+
+.detail-showdown-copy.copied {
+  border-color: rgba(95, 220, 145, 0.7);
+  background: linear-gradient(180deg, rgba(95, 220, 145, 0.28), rgba(45, 170, 95, 0.18));
+}
+
+.detail-showdown-copy.error {
+  border-color: rgba(255, 120, 120, 0.7);
+  background: linear-gradient(180deg, rgba(255, 120, 120, 0.24), rgba(180, 60, 60, 0.16));
+}
+
 /* Picker + confirm overlays share .teach-overlay (bottom-sheet) from
    ItemsScreen.css; we only tune the inner content width/layout here. */
 .detail-tm-picker,

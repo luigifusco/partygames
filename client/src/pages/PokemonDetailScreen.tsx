@@ -39,6 +39,47 @@ const TYPE_COLORS: Record<string, string> = {
   steel: '#B8B8D0', fairy: '#EE99AC',
 };
 
+const SHOWDOWN_STAT_LABELS: Record<keyof Stats, string> = {
+  hp: 'HP',
+  attack: 'Atk',
+  defense: 'Def',
+  spAtk: 'SpA',
+  spDef: 'SpD',
+  speed: 'Spe',
+};
+
+function buildShowdownExport(inst: PokemonInstance): string {
+  const itemName = inst.heldItem ? getHeldItemName(inst.heldItem) : '';
+  const lines = [
+    `${inst.pokemon.name}${itemName ? ` @ ${itemName}` : ''}`,
+    `Ability: ${inst.ability}`,
+    'Level: 100',
+    ...(inst.shiny ? ['Shiny: Yes'] : []),
+    `EVs: ${STAT_KEYS.map((key) => `0 ${SHOWDOWN_STAT_LABELS[key]}`).join(' / ')}`,
+    `${inst.nature} Nature`,
+    `IVs: ${STAT_KEYS.map((key) => `${inst.ivs[key]} ${SHOWDOWN_STAT_LABELS[key]}`).join(' / ')}`,
+    ...getEffectiveMoves(inst).map((move) => `- ${move}`),
+  ];
+  return lines.join('\n');
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if (!copied) throw new Error('Copy failed');
+}
+
 export default function PokemonDetailScreen({ collection, items, onShard, onEvolve, onToggleFavorite, onTeachTM, onGiveHeldItem, onTakeHeldItem, playerId }: PokemonDetailScreenProps) {
   const { idx } = useParams();
   const navigate = useNavigate();
@@ -54,6 +95,7 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
   const [heldSearch, setHeldSearch] = useState('');
   const [heldConfirm, setHeldConfirm] = useState<{ itemId: string } | null>(null);
   const [heldTakeConfirm, setHeldTakeConfirm] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
 
   type MoveDex = { name: string; type: string; category: 'Physical' | 'Special' | 'Status'; basePower: number; accuracy: number | null; pp: number | null; priority: number; shortDesc: string; desc: string };
   type AbilityDex = { name: string; shortDesc: string; desc: string };
@@ -143,6 +185,18 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
       onEvolve(inst, targetId);
       setTimeout(() => setEvolving(null), 1200);
     }, 3200);
+  };
+
+  const handleCopyShowdown = async () => {
+    if (!inst) return;
+    try {
+      await copyTextToClipboard(buildShowdownExport(inst));
+      setCopyStatus('copied');
+      window.setTimeout(() => setCopyStatus('idle'), 1800);
+    } catch {
+      setCopyStatus('error');
+      window.setTimeout(() => setCopyStatus('idle'), 2400);
+    }
   };
 
   // --- Reawaken moved to Items screen (trigger by clicking a Memory) ---
@@ -370,6 +424,18 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
             </>
           )}
         </div>
+
+        <button
+          type="button"
+          className={`detail-showdown-copy ${copyStatus === 'copied' ? 'copied' : copyStatus === 'error' ? 'error' : ''}`}
+          onClick={handleCopyShowdown}
+        >
+          {copyStatus === 'copied'
+            ? 'Copied Showdown set!'
+            : copyStatus === 'error'
+              ? 'Copy failed'
+              : 'Copy Smogon / Showdown set'}
+        </button>
       </div>
 
       {evolving && (() => {
