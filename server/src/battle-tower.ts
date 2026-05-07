@@ -3,7 +3,13 @@ import { HELD_ITEMS } from '../../shared/held-item-data.js';
 import type { BoxTier, Pokemon as AppPokemon } from '../../shared/types.js';
 import type { ProfileName } from '../../shared/character-profiles.js';
 import { resolveCharacterName } from '../../shared/character-profiles.js';
-import { BATTLE_TOWER_RUN_LENGTH, type BattleTowerFormat } from '../../shared/battle-tower.js';
+import {
+  BATTLE_TOWER_RUN_LENGTH,
+  battleTowerBattleBracket,
+  battleTowerDifficultyLabel,
+  type BattleTowerDifficultyBracket,
+  type BattleTowerFormat,
+} from '../../shared/battle-tower.js';
 import { randomAbilityForSpecies } from './showdown-battle.js';
 
 const TRAINERS_PATH = '/pokemonparty/assets/trainers';
@@ -55,6 +61,7 @@ export interface BattleTowerOpponent {
   title: string;
   sprite: string;
   line: string;
+  difficultyLabel: string;
   team: BattleTowerPokemonEntry[];
 }
 
@@ -72,11 +79,11 @@ function sample<T>(values: T[], count: number): T[] {
   return out;
 }
 
-function tierWeights(level: number, battleIndex: number): Record<BoxTier, number> {
-  const pressure = level + battleIndex;
-  if (pressure >= 9) return { common: 0, uncommon: 0, rare: 25, epic: 75, legendary: 0 };
-  if (pressure >= 6) return { common: 0, uncommon: 5, rare: 45, epic: 50, legendary: 0 };
-  if (pressure >= 3) return { common: 0, uncommon: 20, rare: 55, epic: 25, legendary: 0 };
+function tierWeights(bracket: BattleTowerDifficultyBracket): Record<BoxTier, number> {
+  if (bracket >= 4) return { common: 0, uncommon: 0, rare: 0, epic: 100, legendary: 0 };
+  if (bracket >= 3) return { common: 0, uncommon: 0, rare: 25, epic: 75, legendary: 0 };
+  if (bracket >= 2) return { common: 0, uncommon: 5, rare: 45, epic: 50, legendary: 0 };
+  if (bracket >= 1) return { common: 0, uncommon: 20, rare: 55, epic: 25, legendary: 0 };
   return { common: 0, uncommon: 45, rare: 45, epic: 10, legendary: 0 };
 }
 
@@ -116,9 +123,9 @@ function characterForPokemon(pokemon: AppPokemon): ProfileName {
   return resolveCharacterName(null, pokemon.name);
 }
 
-function generateTeam(teamSize: number, level: number, battleIndex: number, used: Set<number>): BattleTowerPokemonEntry[] {
+function generateTeam(teamSize: number, bracket: BattleTowerDifficultyBracket, used: Set<number>): BattleTowerPokemonEntry[] {
   const pool = eligiblePokemon();
-  const weights = tierWeights(level, battleIndex);
+  const weights = tierWeights(bracket);
   const team: AppPokemon[] = [];
   const local = new Set<number>();
   let attempts = 0;
@@ -151,11 +158,12 @@ export function generateBattleTowerOpponents(format: BattleTowerFormat, teamSize
   const used = new Set<number>();
   return Array.from({ length: BATTLE_TOWER_RUN_LENGTH }, (_, battleIndex) => {
     const trainer = trainers[battleIndex] ?? pick(TOWER_TRAINERS);
+    const bracket = battleTowerBattleBracket(level, battleIndex);
     return {
       ...trainer,
       line: pick(TOWER_LINES),
-      team: generateTeam(teamSize, level, battleIndex, used),
+      difficultyLabel: battleTowerDifficultyLabel(bracket),
+      team: generateTeam(teamSize, bracket, used),
     };
   });
 }
-

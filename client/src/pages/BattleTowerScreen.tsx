@@ -22,6 +22,7 @@ interface TowerFormatStatus {
   rewardEssence: number;
   level: number;
   difficultyLabel: string;
+  finalDifficultyLabel?: string;
   progress: {
     currentStreak: number;
     bestStreak: number;
@@ -35,6 +36,7 @@ interface TowerOpponent {
   title: string;
   sprite: string;
   line: string;
+  difficultyLabel?: string;
   team: { pokemonId: number; heldItem: string }[];
 }
 
@@ -277,7 +279,7 @@ export default function BattleTowerScreen({ playerId, collection, items, essence
         disallowLegendaries
         onBack={() => setPhase('choose')}
         title={`Battle Tower ${selectedDef.label}`}
-        subtitle={`${formatStatus.difficultyLabel} · Reward ${formatStatus.rewardEssence} essence`}
+        subtitle={`${formatStatus.difficultyLabel} · Final ${formatStatus.finalDifficultyLabel ?? 'next bracket'} · Reward ${formatStatus.rewardEssence} essence`}
       />
     );
   }
@@ -298,7 +300,10 @@ export default function BattleTowerScreen({ playerId, collection, items, essence
 
         {activeRun && phase === 'run' && (
           <section className="battle-tower-card battle-tower-run-card">
-            <div className="battle-tower-kicker">Floor {activeRun.currentBattleIndex + 1}/{BATTLE_TOWER_RUN_LENGTH}</div>
+            <div className="battle-tower-kicker">
+              Floor {activeRun.currentBattleIndex + 1}/{BATTLE_TOWER_RUN_LENGTH}
+              {currentOpponent?.difficultyLabel ? ` · ${currentOpponent.difficultyLabel}` : ''}
+            </div>
             {currentOpponent && (
               <>
                 <img className="battle-tower-trainer" src={currentOpponent.sprite} alt={currentOpponent.name} />
@@ -343,7 +348,7 @@ export default function BattleTowerScreen({ playerId, collection, items, essence
                     <span className="battle-tower-format-desc">{info.description}</span>
                     <span>Entry: <b>{info.entryCost}</b></span>
                     <span>Reward: <b>{info.rewardEssence}</b></span>
-                    <span>Difficulty: <b>{info.difficultyLabel}</b></span>
+                    <span>Difficulty: <b>{info.difficultyLabel}</b> · Final: <b>{info.finalDifficultyLabel ?? 'next bracket'}</b></span>
                     <span>Streak: <b>{info.progress.currentStreak}</b> · Best: <b>{info.progress.bestStreak}</b></span>
                   </button>
                 );
