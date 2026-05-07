@@ -55,6 +55,10 @@ const ITEM_ID_TO_SHOWDOWN: Record<string, string> = {
   'shell-bell': 'Shell Bell',
   'wide-lens': 'Wide Lens',
   'scope-lens': 'Scope Lens',
+  'damp-rock': 'Damp Rock',
+  'heat-rock': 'Heat Rock',
+  'smooth-rock': 'Smooth Rock',
+  'mental-herb': 'Mental Herb',
   'red-card': 'Red Card',
   'eject-button': 'Eject Button',
 };

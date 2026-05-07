@@ -36,12 +36,20 @@ const BASE_HELD_ITEMS: HeldItemDef[] = [
   { id: 'eviolite', name: 'Eviolite', description: 'Boosts Def and Sp. Def by 50% if holder can still evolve.', price: 200, sprite: `${ITEMS_PATH}/eviolite.png` },
   { id: 'rocky-helmet', name: 'Rocky Helmet', description: 'Deals 1/6 of attacker HP on contact moves.', price: 180, sprite: `${ITEMS_PATH}/rocky-helmet.png` },
 
+  // Weather extenders
+  { id: 'damp-rock', name: 'Damp Rock', description: 'Extends rain caused by Rain Dance to eight turns.', price: 160, sprite: `${ITEMS_PATH}/damp-rock.png` },
+  { id: 'heat-rock', name: 'Heat Rock', description: 'Extends harsh sunlight caused by Sunny Day to eight turns.', price: 160, sprite: `${ITEMS_PATH}/heat-rock.png` },
+  { id: 'smooth-rock', name: 'Smooth Rock', description: 'Extends sandstorm caused by Sandstorm to eight turns.', price: 160, sprite: `${ITEMS_PATH}/smooth-rock.png` },
+
   // Status orbs
   { id: 'flame-orb', name: 'Flame Orb', description: 'Burns the holder at end of turn. Useful with Guts ability.', price: 150, sprite: `${ITEMS_PATH}/flame-orb.png` },
   { id: 'toxic-orb', name: 'Toxic Orb', description: 'Badly poisons the holder at end of turn. Useful with Poison Heal.', price: 150, sprite: `${ITEMS_PATH}/toxic-orb.png` },
 
   // Status cure
   { id: 'lum-berry', name: 'Lum Berry', description: 'Cures any status condition once. Consumed after use.', price: 100, sprite: `${ITEMS_PATH}/lum-berry.png` },
+
+  // Utility
+  { id: 'mental-herb', name: 'Mental Herb', description: 'Cures infatuation, Taunt, Encore, Torment, Disable, or Heal Block once. Consumed after use.', price: 150, sprite: `${ITEMS_PATH}/mental-herb.png` },
 
   // Swap items
   { id: 'red-card', name: 'Red Card', description: 'When hit by an attack, forces the attacker to swap out. Consumed after use.', price: 200, sprite: `${ITEMS_PATH}/red-card.png` },

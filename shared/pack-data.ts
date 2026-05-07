@@ -12,7 +12,7 @@ export const PACKS: PackDef[] = [
     baseCost: 100,
     pool: [7, 54, 60, 72, 79, 86, 90, 98, 116, 118, 120, 129, 131, 138, 140, 158, 170, 194, 211, 222, 223, 245, 258, 270, 278, 283, 318, 320, 339, 341, 349, 363, 366, 369, 370, 382, 393, 418, 422, 456, 458, 484, 489, 490, 501, 515, 535, 550, 564, 580, 592, 594, 647],
     tmPool: ['Surf', 'Hydro Pump', 'Aqua Tail', 'Scald', 'Muddy Water', 'Brine', 'Blizzard', 'Ice Beam', 'Bounce', 'Rain Dance', 'Razor Shell'],
-    itemPool: ['leftovers', 'shell-bell', 'choice-specs', 'wise-glasses'],
+    itemPool: ['leftovers', 'shell-bell', 'choice-specs', 'wise-glasses', 'damp-rock'],
   },
   {
     id: 'inferno',
@@ -22,7 +22,7 @@ export const PACKS: PackDef[] = [
     baseCost: 120,
     pool: [4, 37, 58, 77, 146, 155, 218, 228, 240, 244, 250, 255, 322, 324, 390, 485, 494, 498, 513, 554, 607, 631, 636, 643],
     tmPool: ['Fire Blast', 'Solar Beam', 'Will-O-Wisp', 'Outrage', 'Close Combat', 'Earthquake', 'Sunny Day', 'Blue Flare', 'Fiery Dance', 'Fusion Flare', 'Searing Shot', 'V-create'],
-    itemPool: ['choice-band', 'life-orb', 'flame-orb', 'muscle-band'],
+    itemPool: ['choice-band', 'life-orb', 'flame-orb', 'muscle-band', 'heat-rock'],
   },
   {
     id: 'overgrowth',
@@ -52,7 +52,7 @@ export const PACKS: PackDef[] = [
     baseCost: 90,
     pool: [27, 50, 74, 95, 104, 111, 138, 140, 142, 194, 207, 213, 220, 222, 231, 246, 290, 299, 304, 322, 328, 337, 338, 339, 343, 345, 347, 369, 377, 383, 408, 410, 438, 443, 449, 524, 529, 551, 557, 564, 566, 618, 622, 639, 645],
     tmPool: ['Earthquake', 'Stone Edge', 'Earth Power', 'Rock Slide', 'Dig', 'Iron Head', 'Stealth Rock', 'Sandstorm', 'Spikes', 'Mud-Slap', 'Rock Polish'],
-    itemPool: ['rocky-helmet', 'choice-band', 'muscle-band', 'eviolite'],
+    itemPool: ['rocky-helmet', 'choice-band', 'muscle-band', 'eviolite', 'smooth-rock'],
   },
   {
     id: 'twilight',
@@ -62,7 +62,7 @@ export const PACKS: PackDef[] = [
     baseCost: 110,
     pool: [63, 79, 92, 96, 102, 150, 151, 177, 198, 200, 201, 203, 215, 228, 238, 249, 251, 261, 280, 302, 307, 318, 325, 337, 338, 343, 353, 355, 359, 360, 374, 380, 381, 385, 386, 425, 433, 434, 436, 439, 442, 479, 480, 481, 482, 487, 488, 491, 494, 509, 517, 527, 551, 559, 561, 562, 570, 574, 577, 592, 605, 607, 622, 624, 629, 633, 648],
     tmPool: ['Shadow Ball', 'Dark Pulse', 'Psychic', 'Dream Eater', 'Nasty Plot', 'Calm Mind', 'Hypnosis', 'Crunch', 'Foul Play', 'Future Sight', 'Zen Headbutt', 'Amnesia', 'Cosmic Power', 'Fake Tears', 'Hex', 'Night Daze', 'Psystrike', 'Tail Glow'],
-    itemPool: ['choice-specs', 'wise-glasses', 'life-orb', 'focus-sash'],
+    itemPool: ['choice-specs', 'wise-glasses', 'life-orb', 'focus-sash', 'mental-herb'],
   },
   {
     id: 'brawler',
