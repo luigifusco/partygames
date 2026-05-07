@@ -2112,11 +2112,12 @@ app.post(`${BASE_PATH}/api/battle-tower/battle`, async (req, res) => {
       return species ? getPokemonSprite(species, entry.shiny) : null;
     });
     const rightHeldItems = opponent.team.map((entry) => entry.heldItem);
+    const rightMoves = opponent.team.map((entry) => entry.moves ?? null);
     const rightAbilities = opponent.team.map((entry) => entry.ability);
     const rightCharacters = opponent.team.map((entry) => entry.character);
     const snapshot = await observeBattleSimulation(
       { field_size: String(row.field_size), total_pokemon: String(row.team_size), opponent_type: 'battle_tower' },
-      () => simulateBattleFromIds(leftTeam, rightTeam, row.field_size, leftHeldItems, rightHeldItems, leftMoves, undefined, leftAbilities, rightAbilities, leftCharacters, rightCharacters, leftSprites),
+      () => simulateBattleFromIds(leftTeam, rightTeam, row.field_size, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters, leftSprites),
     );
     const won = snapshot.winner === 'left';
     const battleRecordId = uuidv4();

@@ -58,6 +58,11 @@ const terrainRedundant: Filter = (_m, md, ctx) => {
   return null;
 };
 
+const pseudoWeatherRedundant: Filter = (m, _md, ctx) => {
+  if (moveId(m) === 'trickroom' && ctx.battle.field?.pseudoWeather?.trickroom) return 'trickroom-already-active';
+  return null;
+};
+
 // ── Hazards already at cap ─────────────────────────────────────────
 const hazardRedundant: Filter = (_m, md, ctx) => {
   if (!md.sideCondition) return null;
@@ -234,6 +239,7 @@ const selfDestructUnsafe: Filter = (_m, md, ctx) => {
 const FILTERS: Filter[] = [
   weatherRedundant,
   terrainRedundant,
+  pseudoWeatherRedundant,
   hazardRedundant,
   screenRedundant,
   statusRedundant,

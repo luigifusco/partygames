@@ -159,6 +159,18 @@ function damageScore(move: any, md: any, ctx: MoveCtx): { score: number; koChanc
 function statusValue(move: any, md: any, ctx: MoveCtx): number {
   if (md.category !== 'Status') return 0;
   const id = (md.id || '').toLowerCase();
+  if (id === 'trickroom') {
+    if (ctx.battle.field?.pseudoWeather?.trickroom) return 0;
+    const avgSpeed = (pokemon: any[]) => {
+      const active = pokemon.filter((p: any) => p && !p.fainted);
+      if (active.length === 0) return 0;
+      return active.reduce((sum: number, p: any) => sum + (p.storedStats?.spe ?? p.baseStoredStats?.spe ?? 100), 0) / active.length;
+    };
+    const ownSpeed = avgSpeed(ctx.side.active || []);
+    const oppSpeed = avgSpeed(ctx.oppSide.active || []);
+    if (ownSpeed >= oppSpeed) return 0;
+    return Math.min(1.8, 0.9 + (oppSpeed - ownSpeed) / 80);
+  }
   const t = ctx.target;
   if (!t) return 0;
 

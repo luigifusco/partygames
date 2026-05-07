@@ -153,6 +153,28 @@
   font-weight: 800;
 }
 
+.battle-tower-theme {
+  display: grid;
+  gap: 2px;
+  width: min(100%, 420px);
+  margin: var(--space-2) auto 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgba(255, 211, 90, 0.32);
+  border-radius: var(--radius-md);
+  background: rgba(255, 211, 90, 0.1);
+}
+
+.battle-tower-theme strong {
+  color: var(--color-gold);
+  font-size: var(--text-sm);
+}
+
+.battle-tower-theme span {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+
 .battle-tower-run-card blockquote {
   margin: var(--space-3) 0;
   padding: var(--space-3);
@@ -234,4 +256,3 @@
     margin: 0 auto;
   }
 }
-

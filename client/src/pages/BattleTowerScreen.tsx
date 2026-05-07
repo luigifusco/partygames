@@ -37,7 +37,9 @@ interface TowerOpponent {
   sprite: string;
   line: string;
   difficultyLabel?: string;
-  team: { pokemonId: number; heldItem: string }[];
+  themeName?: string;
+  themeDescription?: string;
+  team: { pokemonId: number; heldItem: string; moves?: [string, string] }[];
 }
 
 interface TowerRun {
@@ -309,6 +311,12 @@ export default function BattleTowerScreen({ playerId, collection, items, essence
                 <img className="battle-tower-trainer" src={currentOpponent.sprite} alt={currentOpponent.name} />
                 <h3>{currentOpponent.name}</h3>
                 <div className="battle-tower-title">{currentOpponent.title}</div>
+                {currentOpponent.themeName && (
+                  <div className="battle-tower-theme">
+                    <strong>{currentOpponent.themeName}</strong>
+                    {currentOpponent.themeDescription && <span>{currentOpponent.themeDescription}</span>}
+                  </div>
+                )}
                 <blockquote>{currentOpponent.line}</blockquote>
                 <div className="battle-tower-team-preview">
                   {currentOpponent.team.map((entry, i) => (
