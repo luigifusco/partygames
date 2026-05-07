@@ -7,6 +7,7 @@ import TeamSelectGrid from '../components/TeamSelectGrid';
 import Avatar from '../components/Avatar';
 import type { BattleSnapshot, EloUpdate } from '@shared/battle-types';
 import type { OwnedItem, PokemonInstance } from '@shared/types';
+import { getPokemonInstanceSprite } from '@shared/types';
 import type { Tournament, TournamentSummary, TournamentMatch, FrozenPokemon } from '@shared/tournament-types';
 import { CHARACTER_UNLOCK_CHAPTER } from '@shared/story-data';
 import { useStoryChapters } from '../hooks/useStoryChapters';
@@ -30,6 +31,10 @@ interface ForfeitNotice {
   winner: string | null;
   player1: string | null;
   player2: string | null;
+}
+
+function frozenName(pokemon: FrozenPokemon): string {
+  return pokemon.shiny ? `✨ ${pokemon.name}` : pokemon.name;
 }
 
 export default function TournamentScreen({ playerName, collection, items, recentPokemonIds, onUpdateRecentPokemonIds, playerId, onEloUpdate, onBattleViewingChange }: TournamentScreenProps) {
@@ -248,7 +253,8 @@ export default function TournamentScreen({ playerName, collection, items, recent
       return {
         pokemonId: inst.pokemon.id,
         name: inst.pokemon.name,
-        sprite: inst.pokemon.sprite,
+        sprite: getPokemonInstanceSprite(inst),
+        shiny: inst.shiny,
         heldItem: i < selectedHeldItems.length ? selectedHeldItems[i] ?? null : inst.heldItem ?? null,
         moves: inst.learnedMoves ?? inst.pokemon.moves as [string, string],
         ability: inst.ability ?? null,
@@ -423,7 +429,7 @@ export default function TournamentScreen({ playerName, collection, items, recent
                 >
                   {pos >= 0 && <div className="tournament-pick-badge">#{pos + 1}</div>}
                   <img src={f.sprite} alt={f.name} className="tournament-pick-sprite" />
-                  <div className="tournament-pick-name">{f.name}</div>
+                  <div className="tournament-pick-name">{frozenName(f)}</div>
                   {f.ability && <div className="tournament-pick-detail">{f.ability}</div>}
                   {f.moves && <div className="tournament-pick-detail">{f.moves[0]} / {f.moves[1]}</div>}
                   {f.heldItem && <div className="tournament-pick-detail">@ {f.heldItem}</div>}
@@ -487,7 +493,7 @@ export default function TournamentScreen({ playerName, collection, items, recent
                 <div key={pos} className="tournament-pick-card picked opponent-pick">
                   <div className="tournament-pick-badge">#{pos + 1}</div>
                   <img src={f.sprite} alt={f.name} className="tournament-pick-sprite" />
-                  <div className="tournament-pick-name">{f.name}</div>
+                  <div className="tournament-pick-name">{frozenName(f)}</div>
                 </div>
               );
             })}
@@ -515,7 +521,7 @@ export default function TournamentScreen({ playerName, collection, items, recent
                 >
                   {picked && <div className="tournament-pick-badge">#{pos + 1}</div>}
                   <img src={f.sprite} alt={f.name} className="tournament-pick-sprite" />
-                  <div className="tournament-pick-name">{f.name}</div>
+                  <div className="tournament-pick-name">{frozenName(f)}</div>
                   {f.ability && <div className="tournament-pick-detail">{f.ability}</div>}
                   {f.moves && <div className="tournament-pick-detail">{f.moves[0]} / {f.moves[1]}</div>}
                   {f.heldItem && <div className="tournament-pick-detail">@ {f.heldItem}</div>}
@@ -658,7 +664,7 @@ export default function TournamentScreen({ playerName, collection, items, recent
                   )}
                   {t.fixedTeam && t.frozenTeams[playerName] && (
                     <div className="tournament-team-locked">
-                      Team locked: {t.frozenTeams[playerName].map(f => f.name).join(', ')}
+                      Team locked: {t.frozenTeams[playerName].map(frozenName).join(', ')}
                     </div>
                   )}
                   <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => leaveTournament(t.id)}>Leave</button>
@@ -761,7 +767,7 @@ export default function TournamentScreen({ playerName, collection, items, recent
                   <div key={i} className="tournament-team-pokemon">
                     <img src={fp.sprite} alt={fp.name} className="tournament-team-sprite" />
                     <div className="tournament-team-pokemon-info">
-                      <div className="tournament-team-pokemon-name">{fp.name}</div>
+                      <div className="tournament-team-pokemon-name">{frozenName(fp)}</div>
                       {fp.ability && <div className="tournament-team-pokemon-detail">{fp.ability}</div>}
                       {fp.moves && <div className="tournament-team-pokemon-detail">{fp.moves[0]} / {fp.moves[1]}</div>}
                       {fp.heldItem && <div className="tournament-team-pokemon-detail">{fp.heldItem}</div>}

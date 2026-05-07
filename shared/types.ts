@@ -43,6 +43,7 @@ export interface PokemonInstance {
   ivs: IVs;
   nature: NatureName;
   ability: string;
+  shiny?: boolean;
   learnedMoves?: [MoveId, MoveId];
   heldItem?: string;
   bondXp?: number;
@@ -54,6 +55,19 @@ export interface PokemonInstance {
 // Returns the effective moves for a pokemon instance (learned overrides species defaults)
 export function getEffectiveMoves(inst: PokemonInstance): [MoveId, MoveId] {
   return inst.learnedMoves ?? inst.pokemon.moves;
+}
+
+export function pokemonSpriteSlug(pokemon: Pokemon): string {
+  return pokemon.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+export function getPokemonSprite(pokemon: Pokemon, shiny?: boolean): string {
+  if (!shiny) return pokemon.sprite;
+  return `https://play.pokemonshowdown.com/sprites/ani-shiny/${pokemonSpriteSlug(pokemon)}.gif`;
+}
+
+export function getPokemonInstanceSprite(inst: PokemonInstance): string {
+  return getPokemonSprite(inst.pokemon, inst.shiny);
 }
 
 export type MoveId = string;

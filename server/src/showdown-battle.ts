@@ -32,6 +32,7 @@ export interface BattleTeamEntry {
   ability?: string;
   character?: string | null;
   instanceId?: string;
+  sprite?: string;
 }
 
 // Map our held item IDs to Showdown item names
@@ -294,12 +295,12 @@ function parseProtocol(
   // Pre-build instance data from entries
   for (let i = 0; i < leftEntries.length; i++) {
     const p = leftEntries[i].pokemon;
-    instanceIdToSprite[`l${i}`] = p.sprite;
+    instanceIdToSprite[`l${i}`] = leftEntries[i].sprite ?? p.sprite;
     instanceIdToTypes[`l${i}`] = [...p.types];
   }
   for (let i = 0; i < rightEntries.length; i++) {
     const p = rightEntries[i].pokemon;
-    instanceIdToSprite[`r${i}`] = p.sprite;
+    instanceIdToSprite[`r${i}`] = rightEntries[i].sprite ?? p.sprite;
     instanceIdToTypes[`r${i}`] = [...p.types];
   }
 
@@ -1114,7 +1115,7 @@ function parseProtocol(
     return {
       instanceId: instId,
       name: e.pokemon.name,
-      sprite: e.pokemon.sprite,
+      sprite: e.sprite ?? e.pokemon.sprite,
       types: [...e.pokemon.types],
       currentHp: finalHp[instId] ?? 0,
       maxHp: maxHpByName[e.pokemon.name] ?? 100,
@@ -1128,7 +1129,7 @@ function parseProtocol(
     return {
       instanceId: instId,
       name: e.pokemon.name,
-      sprite: e.pokemon.sprite,
+      sprite: e.sprite ?? e.pokemon.sprite,
       types: [...e.pokemon.types],
       currentHp: finalHp[instId] ?? 0,
       maxHp: maxHpByName[e.pokemon.name] ?? 100,

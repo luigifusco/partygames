@@ -1,5 +1,5 @@
 import type { Pokemon, PokemonInstance, PokemonType } from '@shared/types';
-import { getEffectiveMoves } from '@shared/types';
+import { getEffectiveMoves, getPokemonInstanceSprite } from '@shared/types';
 import RarityStars from './RarityStars';
 import './PokemonCard.css';
 
@@ -37,8 +37,9 @@ export default function PokemonCard({ pokemon, count, onClick, children, classNa
   return (
     <div className={`pkmn-card ${rarityClass} ${className ?? ''}`} onClick={onClick} style={style}>
       {count !== undefined && count > 1 && <div className="pkmn-card-count">×{count}</div>}
-      <img src={pokemon.sprite} alt={pokemon.name} />
-      <div className="pkmn-card-name">{pokemon.name}</div>
+      {instance?.shiny && <div className="pkmn-card-shiny-badge">✨</div>}
+      <img src={instance ? getPokemonInstanceSprite(instance) : pokemon.sprite} alt={pokemon.name} />
+      <div className="pkmn-card-name">{instance?.shiny ? `✨ ${pokemon.name}` : pokemon.name}</div>
       <RarityStars tier={pokemon.tier} size="sm" className="pkmn-card-stars" />
       {instance && (
         <div className="pkmn-card-info">

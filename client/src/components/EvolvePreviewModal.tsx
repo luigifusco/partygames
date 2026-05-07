@@ -1,4 +1,5 @@
 import type { PokemonInstance, Pokemon, Stats } from '@shared/types';
+import { getPokemonInstanceSprite, getPokemonSprite } from '@shared/types';
 import { NATURE_BY_NAME, calcStat, STAT_LABELS } from '@shared/natures';
 import RarityStars from './RarityStars';
 import './EvolvePreviewModal.css';
@@ -21,7 +22,7 @@ export default function EvolvePreviewModal({ instance, targets, onConfirm, onCan
     <div className="evolve-preview-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="evolve-preview-modal">
         <div className="evolve-preview-header">
-          <h3>Evolve {current.name}?</h3>
+          <h3>Evolve {instance.shiny ? `✨ ${current.name}` : current.name}?</h3>
           <button className="evolve-preview-close" onClick={onCancel} aria-label="Close">✕</button>
         </div>
 
@@ -30,14 +31,14 @@ export default function EvolvePreviewModal({ instance, targets, onConfirm, onCan
             <div key={target.id} className="evolve-preview-target">
               <div className="evolve-preview-sprites">
                 <div className="evolve-preview-sprite-col">
-                  <img src={current.sprite} alt={current.name} />
-                  <div className="evolve-preview-sprite-name">{current.name}</div>
+                  <img src={getPokemonInstanceSprite(instance)} alt={current.name} />
+                  <div className="evolve-preview-sprite-name">{instance.shiny ? `✨ ${current.name}` : current.name}</div>
                   <RarityStars tier={current.tier} size="sm" />
                 </div>
                 <div className="evolve-preview-arrow">→</div>
                 <div className="evolve-preview-sprite-col evolve-preview-next">
-                  <img src={target.sprite} alt={target.name} />
-                  <div className="evolve-preview-sprite-name">{target.name}</div>
+                  <img src={getPokemonSprite(target, instance.shiny)} alt={target.name} />
+                  <div className="evolve-preview-sprite-name">{instance.shiny ? `✨ ${target.name}` : target.name}</div>
                   <RarityStars tier={target.tier} size="sm" />
                 </div>
               </div>
@@ -72,7 +73,7 @@ export default function EvolvePreviewModal({ instance, targets, onConfirm, onCan
               )}
 
               <button className="evolve-preview-confirm" onClick={() => onConfirm(target.id)}>
-                Evolve into {target.name}
+                Evolve into {instance.shiny ? `✨ ${target.name}` : target.name}
               </button>
             </div>
           ))}

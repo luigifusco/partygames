@@ -4,6 +4,7 @@ import { PACKS, PACK_TIERS, packTierCost } from '@shared/pack-data';
 import { openPack, getPackPoolSize } from '@shared/boxes';
 import { getTMSprite, getMoveType } from '@shared/move-data';
 import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
+import { getPokemonInstanceSprite } from '@shared/types';
 import type { PokemonInstance, PackTierId, BoxTier } from '@shared/types';
 import RarityStars from '../components/RarityStars';
 import './StoreScreen.css';
@@ -17,6 +18,7 @@ interface PackCard {
   ability?: string;
   moves?: [string, string];
   label?: string;
+  shiny?: boolean;
 }
 
 interface StoreScreenProps {
@@ -129,12 +131,13 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
 
     const packCards: PackCard[] = instances.map((inst) => ({
       type: 'pokemon' as const,
-      name: inst.pokemon.name,
-      sprite: inst.pokemon.sprite,
+      name: inst.shiny ? `✨ ${inst.pokemon.name}` : inst.pokemon.name,
+      sprite: getPokemonInstanceSprite(inst),
       tier: inst.pokemon.tier,
       nature: inst.nature,
       ability: inst.ability,
       moves: (inst.learnedMoves ?? inst.pokemon.moves) as [string, string],
+      shiny: inst.shiny,
     }));
 
     for (const tm of result.bonusTMs) {
@@ -348,7 +351,7 @@ export default function StoreScreen({ essence, onSpendEssence, onAddPokemon, onA
                       onContextMenu={(e) => e.preventDefault()}
                     />
                   </div>
-                  <div className="pack-reveal-name">{card.name}</div>
+                  <div className={`pack-reveal-name ${card.shiny ? 'shiny' : ''}`}>{card.name}</div>
                   {card.type === 'pokemon' && card.moves && (
                     <div className="pack-reveal-info">
                       <span className="pack-reveal-nature">{card.nature}</span>

@@ -9,7 +9,7 @@ import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { reawakenCost } from '@shared/evolution';
 import { REAWAKEN_UNLOCK_CHAPTER } from '@shared/story-data';
 import type { OwnedItem, PokemonInstance, Pokemon } from '@shared/types';
-import { getEffectiveMoves } from '@shared/types';
+import { getEffectiveMoves, getPokemonInstanceSprite } from '@shared/types';
 import { canLearnMove } from '@shared/tm-learnsets';
 import PokemonIcon from '../components/PokemonIcon';
 import ReawakenConfirmModal from '../components/ReawakenConfirmModal';
@@ -157,7 +157,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
   const handleHeldItemPickPokemon = (inst: PokemonInstance) => {
     if (!heldItemPhase) return;
     onGiveHeldItem(inst, heldItemPhase.itemId);
-    showSuccess('🎁', `${inst.pokemon.name} received ${getHeldItemName(heldItemPhase.itemId)}!`, inst.pokemon.sprite);
+    showSuccess('🎁', `${inst.pokemon.name} received ${getHeldItemName(heldItemPhase.itemId)}!`, getPokemonInstanceSprite(inst));
     setHeldItemPhase(null);
   };
 
@@ -165,7 +165,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
     if (!boostPhase) return;
     if (inst.ivs[boostPhase.stat] >= MAX_IV) return;
     onUseBoost(inst, boostPhase.stat);
-    showSuccess('💪', `${inst.pokemon.name}'s ${STAT_LABELS[boostPhase.stat]} maxed out!`, inst.pokemon.sprite);
+    showSuccess('💪', `${inst.pokemon.name}'s ${STAT_LABELS[boostPhase.stat]} maxed out!`, getPokemonInstanceSprite(inst));
     setBoostPhase(null);
   };
 
@@ -177,7 +177,7 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
   const handlePickMoveSlot = (slot: 0 | 1) => {
     if (!teachPhase || teachPhase.step !== 'pickMove') return;
     onTeachTM(teachPhase.instance, teachPhase.moveName, slot);
-    showSuccess('💿', `${teachPhase.instance.pokemon.name} learned ${teachPhase.moveName}!`, teachPhase.instance.pokemon.sprite);
+    showSuccess('💿', `${teachPhase.instance.pokemon.name} learned ${teachPhase.moveName}!`, getPokemonInstanceSprite(teachPhase.instance));
     setTeachPhase(null);
   };
 
@@ -238,9 +238,9 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
     >
       {inst.favorite && <div className="teach-pokemon-favorite" title="Favorite">★</div>}
       <span className="teach-pokemon-sprite-frame">
-        <img src={inst.pokemon.sprite} alt={inst.pokemon.name} />
+        <img src={getPokemonInstanceSprite(inst)} alt={inst.pokemon.name} />
       </span>
-      <div className="teach-pokemon-name">{inst.pokemon.name}</div>
+      <div className="teach-pokemon-name">{inst.shiny ? `✨ ${inst.pokemon.name}` : inst.pokemon.name}</div>
       {extra}
     </div>
   );
@@ -412,11 +412,11 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
                           <div key={inst.instanceId} className="item-card held-pokemon-card" onClick={() => onTakeHeldItem(inst)}>
                             <img
                               className="item-sprite"
-                              src={inst.pokemon.sprite}
+                              src={getPokemonInstanceSprite(inst)}
                               alt={inst.pokemon.name}
                               style={{ imageRendering: 'pixelated' }}
                             />
-                            <div className="item-name">{inst.pokemon.name}</div>
+                            <div className="item-name">{inst.shiny ? `✨ ${inst.pokemon.name}` : inst.pokemon.name}</div>
                             <div className="held-item-badge">
                               <img src={getHeldItemSprite(inst.heldItem!)} alt="" className="held-item-mini" />
                               <span>{getHeldItemName(inst.heldItem!)}</span>
@@ -472,8 +472,8 @@ export default function ItemsScreen({ items, collection, essence, playerId, onTe
               <button className="teach-close" onClick={() => setTeachPhase(null)}>✕</button>
             </div>
             <div className="teach-pokemon-preview">
-              <img src={teachPhase.instance.pokemon.sprite} alt={teachPhase.instance.pokemon.name} />
-              <span>{teachPhase.instance.pokemon.name}</span>
+              <img src={getPokemonInstanceSprite(teachPhase.instance)} alt={teachPhase.instance.pokemon.name} />
+              <span>{teachPhase.instance.shiny ? `✨ ${teachPhase.instance.pokemon.name}` : teachPhase.instance.pokemon.name}</span>
             </div>
             <div className="teach-new-move">
               <img className="teach-tm-icon" src={getTMSprite(teachPhase.moveName)} alt="TM" />

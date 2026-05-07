@@ -41,6 +41,7 @@ export function initDb() {
       id TEXT PRIMARY KEY,
       player_id TEXT NOT NULL REFERENCES players(id),
       pokemon_id INTEGER NOT NULL,
+      shiny INTEGER NOT NULL DEFAULT 0,
       nature TEXT NOT NULL DEFAULT 'Serious',
       iv_hp INTEGER NOT NULL DEFAULT 0,
       iv_atk INTEGER NOT NULL DEFAULT 0,
@@ -201,6 +202,11 @@ export function initDb() {
   // Add favorite column (per-instance favorite flag for sorting/selection)
   if (!pokemonCols2.find((c: any) => c.name === 'favorite')) {
     db.exec(`ALTER TABLE owned_pokemon ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0`);
+  }
+
+  // Add shiny flag (1 in 1024 rolled when a Pokémon instance is created)
+  if (!pokemonCols2.find((c: any) => c.name === 'shiny')) {
+    db.exec(`ALTER TABLE owned_pokemon ADD COLUMN shiny INTEGER NOT NULL DEFAULT 0`);
   }
 
   // Add character column (AI profile override for move choice)

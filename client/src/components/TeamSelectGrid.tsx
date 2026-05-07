@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import PokemonIcon from './PokemonIcon';
-import { getEffectiveMoves } from '@shared/types';
+import { getEffectiveMoves, getPokemonInstanceSprite } from '@shared/types';
 import type { OwnedItem, PokemonInstance } from '@shared/types';
 import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import {
@@ -300,9 +300,9 @@ export default function TeamSelectGrid({
                     <img src={getHeldItemSprite(inst.heldItem)} alt="" />
                   </span>
                 )}
-                <img src={p.sprite} alt={p.name} />
+                <img src={getPokemonInstanceSprite(inst)} alt={p.name} />
                 <PokemonIcon pokemonId={p.id} className="team-select-sprite-icon" />
-                <div className="team-select-card-name">{p.name}</div>
+                <div className="team-select-card-name">{inst.shiny ? `✨ ${p.name}` : p.name}</div>
                 <div className="team-select-card-info">
                   <div className="team-select-card-nature">{inst.nature}</div>
                   {inst.ability && <div className="team-select-card-ability">{inst.ability}</div>}

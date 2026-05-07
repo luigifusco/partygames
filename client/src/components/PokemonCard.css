@@ -102,6 +102,24 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
+.pkmn-card-shiny-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2;
+  box-shadow: 0 0 10px rgba(255, 224, 102, 0.6);
+}
+
+.pkmn-card-count + .pkmn-card-shiny-badge {
+  top: 32px;
+}
+
 /* Rarity variants: broader glow for display in grids */
 .pkmn-card.ds-rarity-common,
 .pkmn-card.ds-rarity-uncommon,

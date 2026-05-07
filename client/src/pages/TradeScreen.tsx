@@ -5,7 +5,7 @@ import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { useOnlinePlayers } from '../useOnlinePlayers';
 import Avatar from '../components/Avatar';
 import type { PokemonInstance } from '@shared/types';
-import { getEffectiveMoves } from '@shared/types';
+import { getEffectiveMoves, getPokemonInstanceSprite } from '@shared/types';
 import { getHeldItemSprite, getHeldItemName } from '@shared/held-item-data';
 import { buildInstance } from '../api';
 import './TradeScreen.css';
@@ -45,6 +45,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
   const [myPokemonId, setMyPokemonId] = useState<number | null>(null);
   const [theirPokemonId, setTheirPokemonId] = useState<number | null>(null);
   const [nameQuery, setNameQuery] = useState('');
+  const [tradeAnimation, setTradeAnimation] = useState<{ give: PokemonInstance | null; receive: PokemonInstance | null } | null>(null);
 
   useEffect(() => {
     if (!socket.connected) {
@@ -93,13 +94,15 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
       const receiveRow = isPlayer1 ? player1Received : player2Received;
       setMyPokemonId(givePokemonId);
       setTheirPokemonId(receivePokemonId);
+      const giveInst =
+        (giveInstanceId ? collection.find((inst) => inst.instanceId === giveInstanceId) : null) ??
+        collection.find((inst) => inst.pokemon.id === givePokemonId) ??
+        null;
+      const receiveInst = receiveRow ? buildInstance(receiveRow) : null;
+      setTradeAnimation({ give: giveInst, receive: receiveInst });
       setPhase('animation');
 
       setTimeout(() => {
-        const giveInst =
-          (giveInstanceId ? collection.find((inst) => inst.instanceId === giveInstanceId) : null) ??
-          collection.find((inst) => inst.pokemon.id === givePokemonId);
-        const receiveInst = receiveRow ? buildInstance(receiveRow) : null;
         if (giveInst && receiveInst) {
           onTrade(giveInst, receiveInst);
         }
@@ -124,7 +127,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
       socket.off('trade:waitingConfirm', onWaitingConfirm);
       socket.off('trade:execute', onExecute);
     };
-  }, [playerName, myPokemonId]);
+  }, [playerName, myPokemonId, collection, onTrade]);
 
   // Auto-request when accepting a notification
   useEffect(() => {
@@ -172,7 +175,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
           <div className="trade-slot trade-slot-left">
             <img
               className="trade-sprite trade-sprite-out"
-              src={myPokemon.sprite}
+              src={tradeAnimation?.give ? getPokemonInstanceSprite(tradeAnimation.give) : myPokemon.sprite}
               alt={myPokemon.name}
             />
             <div className="trade-ball trade-ball-left" aria-hidden="true">
@@ -182,7 +185,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
             </div>
             <img
               className="trade-sprite trade-sprite-in trade-sprite-received"
-              src={theirPokemon.sprite}
+              src={tradeAnimation?.receive ? getPokemonInstanceSprite(tradeAnimation.receive) : theirPokemon.sprite}
               alt={theirPokemon.name}
             />
           </div>
@@ -195,7 +198,7 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
           <div className="trade-slot trade-slot-right">
             <img
               className="trade-sprite trade-sprite-out"
-              src={theirPokemon.sprite}
+              src={tradeAnimation?.receive ? getPokemonInstanceSprite(tradeAnimation.receive) : theirPokemon.sprite}
               alt={theirPokemon.name}
             />
             <div className="trade-ball trade-ball-right" aria-hidden="true">
@@ -205,13 +208,13 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
             </div>
             <img
               className="trade-sprite trade-sprite-in"
-              src={myPokemon.sprite}
+              src={tradeAnimation?.give ? getPokemonInstanceSprite(tradeAnimation.give) : myPokemon.sprite}
               alt={myPokemon.name}
             />
           </div>
         </div>
         <div className="trade-anim-text">Trade complete!</div>
-        <div className="trade-anim-received">You received {theirPokemon.name}!</div>
+        <div className="trade-anim-received">You received {tradeAnimation?.receive?.shiny ? `✨ ${theirPokemon.name}` : theirPokemon.name}!</div>
         <button className="trade-anim-close" onClick={() => navigate('/play')}>OK</button>
       </div>
     );
@@ -233,8 +236,8 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
               <div className="trade-confirm-label">You give</div>
               {myPokemon && (
                 <>
-                  <img src={myPokemon.sprite} alt={myPokemon.name} />
-                  <div className="team-select-card-name">{myPokemon.name}</div>
+                  <img src={myInst ? getPokemonInstanceSprite(myInst) : myPokemon.sprite} alt={myPokemon.name} />
+                  <div className="team-select-card-name">{myInst?.shiny ? `✨ ${myPokemon.name}` : myPokemon.name}</div>
                   <div className="team-select-card-info">
                     {myInst && <div className="team-select-card-nature">{myInst.nature}</div>}
                     {myInst?.ability && <div className="team-select-card-ability">{myInst.ability}</div>}
@@ -346,8 +349,8 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
         {selectedIdx !== null && phase === 'selectPokemon' && (
           <div style={{ textAlign: 'center', padding: '8px' }}>
             <div className="trade-selected-pokemon" style={{ display: 'inline-flex' }}>
-              <img src={collection[selectedIdx].pokemon.sprite} alt={collection[selectedIdx].pokemon.name} />
-              <div className="name">{collection[selectedIdx].pokemon.name}</div>
+              <img src={getPokemonInstanceSprite(collection[selectedIdx])} alt={collection[selectedIdx].pokemon.name} />
+              <div className="name">{collection[selectedIdx].shiny ? `✨ ${collection[selectedIdx].pokemon.name}` : collection[selectedIdx].pokemon.name}</div>
             </div>
             <div style={{ marginTop: '8px' }}>
               <button className="trade-btn" onClick={handleSelectPokemon} style={{ maxWidth: '200px' }}>
@@ -384,8 +387,8 @@ export default function TradeScreen({ playerName, collection, onTrade }: TradeSc
                     <img src={getHeldItemSprite(inst.heldItem)} alt="" />
                   </span>
                 )}
-                <img src={p.sprite} alt={p.name} />
-                <div className="team-select-card-name">{p.name}</div>
+                <img src={getPokemonInstanceSprite(inst)} alt={p.name} />
+                <div className="team-select-card-name">{inst.shiny ? `✨ ${p.name}` : p.name}</div>
                 <div className="team-select-card-info">
                   <div className="team-select-card-nature">{inst.nature}</div>
                   {inst.ability && <div className="team-select-card-ability">{inst.ability}</div>}

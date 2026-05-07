@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiUrl, withPartyBody } from '../party';
-import { getEffectiveMoves, type PokemonInstance } from '@shared/types';
+import { getEffectiveMoves, getPokemonInstanceSprite, type PokemonInstance } from '@shared/types';
 import AppleCatch from '../minigames/AppleCatch';
 import PettingCare from '../minigames/PettingCare';
 import './MinigamesScreen.css';
@@ -135,8 +135,8 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
     if (selectedGame.id === 'apple-catch') {
       return (
         <AppleCatch
-          pokemonSprite={selectedInst.pokemon.sprite}
-          pokemonName={selectedInst.pokemon.name}
+          pokemonSprite={getPokemonInstanceSprite(selectedInst)}
+          pokemonName={selectedInst.shiny ? `✨ ${selectedInst.pokemon.name}` : selectedInst.pokemon.name}
           onExit={() => setPhase('pick')}
           onFinish={handleGameEnd}
         />
@@ -145,8 +145,8 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
     if (selectedGame.id === 'petting-care') {
       return (
         <PettingCare
-          pokemonSprite={selectedInst.pokemon.sprite}
-          pokemonName={selectedInst.pokemon.name}
+          pokemonSprite={getPokemonInstanceSprite(selectedInst)}
+          pokemonName={selectedInst.shiny ? `✨ ${selectedInst.pokemon.name}` : selectedInst.pokemon.name}
           onExit={() => setPhase('pick')}
           onFinish={handleGameEnd}
         />
@@ -170,8 +170,8 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
             <div className="minigame-result-icon">{selectedGame.icon}</div>
             <div className="minigame-result-title">{selectedGame.id === 'petting-care' ? 'Bond XP earned' : 'Final score'}</div>
             <div className="minigame-result-score">{finalScore}</div>
-            <img src={selectedInst.pokemon.sprite} alt={selectedInst.pokemon.name} className="minigame-result-sprite" />
-            <div className="minigame-result-name">{selectedInst.pokemon.name}</div>
+            <img src={getPokemonInstanceSprite(selectedInst)} alt={selectedInst.pokemon.name} className="minigame-result-sprite" />
+            <div className="minigame-result-name">{selectedInst.shiny ? `✨ ${selectedInst.pokemon.name}` : selectedInst.pokemon.name}</div>
             {submitting && <div className="minigame-result-submitting">Sending score…</div>}
             {error && <div className="minigame-result-error">{error}</div>}
             {reward && (
@@ -256,9 +256,9 @@ export default function MinigamesScreen({ playerName, collection }: MinigamesScr
                     >
                       {inst.favorite && <span className="minigame-pick-favorite" aria-label="Favorite">★</span>}
                       <span className="minigame-pick-sprite-frame">
-                        <img src={inst.pokemon.sprite} alt={inst.pokemon.name} className="minigame-pick-sprite" />
+                        <img src={getPokemonInstanceSprite(inst)} alt={inst.pokemon.name} className="minigame-pick-sprite" />
                       </span>
-                      <span className="minigame-pick-name">{inst.pokemon.name}</span>
+                      <span className="minigame-pick-name">{inst.shiny ? `✨ ${inst.pokemon.name}` : inst.pokemon.name}</span>
                       <span className="minigame-pick-meta">
                         <span>{inst.pokemon.types.join(' / ')}</span>
                         <span>❤️ {inst.bondXp ?? 0}</span>

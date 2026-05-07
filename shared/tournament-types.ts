@@ -15,6 +15,7 @@ export interface FrozenPokemon {
   pokemonId: number;
   name: string;
   sprite: string;
+  shiny?: boolean;
   heldItem: string | null;
   moves: [string, string] | null;
   ability: string | null;

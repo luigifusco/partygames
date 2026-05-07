@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../party';
 import type { PokemonInstance, Stats, OwnedItem } from '@shared/types';
-import { getEffectiveMoves } from '@shared/types';
+import { getEffectiveMoves, getPokemonInstanceSprite, getPokemonSprite } from '@shared/types';
 import { POKEMON_BY_ID } from '@shared/pokemon-data';
 import { NATURE_BY_NAME, calcStat, STAT_LABELS } from '@shared/natures';
 import { getHeldItemSprite, getHeldItemName, HELD_ITEMS_BY_ID } from '@shared/held-item-data';
@@ -192,10 +192,10 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
         >
           {/* Prev/Next pokemon navigation removed by request. */}
           <div className="detail-top-row">
-            <div className="detail-name">{pokemon.name}</div>
+            <div className="detail-name">{inst.shiny ? `✨ ${pokemon.name}` : pokemon.name}</div>
             <RarityStars tier={pokemon.tier} size="md" />
           </div>
-          <img className="detail-sprite" src={pokemon.sprite} alt={pokemon.name} />
+          <img className="detail-sprite" src={getPokemonInstanceSprite(inst)} alt={pokemon.name} />
           <div className="detail-bottom-row">
             <div className="detail-meta-row">
               {pokemon.types.map((t) => (
@@ -384,12 +384,12 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
               <div className="evolve-ring evolve-ring-3" />
               <img
                 className="evolve-sprite evolve-sprite-from"
-                src={evolving.from.pokemon.sprite}
+                src={getPokemonInstanceSprite(evolving.from)}
                 alt={evolving.from.pokemon.name}
               />
               <img
                 className="evolve-sprite evolve-sprite-to"
-                src={target.sprite}
+                src={getPokemonSprite(target, evolving.from.shiny)}
                 alt={target.name}
               />
               <div className="evolve-flash" />
@@ -407,10 +407,10 @@ export default function PokemonDetailScreen({ collection, items, onShard, onEvol
             </div>
             <div className="evolve-caption">
               <div className="evolve-caption-line evolve-caption-evolving">
-                {evolving.from.pokemon.name} is evolving!
+                {evolving.from.shiny ? `✨ ${evolving.from.pokemon.name}` : evolving.from.pokemon.name} is evolving!
               </div>
               <div className="evolve-caption-line evolve-caption-done">
-                {evolving.from.pokemon.name} evolved into {target.name}!
+                {evolving.from.shiny ? `✨ ${evolving.from.pokemon.name}` : evolving.from.pokemon.name} evolved into {evolving.from.shiny ? `✨ ${target.name}` : target.name}!
               </div>
             </div>
           </div>

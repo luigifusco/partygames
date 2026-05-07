@@ -1,5 +1,5 @@
 import type { PokemonInstance } from '@shared/types';
-import { getEffectiveMoves } from '@shared/types';
+import { getEffectiveMoves, getPokemonInstanceSprite } from '@shared/types';
 import { getHeldItemName, getHeldItemSprite } from '@shared/held-item-data';
 import RarityStars from './RarityStars';
 import './ShardConfirmModal.css';
@@ -21,7 +21,7 @@ export default function ShardConfirmModal({ instances, onConfirm, onCancel }: Sh
     <div className="shard-modal-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="shard-modal">
         <div className="shard-modal-header">
-          <h3>{isBulk ? `Shard ${instances.length} Pokémon?` : `Shard ${instances[0].pokemon.name}?`}</h3>
+          <h3>{isBulk ? `Shard ${instances.length} Pokémon?` : `Shard ${instances[0].shiny ? '✨ ' : ''}${instances[0].pokemon.name}?`}</h3>
           <button className="shard-modal-close" onClick={onCancel} aria-label="Close">✕</button>
         </div>
 
@@ -32,11 +32,11 @@ export default function ShardConfirmModal({ instances, onConfirm, onCancel }: Sh
             return (
               <div className="shard-preview-single">
                 <div className="shard-preview-sprite-wrap">
-                  <img src={inst.pokemon.sprite} alt={inst.pokemon.name} className="shard-preview-sprite" />
+                  <img src={getPokemonInstanceSprite(inst)} alt={inst.pokemon.name} className="shard-preview-sprite" />
                   <RarityStars tier={inst.pokemon.tier} size="md" className="shard-preview-rarity" />
                 </div>
                 <div className="shard-preview-info">
-                  <div className="shard-preview-name">{inst.pokemon.name}</div>
+                  <div className="shard-preview-name">{inst.shiny ? `✨ ${inst.pokemon.name}` : inst.pokemon.name}</div>
                   <div className="shard-preview-meta">{inst.nature} · {inst.ability}</div>
                   <div className="shard-preview-moves">{moves[0]} · {moves[1]}</div>
                   {inst.heldItem && (
@@ -58,8 +58,8 @@ export default function ShardConfirmModal({ instances, onConfirm, onCancel }: Sh
               <div className="shard-preview-list">
                 {instances.map((inst) => (
                   <div key={inst.instanceId} className="shard-preview-chip" title={`${inst.pokemon.name} · ${inst.nature}`}>
-                    <img src={inst.pokemon.sprite} alt={inst.pokemon.name} />
-                    <span className="shard-preview-chip-name">{inst.pokemon.name}</span>
+                    <img src={getPokemonInstanceSprite(inst)} alt={inst.pokemon.name} />
+                    <span className="shard-preview-chip-name">{inst.shiny ? `✨ ${inst.pokemon.name}` : inst.pokemon.name}</span>
                     {inst.heldItem && <span className="shard-preview-chip-held" title={`${getHeldItemName(inst.heldItem)} will be returned`}>●</span>}
                   </div>
                 ))}

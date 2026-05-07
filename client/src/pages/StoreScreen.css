@@ -355,6 +355,11 @@
   z-index: 1;
 }
 
+.pack-reveal-name.shiny {
+  color: #ffe066;
+  text-shadow: 0 0 10px rgba(255, 224, 102, 0.65), 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
 .pack-reveal-info {
   display: flex;
   flex-direction: column;

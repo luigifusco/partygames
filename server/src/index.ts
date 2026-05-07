@@ -19,7 +19,7 @@ import type { StatusCondition } from '../../shared/move-data.js';
 import { canLearnMove, randomMovesForSpecies, randomLevelUpMovesForSpecies, type MoveRollInfo } from '../../shared/tm-learnsets.js';
 import { getMoveInfo } from '../../shared/move-info.js';
 import type { BattleSnapshot, BattlePokemonState, BattleLogEntry } from '../../shared/battle-types.js';
-import type { Pokemon as AppPokemon } from '../../shared/types.js';
+import { getPokemonSprite, type Pokemon as AppPokemon } from '../../shared/types.js';
 import { computeBondXp, bondThresholdForStep, reawakenCost, type BondBattleMode } from '../../shared/evolution.js';
 import { evolutionStepFor } from '../../shared/evolution-helpers.js';
 import { randomAbilityForSpecies, replayParseSnapshot } from './showdown-battle.js';
@@ -36,6 +36,11 @@ interface ShowdownDexApi {
 
 const { Dex: ShowdownDex } = require(showdownSimPath()) as { Dex: ShowdownDexApi };
 const GEN5_DEX = ShowdownDex.forGen(5);
+const SHINY_ODDS = 1024;
+
+function rollShiny(): boolean {
+  return Math.floor(Math.random() * SHINY_ODDS) === 0;
+}
 
 /** Move-info lookup that covers every move in the Gen 5 dex (not just the
  *  curated MOVE_INFO list). Used by the level-up move roller. */
@@ -326,7 +331,7 @@ function makeCalcPokemon(p: AppPokemon, curHP?: number, boosts?: Record<string, 
   });
 }
 
-async function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[], leftMoves?: ([string, string] | null)[], rightMoves?: ([string, string] | null)[], leftAbilities?: (string | null)[], rightAbilities?: (string | null)[], leftCharacters?: (string | null)[], rightCharacters?: (string | null)[]): Promise<BattleSnapshot> {
+async function simulateBattleFromIds(leftIds: number[], rightIds: number[], fieldSize?: number, leftHeldItems?: (string | null)[], rightHeldItems?: (string | null)[], leftMoves?: ([string, string] | null)[], rightMoves?: ([string, string] | null)[], leftAbilities?: (string | null)[], rightAbilities?: (string | null)[], leftCharacters?: (string | null)[], rightCharacters?: (string | null)[], leftSprites?: (string | null)[], rightSprites?: (string | null)[]): Promise<BattleSnapshot> {
   const activeFieldSize = fieldSize ?? leftIds.length;
 
   const leftEntries = leftIds.map((id, i) => {
@@ -340,8 +345,9 @@ async function simulateBattleFromIds(leftIds: number[], rightIds: number[], fiel
       heldItem: leftHeldItems?.[i] ?? null,
       ability: leftAbilities?.[i] ?? undefined,
       character: leftCharacters?.[i] ?? null,
+      sprite: leftSprites?.[i] ?? undefined,
     };
-  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string; character?: string | null }[];
+  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string; character?: string | null; sprite?: string }[];
 
   const rightEntries = rightIds.map((id, i) => {
     const base = POKEMON_BY_ID[id];
@@ -354,8 +360,9 @@ async function simulateBattleFromIds(leftIds: number[], rightIds: number[], fiel
       heldItem: rightHeldItems?.[i] ?? null,
       ability: rightAbilities?.[i] ?? undefined,
       character: rightCharacters?.[i] ?? null,
+      sprite: rightSprites?.[i] ?? undefined,
     };
-  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string; character?: string | null }[];
+  }).filter(Boolean) as { pokemon: AppPokemon; moves: [string, string]; heldItem?: string | null; ability?: string; character?: string | null; sprite?: string }[];
 
   return simulateBattle({ leftEntries, rightEntries, fieldSize: activeFieldSize > 1 ? activeFieldSize : 1 });
 }
@@ -491,9 +498,32 @@ function getRecentPokemonIds(playerId: string): number[] {
   return rows.map((r: any) => r.pokemon_id);
 }
 
+function getOwnedPokemonSprites(playerId: string | undefined, instanceIds: string[] | undefined): (string | null)[] | undefined {
+  if (!playerId || !Array.isArray(instanceIds) || instanceIds.length === 0) return undefined;
+  const placeholders = instanceIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT id, pokemon_id, shiny
+    FROM owned_pokemon
+    WHERE player_id = ? AND id IN (${placeholders})
+  `).all(playerId, ...instanceIds) as any[];
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return instanceIds.map((id) => {
+    const row = byId.get(id);
+    const species = row ? POKEMON_BY_ID[row.pokemon_id] : null;
+    return species ? getPokemonSprite(species, !!row.shiny) : null;
+  });
+}
+
+function getPlayerIdByName(partyId: string, name: string | null | undefined): string | undefined {
+  if (!name) return undefined;
+  const row = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(partyId, name) as any;
+  return row?.id;
+}
+
 interface BattleTowerPlayerEntry {
   instanceId: string;
   pokemonId: number;
+  shiny: boolean;
   moves: [string, string] | null;
   heldItem: string | null;
   ability: string | null;
@@ -587,7 +617,7 @@ function buildBattleTowerPlayerTeam(playerId: string, format: BattleTowerFormat,
   if (new Set(instanceIds).size !== instanceIds.length) return { error: 'Duplicate Pokémon are not allowed.' };
   const placeholders = instanceIds.map(() => '?').join(',');
   const rows = db.prepare(`
-    SELECT id, pokemon_id, move_1, move_2, held_item, ability
+    SELECT id, pokemon_id, shiny, move_1, move_2, held_item, ability
     FROM owned_pokemon
     WHERE player_id = ? AND id IN (${placeholders})
   `).all(playerId, ...instanceIds) as any[];
@@ -611,6 +641,7 @@ function buildBattleTowerPlayerTeam(playerId: string, format: BattleTowerFormat,
     team.push({
       instanceId: row.id,
       pokemonId: row.pokemon_id,
+      shiny: !!row.shiny,
       moves: overrideMoves ?? savedMoves,
       heldItem,
       ability: typeof abilities[i] === 'string' ? abilities[i] : row.ability ?? null,
@@ -679,7 +710,7 @@ app.post(`${BASE_PATH}/api/login`, (req, res) => {
   }
 
   // Also fetch their pokemon collection
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, shiny, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
   return res.json({ player: publicPlayer(player, party), party, pokemon, items, recentPokemonIds });
@@ -694,7 +725,7 @@ app.get(`${BASE_PATH}/api/player/:id`, (req, res) => {
     return res.status(404).json({ error: 'Player not found' });
   }
 
-  const pokemon = db.prepare('SELECT id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character FROM owned_pokemon WHERE player_id = ?').all(player.id);
+  const pokemon = db.prepare('SELECT id, pokemon_id, shiny, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character FROM owned_pokemon WHERE player_id = ?').all(player.id);
   const items = db.prepare('SELECT id, item_type, item_data FROM owned_items WHERE player_id = ?').all(player.id);
   const recentPokemonIds = getRecentPokemonIds(player.id);
   return res.json({ player: publicPlayer(player, party), party, pokemon, items, recentPokemonIds });
@@ -733,7 +764,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon`, (req, res) => {
   if (!ctx) return;
 
   const insert = db.prepare(
-    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, shiny, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   const discover = db.prepare(
     'INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)'
@@ -744,13 +775,14 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon`, (req, res) => {
     const nature = randomNature();
     const ivs = randomIVs();
     const species = POKEMON_BY_ID[pid];
+    const shiny = rollShiny() ? 1 : 0;
     const ability = species ? randomAbilityForSpecies(species.name) : null;
     const moves = species
       ? randomLevelUpMovesForSpecies(species.name, getMoveInfoFull, species.moves as [string, string], { atkBias: speciesAtkBias(species), types: species.types as string[] })
       : [null, null];
-    insert.run(id, ctx.player.id, pid, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+    insert.run(id, ctx.player.id, pid, shiny, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
     discover.run(ctx.player.id, pid);
-    created.push({ id, pokemon_id: pid, nature, iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense, iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed, ability, move_1: moves[0], move_2: moves[1] });
+    created.push({ id, pokemon_id: pid, shiny, nature, iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense, iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed, ability, move_1: moves[0], move_2: moves[1] });
   }
   if (created.length) gameplayEventsTotal.inc({ event: 'pokemon_added' }, created.length);
   return res.json({ ok: true, pokemon: created });
@@ -913,6 +945,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
   const newId = uuidv4();
   const nature = randomNature();
   const ivs = randomIVs();
+  const shiny = rollShiny() ? 1 : 0;
   const ability = randomAbilityForSpecies(species.name);
   const moves = randomLevelUpMovesForSpecies(
     species.name,
@@ -921,8 +954,8 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
     { atkBias: speciesAtkBias(species), types: species.types as string[] },
   );
   db.prepare(
-    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(newId, playerId, species.id, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, shiny, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(newId, playerId, species.id, shiny, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
   gameplayEventsTotal.inc({ event: 'pokemon_reawakened' });
 
   return res.json({
@@ -931,6 +964,7 @@ app.post(`${BASE_PATH}/api/player/:id/pokemon/reawaken`, (req, res) => {
     newInstance: {
       id: newId,
       pokemon_id: species.id,
+      shiny,
       nature,
       iv_hp: ivs.hp, iv_atk: ivs.attack, iv_def: ivs.defense,
       iv_spa: ivs.spAtk, iv_spd: ivs.spDef, iv_spe: ivs.speed,
@@ -1626,7 +1660,7 @@ app.post(`${BASE_PATH}/api/admin/create-test-user`, (req, res) => {
   const id = uuidv4();
   const insertPlayer = db.prepare('INSERT INTO players (id, party_id, name, essence, elo, picture) VALUES (?, ?, ?, ?, ?, ?)');
   const insertMon = db.prepare(
-    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO owned_pokemon (id, player_id, pokemon_id, shiny, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   const discover = db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)');
   const insertItem = db.prepare('INSERT INTO owned_items (id, player_id, item_type, item_data) VALUES (?, ?, ?, ?)');
@@ -1647,7 +1681,7 @@ app.post(`${BASE_PATH}/api/admin/create-test-user`, (req, res) => {
         species.moves as [string, string],
         { atkBias: speciesAtkBias(species), types: species.types as string[] }
       );
-      insertMon.run(monId, id, species.id, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+      insertMon.run(monId, id, species.id, 0, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
       discover.run(id, species.id);
     }
 
@@ -1919,10 +1953,16 @@ app.post(`${BASE_PATH}/api/battle/simulate`, async (req, res) => {
     }
     const fs = fieldSize ?? leftTeam.length;
     const mode = selectionMode ?? 'blind';
+    const playerRowForBattle = playerName
+      ? db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, playerName) as any
+      : null;
+    const leftSprites = playerRowForBattle && Array.isArray(leftInstanceIds)
+      ? getOwnedPokemonSprites(playerRowForBattle.id, leftInstanceIds)
+      : undefined;
     const labels = { field_size: String(fs), total_pokemon: String(leftTeam.length), selection_mode: mode, opponent_type: 'ai' };
     const snapshot = await observeBattleSimulation(
       { field_size: labels.field_size, total_pokemon: labels.total_pokemon, opponent_type: labels.opponent_type },
-      () => simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters),
+      () => simulateBattleFromIds(leftTeam, rightTeam, fieldSize, leftHeldItems, rightHeldItems, leftMoves, rightMoves, leftAbilities, rightAbilities, leftCharacters, rightCharacters, leftSprites),
     );
 
     battlesTotal.inc(labels);
@@ -1939,7 +1979,7 @@ app.post(`${BASE_PATH}/api/battle/simulate`, async (req, res) => {
     // collection instances.
     let bondAwards: BondAward[] = [];
     if (playerName && Array.isArray(leftInstanceIds) && leftInstanceIds.length > 0) {
-      const playerRow = db.prepare('SELECT id FROM players WHERE party_id = ? AND name = ?').get(party.id, playerName) as any;
+      const playerRow = playerRowForBattle;
       if (playerRow) {
         const recordTeamEntry = db.prepare('INSERT INTO battle_team_entries (battle_id, player_id, pokemon_id) VALUES (?, ?, ?)');
         for (const pid of leftTeam) recordTeamEntry.run(battleRecordId, playerRow.id, pid);
@@ -2067,12 +2107,16 @@ app.post(`${BASE_PATH}/api/battle-tower/battle`, async (req, res) => {
     const leftHeldItems = playerTeam.map((entry) => entry.heldItem);
     const leftAbilities = playerTeam.map((entry) => entry.ability);
     const leftCharacters = playerTeam.map((entry) => entry.character);
+    const leftSprites = playerTeam.map((entry) => {
+      const species = POKEMON_BY_ID[entry.pokemonId];
+      return species ? getPokemonSprite(species, entry.shiny) : null;
+    });
     const rightHeldItems = opponent.team.map((entry) => entry.heldItem);
     const rightAbilities = opponent.team.map((entry) => entry.ability);
     const rightCharacters = opponent.team.map((entry) => entry.character);
     const snapshot = await observeBattleSimulation(
       { field_size: String(row.field_size), total_pokemon: String(row.team_size), opponent_type: 'battle_tower' },
-      () => simulateBattleFromIds(leftTeam, rightTeam, row.field_size, leftHeldItems, rightHeldItems, leftMoves, undefined, leftAbilities, rightAbilities, leftCharacters, rightCharacters),
+      () => simulateBattleFromIds(leftTeam, rightTeam, row.field_size, leftHeldItems, rightHeldItems, leftMoves, undefined, leftAbilities, rightAbilities, leftCharacters, rightCharacters, leftSprites),
     );
     const won = snapshot.winner === 'left';
     const battleRecordId = uuidv4();
@@ -2283,6 +2327,8 @@ interface ActiveBattle {
   player2Moves?: any;
   player1Abilities?: any;
   player2Abilities?: any;
+  player1Sprites?: (string | null)[];
+  player2Sprites?: (string | null)[];
   player1InstanceIds?: string[];
   player2InstanceIds?: string[];
 }
@@ -2304,7 +2350,7 @@ interface ActiveTrade {
 }
 const activeTrades = new Map<string, ActiveTrade>();
 
-const OWNED_POKEMON_FIELDS = 'id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character';
+const OWNED_POKEMON_FIELDS = 'id, player_id, pokemon_id, shiny, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, move_1, move_2, held_item, ability, bond_xp, favorite, character';
 
 function getTradePokemon(playerId: string, instanceId?: string | null, pokemonId?: number | null) {
   if (instanceId) {
@@ -2367,6 +2413,7 @@ function frozenToBattle(frozen: FrozenPokemon[], order: number[]) {
   const ordered = order.map(i => frozen[i]);
   return {
     team: ordered.map(f => f.pokemonId),
+    sprites: ordered.map(f => f.sprite ?? null),
     heldItems: ordered.map(f => f.heldItem),
     moves: ordered.map(f => f.moves),
     abilities: ordered.map(f => f.ability),
@@ -2432,6 +2479,7 @@ function notifyTournamentForfeit(t: Tournament, match: TournamentMatch) {
  *  the battle if both sides are ready. Shared between blind-pick and draft completion. */
 interface SubmittedTeam {
   team: number[];
+  sprites?: (string | null)[];
   heldItems: (string | null)[] | undefined;
   moves: any;
   abilities: any;
@@ -2463,6 +2511,7 @@ async function handleTournamentTeamSubmission(
     battle.player1HeldItems = submitted.heldItems;
     battle.player1Moves = submitted.moves;
     battle.player1Abilities = submitted.abilities;
+    battle.player1Sprites = submitted.sprites;
     (battle as any).player1Characters = submitted.characters;
     battle.player1InstanceIds = submitted.instanceIds;
   } else {
@@ -2470,6 +2519,7 @@ async function handleTournamentTeamSubmission(
     battle.player2HeldItems = submitted.heldItems;
     battle.player2Moves = submitted.moves;
     battle.player2Abilities = submitted.abilities;
+    battle.player2Sprites = submitted.sprites;
     (battle as any).player2Characters = submitted.characters;
     battle.player2InstanceIds = submitted.instanceIds;
   }
@@ -2482,6 +2532,10 @@ async function handleTournamentTeamSubmission(
   // Both ready — simulate.
   let snapshot: BattleSnapshot;
   try {
+    const p1Id = getPlayerIdByName(battle.partyId, battle.player1);
+    const p2Id = getPlayerIdByName(battle.partyId, battle.player2);
+    const p1Sprites = battle.player1Sprites ?? getOwnedPokemonSprites(p1Id, battle.player1InstanceIds);
+    const p2Sprites = battle.player2Sprites ?? getOwnedPokemonSprites(p2Id, battle.player2InstanceIds);
     snapshot = await observeBattleSimulation(
       { field_size: String(t.fieldSize), total_pokemon: String(t.totalPokemon), opponent_type: 'tournament' },
       () => simulateBattleFromIds(
@@ -2490,6 +2544,7 @@ async function handleTournamentTeamSubmission(
         battle.player1Moves, battle.player2Moves,
         battle.player1Abilities, battle.player2Abilities,
         (battle as any).player1Characters, (battle as any).player2Characters,
+        p1Sprites, p2Sprites,
       ),
     );
   } catch (error) {
@@ -2750,7 +2805,7 @@ function distributePrizes(t: Tournament) {
 
     if (prize.pokemonIds && prize.pokemonIds.length > 0) {
       const insert = db.prepare(
-        'INSERT INTO owned_pokemon (id, player_id, pokemon_id, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO owned_pokemon (id, player_id, pokemon_id, shiny, nature, iv_hp, iv_atk, iv_def, iv_spa, iv_spd, iv_spe, ability, move_1, move_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       );
       const discover = db.prepare('INSERT OR IGNORE INTO pokedex (player_id, pokemon_id) VALUES (?, ?)');
       for (const pid of prize.pokemonIds) {
@@ -2758,9 +2813,10 @@ function distributePrizes(t: Tournament) {
         if (!species) continue;
         const nature = randomNature();
         const ivs = randomIVs();
+        const shiny = rollShiny() ? 1 : 0;
         const ability = randomAbilityForSpecies(species.name);
         const moves = randomLevelUpMovesForSpecies(species.name, getMoveInfoFull, species.moves as [string, string], { atkBias: speciesAtkBias(species), types: species.types as string[] });
-        insert.run(uuidv4(), player.id, pid, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
+        insert.run(uuidv4(), player.id, pid, shiny, nature, ivs.hp, ivs.attack, ivs.defense, ivs.spAtk, ivs.spDef, ivs.speed, ability, moves[0], moves[1]);
         discover.run(player.id, pid);
       }
     }
@@ -3083,9 +3139,13 @@ io.on('connection', (socket) => {
       // Simulate battle on server so both players see the same result
       let snapshot: BattleSnapshot;
       try {
+        const p1Id = getPlayerIdByName(battle.partyId, battle.player1);
+        const p2Id = getPlayerIdByName(battle.partyId, battle.player2);
+        const p1Sprites = getOwnedPokemonSprites(p1Id, battle.player1InstanceIds);
+        const p2Sprites = getOwnedPokemonSprites(p2Id, battle.player2InstanceIds);
         snapshot = await observeBattleSimulation(
           { field_size: String(battle.fieldSize), total_pokemon: String(battle.totalPokemon), opponent_type: 'pvp' },
-          () => simulateBattleFromIds(battle.player1Team!, battle.player2Team!, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters),
+          () => simulateBattleFromIds(battle.player1Team!, battle.player2Team!, battle.fieldSize, (battle as any).player1HeldItems, (battle as any).player2HeldItems, (battle as any).player1Moves, (battle as any).player2Moves, (battle as any).player1Abilities, (battle as any).player2Abilities, (battle as any).player1Characters, (battle as any).player2Characters, p1Sprites, p2Sprites),
         );
       } catch (error) {
         console.error('PvP battle simulation failed:', error);
@@ -3401,6 +3461,7 @@ io.on('connection', (socket) => {
     let finalAbilities = abilities;
     let finalCharacters: (string | null)[] | undefined = characters;
     let finalInstanceIds: string[] | undefined = instanceIds;
+    let finalSprites: (string | null)[] | undefined;
     if (t.fixedTeam && t.frozenTeams[playerName]) {
       const frozen = t.frozenTeams[playerName];
       // Expect a permutation of slot indices; fall back to stored order if absent or invalid.
@@ -3418,12 +3479,13 @@ io.on('connection', (socket) => {
       finalMoves = built.moves;
       finalAbilities = built.abilities;
       finalCharacters = built.characters;
+      finalSprites = built.sprites;
       finalInstanceIds = undefined; // frozen teams don't carry live instance ids — skip bond xp
     }
 
     await handleTournamentTeamSubmission(t, match, playerName, {
       team: finalTeam, heldItems: finalHeldItems, moves: finalMoves,
-      abilities: finalAbilities, characters: finalCharacters, instanceIds: finalInstanceIds,
+      abilities: finalAbilities, characters: finalCharacters, instanceIds: finalInstanceIds, sprites: finalSprites,
     }, socket);
   });
 

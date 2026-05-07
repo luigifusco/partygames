@@ -12,6 +12,7 @@ export function buildInstance(row: any): PokemonInstance | null {
     pokemon,
     nature: row.nature as NatureName,
     ability: row.ability || '',
+    shiny: !!row.shiny,
     ivs: {
       hp: row.iv_hp,
       attack: row.iv_atk,
