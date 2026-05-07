@@ -6,6 +6,7 @@ import type { ProfileName } from '../../shared/character-profiles.js';
 import { resolveCharacterName } from '../../shared/character-profiles.js';
 import {
   BATTLE_TOWER_RUN_LENGTH,
+  BATTLE_TOWER_BONUS_BRACKET,
   battleTowerBattleBracket,
   battleTowerDifficultyLabel,
   type BattleTowerDifficultyBracket,
@@ -299,11 +300,10 @@ const BONUS_BOSS_TEAMS: Record<BattleTowerFormat, BonusBossTeam[]> = {
 };
 
 function tierWeights(bracket: BattleTowerDifficultyBracket): Record<BoxTier, number> {
-  if (bracket >= 4) return { common: 0, uncommon: 0, rare: 0, epic: 100, legendary: 0 };
-  if (bracket >= 3) return { common: 0, uncommon: 0, rare: 25, epic: 75, legendary: 0 };
-  if (bracket >= 2) return { common: 0, uncommon: 5, rare: 45, epic: 50, legendary: 0 };
-  if (bracket >= 1) return { common: 0, uncommon: 20, rare: 55, epic: 25, legendary: 0 };
-  return { common: 0, uncommon: 45, rare: 45, epic: 10, legendary: 0 };
+  if (bracket >= BATTLE_TOWER_BONUS_BRACKET) return { common: 0, uncommon: 0, rare: 0, epic: 100, legendary: 0 };
+  if (bracket >= 2) return { common: 0, uncommon: 0, rare: 25, epic: 75, legendary: 0 };
+  if (bracket >= 1) return { common: 0, uncommon: 5, rare: 45, epic: 50, legendary: 0 };
+  return { common: 0, uncommon: 20, rare: 55, epic: 25, legendary: 0 };
 }
 
 function weightedTier(weights: Record<BoxTier, number>): BoxTier {
@@ -394,7 +394,7 @@ export function generateBattleTowerOpponents(format: BattleTowerFormat, teamSize
   return Array.from({ length: BATTLE_TOWER_RUN_LENGTH }, (_, battleIndex) => {
     const trainer = trainers[battleIndex] ?? pick(TOWER_TRAINERS);
     const bracket = battleTowerBattleBracket(level, battleIndex);
-    const bonusTeam = bracket >= 4 ? bonusBossTeam(format, teamSize) : null;
+    const bonusTeam = bracket >= BATTLE_TOWER_BONUS_BRACKET ? bonusBossTeam(format, teamSize) : null;
     return {
       ...trainer,
       line: bonusTeam?.line ?? pick(TOWER_LINES),

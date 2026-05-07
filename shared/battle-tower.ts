@@ -17,10 +17,10 @@ export const BATTLE_TOWER_BASE_ENTRY_COST = 500;
 export const BATTLE_TOWER_BASE_REWARD = 2000;
 export const BATTLE_TOWER_ENTRY_SCALE_PER_CLEAR = 0.6;
 export const BATTLE_TOWER_REWARD_SCALE_PER_CLEAR = 0.9;
-export const BATTLE_TOWER_MAX_NORMAL_BRACKET = 3;
-export const BATTLE_TOWER_BONUS_BRACKET = 4;
+export const BATTLE_TOWER_MAX_NORMAL_BRACKET = 2;
+export const BATTLE_TOWER_BONUS_BRACKET = 3;
 
-export type BattleTowerDifficultyBracket = 0 | 1 | 2 | 3 | 4;
+export type BattleTowerDifficultyBracket = 0 | 1 | 2 | 3;
 
 export const BATTLE_TOWER_FORMATS: Record<BattleTowerFormat, BattleTowerFormatDef> = {
   single: {
@@ -67,10 +67,9 @@ export function battleTowerBattleBracket(level: number, battleIndex: number): Ba
 
 export function battleTowerDifficultyLabel(bracket: number): string {
   if (bracket >= BATTLE_TOWER_BONUS_BRACKET) return 'Bonus';
-  if (bracket >= 3) return 'Master';
-  if (bracket >= 2) return 'Elite';
-  if (bracket >= 1) return 'Veteran';
-  return 'Challenger';
+  if (bracket >= 2) return 'Master';
+  if (bracket >= 1) return 'Elite';
+  return 'Veteran';
 }
 
 export function battleTowerEconomy(format: BattleTowerFormat, currentStreak: number) {
