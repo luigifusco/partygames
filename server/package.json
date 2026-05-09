@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/server/src/index.js"
+    "start": "node dist/server/src/index.js",
+    "validate:game-data": "tsx src/scripts/validate-game-data.ts",
+    "test": "tsx src/scripts/test-core-rules.ts && npm run validate:game-data"
   },
   "dependencies": {
     "express": "^4.21.0",
